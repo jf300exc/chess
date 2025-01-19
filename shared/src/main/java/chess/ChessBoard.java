@@ -10,9 +10,9 @@ import java.util.HashMap;
 public class ChessBoard {
     HashMap<ChessPosition, ChessPiece> board;
     public static final int BLACK_ROW = 8;
-    public static final int BLACK_PAWN_ROW = START_BLACK_ROW - 1;
+    public static final int BLACK_PAWN_ROW = BLACK_ROW - 1;
     public static final int WHITE_ROW = 1;
-    public static final int WHITE_PAWN_ROW = START_WHITE_ROW + 1;
+    public static final int WHITE_PAWN_ROW = WHITE_ROW + 1;
 
     public static final int ROOK_1_COL     = 1;
     public static final int KNIGHT_1_COL   = 2;
@@ -24,14 +24,7 @@ public class ChessBoard {
     public static final int ROOK_2_COL     = 8;
 
     public static final int BOARD_SIZE     = 8;
-//    public static final int START_PAWN_1_COL     = 1;
-//    public static final int START_PAWN_2_COL     = 2;
-//    public static final int START_PAWN_3_COL     = 3;
-//    public static final int START_PAWN_4_COL     = 4;
-//    public static final int START_PAWN_5_COL     = 5;
-//    public static final int START_PAWN_6_COL     = 6;
-//    public static final int START_PAWN_7_COL     = 7;
-//    public static final int START_PAWN_8_COL     = 8;
+
     public ChessBoard() {
         board = new HashMap<>();
     }
