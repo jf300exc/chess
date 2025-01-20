@@ -25,7 +25,7 @@ public class ChessBoard {
 
     public static final int BOARD_SIZE     = 8;
 
-    HashMap<ChessPosition, ChessPiece> board;
+    private final HashMap<ChessPosition, ChessPiece> board;
 
     public ChessBoard() {
         board = new HashMap<>();
