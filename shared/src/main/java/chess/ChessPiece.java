@@ -216,6 +216,23 @@ public class ChessPiece {
     private static final int BLACK_DIRECTION = -1;
 
     /**
+     * Assumes that the threatenedPiece is within Pawn range.
+     * Returns true if the move is legal.
+     *
+     * @param threatenedPiece If this is `null` then it blocks attacks and allows straight moves.
+     * @param isAttack Determines if an attack move or a straight move.
+     * @return True if the move is legal.
+     */
+    private boolean isPawnMoveLegal(ChessPiece threatenedPiece, boolean isAttack) {
+        // If not attack, check if not blocked.
+        if (!isAttack && threatenedPiece == null) {
+            return true;
+        }
+        // Check if attack is legal.
+        return isAttack && threatenedPiece != null && threatenedPiece.getTeamColor() != pieceColor;
+    }
+
+    /**
      * Assumes that destinationRow and destinationColumn are within pawn movement range.
      * Adds a pawn move if legal. Returns true if it did.
      *
@@ -230,16 +247,24 @@ public class ChessPiece {
     private boolean pieceAddPawnMove(ChessBoard board, HashSet<ChessMove> moves, ChessPosition myPosition, int destinationRow, int destinationColumn, boolean isAttack) {
         ChessPosition potentialPosition = new ChessPosition(destinationRow, destinationColumn);
         ChessPiece threatenedPiece = board.getPiece(potentialPosition);
-        if (!isAttack && threatenedPiece == null) {
-            // If not an attack, then the destination must be null.
-            ChessMove newMove = new ChessMove(myPosition, potentialPosition, null);
+        if (isPawnMoveLegal(threatenedPiece, isAttack)) {
+            ChessMove newMove;
+            if (destinationRow == ChessBoard.BLACK_ROW || destinationRow == ChessBoard.WHITE_ROW) {
+                // Promote
+                newMove = new ChessMove(myPosition, potentialPosition, PieceType.QUEEN);
+                moves.add(newMove);
+                newMove = new ChessMove(myPosition, potentialPosition, PieceType.BISHOP);
+                moves.add(newMove);
+                newMove = new ChessMove(myPosition, potentialPosition, PieceType.ROOK);
+                moves.add(newMove);
+                newMove = new ChessMove(myPosition, potentialPosition, PieceType.KNIGHT);
+            } else {
+                newMove = new ChessMove(myPosition, potentialPosition, null);
+            }
             moves.add(newMove);
-        } else if (isAttack && threatenedPiece != null && threatenedPiece.getTeamColor() != pieceColor) {
-            // If it is an attack, then the destination must not be null and, additionally, belong to opponent.
-            ChessMove newMove = new ChessMove(myPosition, potentialPosition, null);
-            moves.add(newMove);
-        } else return false;
-        return true;
+            return true;
+        }
+        return false;
     }
 
     /**
