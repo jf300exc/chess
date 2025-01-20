@@ -85,7 +85,7 @@ public class ChessPiece {
             moves.add(newMove);
             return true; // This is always blocking.
         } else {
-            // This is a friendly piece and is always blocking.
+            // Don't add. This is a friendly piece and is always blocking.
             return true;
         }
         return !extended; // If extended then the move won't default to blocking.
