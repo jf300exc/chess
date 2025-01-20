@@ -50,7 +50,6 @@ public class ChessPiece {
      */
     public ChessGame.TeamColor getTeamColor() {
         return pieceColor;
-//        throw new RuntimeException("Not implemented");
     }
 
     /**
@@ -58,55 +57,6 @@ public class ChessPiece {
      */
     public PieceType getPieceType() {
         return type;
-//        throw new RuntimeException("Not implemented");
-    }
-
-    /**
-     * Calculates horizontal moves for a piece, adjacent or extended. Using position of piece as reference.
-     * Does not account for moves that place king in check.
-     *
-     * @param board To see other positions on the board.
-     * @param myPosition Reference for finding moves.
-     * @param extended Determines if the whole row is checked, or, if false, only adjacent locations.
-     * @return HashSet of horizontal moves that are not blocked
-     */
-    private HashSet<ChessMove> pieceFindHorizontalMoves(ChessBoard board, ChessPosition myPosition, boolean extended) {
-        HashSet<ChessMove> moves = new HashSet<>();
-        int myRow = myPosition.getRow();
-        for (int i = -1; i <= 1; i += 2) {
-            // Runs left, then right, using negative and positive increment.
-            for (int c = myPosition.getColumn() + i; c > 0 && c <= ChessBoard.BOARD_SIZE; c += i) {
-                if (addMoveAndCheckBlock(board, myPosition, extended, moves, myRow, c)) {
-                    break;
-                }
-            }
-        }
-        return moves;
-//        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    /**
-     * Calculates vertical moves for a piece, adjacent or extended. Using position of piece as reference.
-     * Does not account for moves that place king in check.
-     *
-     * @param board To see other positions on the board.
-     * @param myPosition Reference for finding moves.
-     * @param extended Determines if the whole column is checked, or, if false, only adjacent locations.
-     * @return HashSet of vertical moves that are not blocked.
-     */
-    private HashSet<ChessMove> pieceFindVerticalMoves(ChessBoard board, ChessPosition myPosition, boolean extended) {
-        HashSet<ChessMove> moves = new HashSet<>();
-        int myColumn = myPosition.getColumn();
-        for (int i = -1; i <= 1; i += 2) {
-            // Runs down, then up, using negative and positive increment.
-            for (int r = myPosition.getRow() + i; r > 0 && r <= ChessBoard.BOARD_SIZE; r += i) {
-                if (addMoveAndCheckBlock(board, myPosition, extended, moves, r, myColumn)) {
-                    break;
-                }
-            }
-        }
-        return moves;
-//        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /**
@@ -142,6 +92,52 @@ public class ChessPiece {
     }
 
     /**
+     * Calculates horizontal moves for a piece, adjacent or extended. Using position of piece as reference.
+     * Does not account for moves that place king in check.
+     *
+     * @param board To see other positions on the board.
+     * @param myPosition Reference for finding moves.
+     * @param extended Determines if the whole row is checked, or, if false, only adjacent locations.
+     * @return HashSet of horizontal moves that are not blocked
+     */
+    private HashSet<ChessMove> pieceFindHorizontalMoves(ChessBoard board, ChessPosition myPosition, boolean extended) {
+        HashSet<ChessMove> moves = new HashSet<>();
+        int myRow = myPosition.getRow();
+        for (int i = -1; i <= 1; i += 2) {
+            // Runs left, then right, using negative and positive increment.
+            for (int c = myPosition.getColumn() + i; c > 0 && c <= ChessBoard.BOARD_SIZE; c += i) {
+                if (addMoveAndCheckBlock(board, myPosition, extended, moves, myRow, c)) {
+                    break;
+                }
+            }
+        }
+        return moves;
+    }
+
+    /**
+     * Calculates vertical moves for a piece, adjacent or extended. Using position of piece as reference.
+     * Does not account for moves that place king in check.
+     *
+     * @param board To see other positions on the board.
+     * @param myPosition Reference for finding moves.
+     * @param extended Determines if the whole column is checked, or, if false, only adjacent locations.
+     * @return HashSet of vertical moves that are not blocked.
+     */
+    private HashSet<ChessMove> pieceFindVerticalMoves(ChessBoard board, ChessPosition myPosition, boolean extended) {
+        HashSet<ChessMove> moves = new HashSet<>();
+        int myColumn = myPosition.getColumn();
+        for (int i = -1; i <= 1; i += 2) {
+            // Runs down, then up, using negative and positive increment.
+            for (int r = myPosition.getRow() + i; r > 0 && r <= ChessBoard.BOARD_SIZE; r += i) {
+                if (addMoveAndCheckBlock(board, myPosition, extended, moves, r, myColumn)) {
+                    break;
+                }
+            }
+        }
+        return moves;
+    }
+
+    /**
      * Calculates diagonal moves for a piece, adjacent or extended. Using position of piece as reference.
      * Does not account for moves that place king in check.
      *
@@ -167,8 +163,6 @@ public class ChessPiece {
             }
         }
         return moves;
-        
-//        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /**
@@ -216,8 +210,6 @@ public class ChessPiece {
             }
         }
         return moves;
-
-//        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     private static final int WHITE_DIRECTION = 1;
@@ -327,6 +319,5 @@ public class ChessPiece {
                 throw new RuntimeException("Invalid piece type: " + type);
         }
         return moves;
-//        throw new RuntimeException("Not implemented");
     }
 }
