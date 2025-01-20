@@ -13,8 +13,8 @@ public class ChessPosition {
     private final int col;
 
     public ChessPosition(int row, int col) {
-        if (row < 1 || row > 8) {
-            throw new RuntimeException("Not implemented");
+        if (row < 1 || row > ChessBoard.BOARD_SIZE) {
+            throw new IndexOutOfBoundsException("row: " + row + ", col: " + col);
         }
         this.row = row;
         this.col = col;
