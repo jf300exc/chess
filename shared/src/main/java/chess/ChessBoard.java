@@ -1,5 +1,6 @@
 package chess;
 import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * A chessboard that can hold and rearrange chess pieces.
@@ -8,7 +9,6 @@ import java.util.HashMap;
  * signature of the existing methods.
  */
 public class ChessBoard {
-    HashMap<ChessPosition, ChessPiece> board;
     public static final int BLACK_ROW = 8;
     public static final int BLACK_PAWN_ROW = BLACK_ROW - 1;
     public static final int WHITE_ROW = 1;
@@ -24,6 +24,8 @@ public class ChessBoard {
     public static final int ROOK_2_COL     = 8;
 
     public static final int BOARD_SIZE     = 8;
+
+    HashMap<ChessPosition, ChessPiece> board;
 
     public ChessBoard() {
         board = new HashMap<>();
@@ -130,5 +132,19 @@ public class ChessBoard {
         initializePawns(ChessGame.TeamColor.BLACK);
 
 //        throw new RuntimeException("Not implemented");
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ChessBoard that = (ChessBoard) o;
+        return Objects.equals(board, that.board);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(board);
     }
 }
