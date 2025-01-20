@@ -80,12 +80,12 @@ public class ChessPiece {
             ChessMove newMove = new ChessMove(myPosition, potentialPosition, null);
             moves.add(newMove);
         } else if (threatenedPiece.getTeamColor() != pieceColor) {
-            // If opponents piece, then it's a valid destination.
+            // If opponent's piece, then it's a valid destination.
             ChessMove newMove = new ChessMove(myPosition, potentialPosition, null);
             moves.add(newMove);
-            return true;
+            return true; // This is always blocking.
         } else {
-            // This is a friendly piece and is blocking.
+            // This is a friendly piece and is always blocking.
             return true;
         }
         return !extended; // If extended then the move won't default to blocking.
