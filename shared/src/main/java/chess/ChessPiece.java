@@ -220,6 +220,36 @@ public class ChessPiece {
 //        throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    private static final int WHITE_DIRECTION = 1;
+    private static final int BLACK_DIRECTION = -1;
+
+    /**
+     * Assumes that destinationRow and destinationColumn are within pawn movement range.
+     * Adds a pawn move if legal. Returns true if it did.
+     *
+     * @param board To see other position on the board.
+     * @param moves The HashSet of moves to add the move to.
+     * @param myPosition The position of the source piece.
+     * @param destinationRow The potential destination row.
+     * @param destinationColumn The potential destination column.
+     * @param isAttack Determines if and only if an opponent should be present to be valid.
+     * @return True if move was added.
+     */
+    private boolean pieceAddPawnMove(ChessBoard board, HashSet<ChessMove> moves, ChessPosition myPosition, int destinationRow, int destinationColumn, boolean isAttack) {
+        ChessPosition potentialPosition = new ChessPosition(destinationRow, destinationColumn);
+        ChessPiece threatenedPiece = board.getPiece(potentialPosition);
+        if (!isAttack && threatenedPiece == null) {
+            // If not an attack, then the destination must be null.
+            ChessMove newMove = new ChessMove(myPosition, potentialPosition, null);
+            moves.add(newMove);
+        } else if (isAttack && threatenedPiece != null && threatenedPiece.getTeamColor() != pieceColor) {
+            // If it is an attack, then the destination must not be null and, additionally, belong to opponent.
+            ChessMove newMove = new ChessMove(myPosition, potentialPosition, null);
+            moves.add(newMove);
+        } else return false;
+        return true;
+    }
+
     /**
      * Calculates moves as if the piece is a pawn. Adding double moves if piece is in starting location.
      * Does not account for moves that place king in check.
@@ -230,48 +260,34 @@ public class ChessPiece {
      */
     private HashSet<ChessMove> pieceFindPawnMoves(ChessBoard board, ChessPosition myPosition) {
         HashSet<ChessMove> moves = new HashSet<>();
-        ChessPosition potentialPosition;
-        ChessMove newMove;
-        ChessPiece threatenedPiece;
         int row = myPosition.getRow();
         int column = myPosition.getColumn();
-        if (pieceColor == ChessGame.TeamColor.BLACK && row > 1) {
-            potentialPosition = new ChessPosition(row - 1, column);
-            threatenedPiece = board.getPiece(potentialPosition);
-            if (threatenedPiece == null) {
-                newMove = new ChessMove(myPosition, potentialPosition, null);
-                moves.add(newMove);
-                // Check to add double move only if not blocked.
-                if (row == ChessBoard.BLACK_PAWN_ROW) {
-                    potentialPosition = new ChessPosition(row - 2, column);
-                    threatenedPiece = board.getPiece(potentialPosition);
-                    if (threatenedPiece == null) {
-                        newMove = new ChessMove(myPosition, potentialPosition, null);
-                        moves.add(newMove);
-                    }
+        int direction;
+        int startingRow;
+        int boundaryRow;
+        if (pieceColor == ChessGame.TeamColor.WHITE) {
+            direction = WHITE_DIRECTION;
+            startingRow = ChessBoard.WHITE_PAWN_ROW;
+            boundaryRow = ChessBoard.BLACK_ROW; // Black starts at edge of board.
+        } else {
+            direction = BLACK_DIRECTION;
+            startingRow = ChessBoard.BLACK_PAWN_ROW;
+            boundaryRow = ChessBoard.WHITE_ROW; // White starts at edge of board.
+        }
+        if ((direction == BLACK_DIRECTION && row > boundaryRow) || (direction == WHITE_DIRECTION && row < boundaryRow)) {
+            if (pieceAddPawnMove(board, moves, myPosition, row + direction, column, false)) {
+                if (row == startingRow) {
+                    pieceAddPawnMove(board, moves, myPosition, row + 2 * direction, column, false);
                 }
             }
             if (column > 1) {
-                potentialPosition = new ChessPosition(row - 1, column - 1);
-                threatenedPiece = board.getPiece(potentialPosition);
-                if (threatenedPiece != null && threatenedPiece.getTeamColor() != pieceColor) {
-                    // If opponent at diagonal, then diagonal is a valid destination.
-                    newMove = new ChessMove(myPosition, potentialPosition, null);
-                    moves.add(newMove);
-                }
+                pieceAddPawnMove(board, moves, myPosition, row + direction, column - 1, true);
             }
             if (column < ChessBoard.BOARD_SIZE) {
-                potentialPosition = new ChessPosition(row - 1, column + 1);
-                threatenedPiece = board.getPiece(potentialPosition);
-                if (threatenedPiece != null && threatenedPiece.getTeamColor() != pieceColor) {
-                    // If opponent at diagonal, then diagonal is a valid destination.
-                    newMove = new ChessMove(myPosition, potentialPosition, null);
-                    moves.add(newMove);
-                }
+                pieceAddPawnMove(board, moves, myPosition, row + direction, column + 1, true);
             }
         }
-        // TODO: Make this work for White Pieces and clean it up.
-        throw new UnsupportedOperationException("Not supported yet.");
+        return moves;
     }
 
     /**
