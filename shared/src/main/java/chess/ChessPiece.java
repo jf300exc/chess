@@ -62,6 +62,8 @@ public class ChessPiece {
     /**
      * Helper for adding moves in horizontal, straight, or diagonal lines.
      * Adds the move to parameter `moves` if destination is not a friendly position.
+     * Returns true if the destination is blocking source piece from moving past it.
+     * Also returns true for blocking if the move type is not extended.
      * Assumes `potentialColumn` and `potentialRow` are within bounds and legal.
      *
      * @param board           The main board to check other pieces.
