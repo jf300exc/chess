@@ -156,12 +156,12 @@ public class ChessPiece {
                 // Check bounds
                 // Increment with -1 or +1 on both new_c and new_r
                 for (int new_c = myPosition.getColumn() + ci, new_r = myPosition.getRow() + ri;
-                     new_r > 0 && new_c > 0 && new_r <= ChessBoard.BOARD_SIZE && new_c <= ChessBoard.BOARD_SIZE;
-                     new_c += ci, new_r += ri) {
-                    if (addMoveAndCheckBlock(board, myPosition, extended, moves, new_r, new_c)) {
-                        break;
+                    new_r > 0 && new_c > 0 && new_r <= ChessBoard.BOARD_SIZE && new_c <= ChessBoard.BOARD_SIZE;
+                    new_c += ci, new_r += ri) {
+                        if (addMoveAndCheckBlock(board, myPosition, extended, moves, new_r, new_c)) {
+                            break;
+                        }
                     }
-                }
             }
         }
         return moves;
