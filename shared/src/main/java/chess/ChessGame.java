@@ -62,10 +62,13 @@ public class ChessGame {
         Iterator<ChessMove> iterator = allMoves.iterator();
         while (iterator.hasNext()) {
             ChessMove move = iterator.next();
+            ChessPosition moveDest = move.getEndPosition();
 
             // Make the move
             gameBoard.removePiece(startPosition);
-            gameBoard.addPiece(move.getEndPosition(), chosenPiece);
+            // If there is a piece at the destination, save it
+            ChessPiece destPiece = gameBoard.getPiece(moveDest);
+            gameBoard.addPiece(moveDest, chosenPiece);
 
             // Safely remove if in check
             if (isInCheck(pieceTeam)) {
@@ -73,7 +76,10 @@ public class ChessGame {
             }
 
             // Move back
-            gameBoard.removePiece(move.getEndPosition());
+            gameBoard.removePiece(moveDest);
+            // Add back saved destination piece
+            gameBoard.addPiece(moveDest, destPiece);
+            // Add back moving piece
             gameBoard.addPiece(startPosition, chosenPiece);
         }
 
@@ -118,6 +124,15 @@ public class ChessGame {
                         if (threatPieceType == PieceType.ROOK || threatPieceType == PieceType.QUEEN) {
                             return true;
                         }
+                        if (threatPieceType == PieceType.KING) {
+                            // Checking if the kingPos is a destination of one of the pawn's pieceMoves
+                            Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, horizPosition);
+                            for (ChessMove smallMove : limitedMoves) {
+                                if (kingPos.equals(smallMove.getEndPosition())) {
+                                    return true;
+                                }
+                            }
+                        }
                     }
                     break;
                 }
@@ -145,6 +160,15 @@ public class ChessGame {
                         PieceType threatPieceType = potentialThreat.getPieceType();
                         if (threatPieceType == PieceType.ROOK || threatPieceType == PieceType.QUEEN) {
                             return true;
+                        }
+                        if (threatPieceType == PieceType.KING) {
+                            // Checking if the kingPos is a destination of one of the pawn's pieceMoves
+                            Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, verPosition);
+                            for (ChessMove smallMove : limitedMoves) {
+                                if (kingPos.equals(smallMove.getEndPosition())) {
+                                    return true;
+                                }
+                            }
                         }
                     }
                     break;
@@ -176,11 +200,11 @@ public class ChessGame {
                                 if (threatPieceType == PieceType.BISHOP || threatPieceType == PieceType.QUEEN) {
                                     return true;
                                 }
-                                if (threatPieceType == PieceType.PAWN) {
+                                if (threatPieceType == PieceType.PAWN || threatPieceType == PieceType.KING) {
                                     // Checking if the kingPos is a destination of one of the pawn's pieceMoves
-                                    Collection<ChessMove> pawnMoves = potentialThreat.pieceMoves(gameBoard, diaPosition);
-                                    for (ChessMove move_m : pawnMoves) {
-                                        if (kingPos == move_m.getEndPosition()) {
+                                    Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, diaPosition);
+                                    for (ChessMove smallMove : limitedMoves) {
+                                        if (kingPos.equals(smallMove.getEndPosition())) {
                                             return true;
                                         }
                                     }
@@ -249,9 +273,7 @@ public class ChessGame {
             if (row < size && threatIsKnight(row + 1, col - 2, teamColor)) {
                 return true;
             }
-            if (row > 1 && threatIsKnight(row - 1, col - 2, teamColor)) {
-                return true;
-            }
+            return row > 1 && threatIsKnight(row - 1, col - 2, teamColor);
         }
         return false;
     }

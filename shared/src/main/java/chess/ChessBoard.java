@@ -1,4 +1,5 @@
 package chess;
+
 import java.util.HashMap;
 import java.util.Objects;
 
@@ -42,7 +43,7 @@ public class ChessBoard {
      */
     public void addPiece(ChessPosition position, ChessPiece piece) {
         board.put(position, piece);
-        if (piece.getPieceType() == PieceType.KING) {
+        if (piece != null && piece.getPieceType() == PieceType.KING) {
             setKingPos(position, piece.getTeamColor());
         }
     }
