@@ -162,13 +162,11 @@ public class ChessGame {
      * 
      * @param potentialKnight A chess piece that may be null
      * @param teamColor The friendly team, not the opponent
-     * @return
+     * @return True if `potentialKnight` is a knight from the other team
      */
     private boolean threatIsKnight(ChessPiece potentialKnight, TeamColor teamColor) {
         if (potentialKnight != null && potentialKnight.getTeamColor() != teamColor) {
-            if (potentialKnight.getPieceType() == PieceType.KNIGHT) {
-                return true;
-            }
+            return potentialKnight.getPieceType() == PieceType.KNIGHT;
         }
         return false;
     }
@@ -186,9 +184,7 @@ public class ChessGame {
         if (col < ChessBoard.BOARD_SIZE) {
             if (row < ChessBoard.BOARD_SIZE - 1) {
                 ChessPiece potentialThreat = gameBoard.getPiece(new ChessPosition(row + 2, col + 1));
-                if (threatIsKnight(potentialThreat, teamColor)) {
-                    return true;
-                }
+                return threatIsKnight(potentialThreat, teamColor);
             }
         }
         return false;
@@ -206,7 +202,7 @@ public class ChessGame {
         // There are two ways to solve this problem:
         // Method 1: Check possible moves of opponent's pieces
         // Method 2:
-        //      From the this king's perspective, can any piece attack it?
+        //      From this king's perspective, can any piece attack it?
         //      This would require all diagonal, horizontal, and vertical,
         //      paths to be checked from the perspective of the king.
         //      While checking a path, if an opponent's piece is found,
@@ -215,16 +211,15 @@ public class ChessGame {
         //          path or check a different path.
         //      While checking the path, if a friendly piece is found,
         //          We can move to the next path.
-        //      Addtionally, we must check the maximum of 8 possible knight positions surrounding the king.
+        //      Additionally, we must check the maximum of 8 possible knight positions surrounding the king.
         //          If the opponent has a knight there, the king is in check.
         //
         // We'll go with METHOD 2 because it is more scalable and efficient. Although it is more difficult to implement.
 
         // Get the king position.
         ChessPosition kingPos = gameBoard.getKingPos(teamColor);
-        boolean isInCheck = checkThreatHorizontal(kingPos, teamColor) || checkThreatVertical(kingPos, teamColor)
+        return checkThreatHorizontal(kingPos, teamColor) || checkThreatVertical(kingPos, teamColor)
                             || checkThreatDiagonal(kingPos, teamColor) || checkThreatKnight(kingPos, teamColor);
-        return isInCheck;
     }
     
     /**
