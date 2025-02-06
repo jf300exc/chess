@@ -29,8 +29,8 @@ public class ChessBoard {
 
     private final HashMap<ChessPosition, ChessPiece> board = new HashMap<>();
 
-    private ChessPosition whiteKingPos = new ChessPosition(WHITE_ROW, KING_COL);
-    private ChessPosition blackKingPos = new ChessPosition(BLACK_ROW, KING_COL);
+    private ChessPosition whiteKingPos;
+    private ChessPosition blackKingPos;
 
     public ChessBoard() { }
 
@@ -56,6 +56,21 @@ public class ChessBoard {
      */
     public ChessPiece getPiece(ChessPosition position) {
         return board.get(position);
+    }
+
+    /**
+     * Removes a piece from the board
+     * 
+     * @param position The position of the piece to remove
+     */
+    public void removePiece(ChessPosition position) {
+        ChessPiece piece = getPiece(position);
+        if (piece != null) {
+            if (piece.getPieceType() == PieceType.KING) {
+                setKingPos(null, piece.getTeamColor());
+            }
+            board.remove(position);
+        }
     }
 
     /**

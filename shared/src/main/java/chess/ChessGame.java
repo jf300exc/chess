@@ -1,6 +1,8 @@
 package chess;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
 
 import chess.ChessPiece.PieceType;
 
@@ -54,19 +56,28 @@ public class ChessGame {
         if (chosenPiece == null) {
             return null;
         }
-        Collection<ChessMove> allMoves = chosenPiece.pieceMoves(gameBoard, startPosition);
-        
-        // Remove the moves that place this piece's king in check
-        // Method 'isInCheck' can determine check based on the current state of the board.
-        // So essentially, make a move, check for check, remove the move if in check.
+        TeamColor pieceTeam = chosenPiece.getTeamColor();
+        HashSet<ChessMove> allMoves = new HashSet<>(chosenPiece.pieceMoves(gameBoard, startPosition));
+ 
+        Iterator<ChessMove> iterator = allMoves.iterator();
+        while (iterator.hasNext()) {
+            ChessMove move = iterator.next();
 
-        // These moves can't be done through the 'makeMove' method because it depends on this method.
-        // Rather, we will manually add the piece to the board and set its old position to null.
-        //      This will be efficient and allow the `isInCheck` method to function properly.
-        // Since we need to make sure that there are only unique moves (and that removing one move removes all of the same)
-        // we'll use a hashSet.
-        
-        throw new RuntimeException("Not implemented");
+            // Make the move
+            gameBoard.removePiece(startPosition);
+            gameBoard.addPiece(move.getEndPosition(), chosenPiece);
+
+            // Safely remove if in check
+            if (isInCheck(pieceTeam)) {
+                iterator.remove();
+            }
+
+            // Move back
+            gameBoard.removePiece(move.getEndPosition());
+            gameBoard.addPiece(startPosition, chosenPiece);
+        }
+
+        return allMoves;
     }
 
     /**
@@ -76,7 +87,15 @@ public class ChessGame {
      * @throws InvalidMoveException if move is invalid
      */
     public void makeMove(ChessMove move) throws InvalidMoveException {
-        throw new RuntimeException("Not implemented");
+        Collection<ChessMove> availableMoves = validMoves(move.getStartPosition());
+        if(availableMoves.contains(move)) {
+            // Make move
+            ChessPiece movingPiece = gameBoard.getPiece(move.getStartPosition());
+            gameBoard.removePiece(move.getStartPosition());
+            gameBoard.addPiece(move.getEndPosition(), movingPiece);
+        } else {
+            throw new InvalidMoveException("This move is not available");
+        }
     }
 
     /**
