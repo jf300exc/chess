@@ -2,6 +2,8 @@ package chess;
 import java.util.HashMap;
 import java.util.Objects;
 
+import chess.ChessPiece.PieceType;
+
 /**
  * A chessboard that can hold and rearrange chess pieces.
  * <p>
@@ -40,6 +42,9 @@ public class ChessBoard {
      */
     public void addPiece(ChessPosition position, ChessPiece piece) {
         board.put(position, piece);
+        if (piece.getPieceType() == PieceType.KING) {
+            setKingPos(position, piece.getTeamColor());
+        }
     }
 
     /**
@@ -97,35 +102,35 @@ public class ChessBoard {
         }
         ChessPosition position = new ChessPosition(row, ROOK_1_COL);
         ChessPiece piece = new ChessPiece(teamColor, ChessPiece.PieceType.ROOK);
-        board.put(position, piece);
+        addPiece(position, piece);
 
         position = new ChessPosition(row, KNIGHT_1_COL);
         piece = new ChessPiece(teamColor, ChessPiece.PieceType.KNIGHT);
-        board.put(position, piece);
+        addPiece(position, piece);
 
         position = new ChessPosition(row, BISHOP_1_COL);
         piece = new ChessPiece(teamColor, ChessPiece.PieceType.BISHOP);
-        board.put(position, piece);
+        addPiece(position, piece);
 
         position = new ChessPosition(row, QUEEN_COL);
         piece = new ChessPiece(teamColor, ChessPiece.PieceType.QUEEN);
-        board.put(position, piece);
+        addPiece(position, piece);
 
         position = new ChessPosition(row, KING_COL);
         piece = new ChessPiece(teamColor, ChessPiece.PieceType.KING);
-        board.put(position, piece);
+        addPiece(position, piece);
 
         position = new ChessPosition(row, BISHOP_2_COL);
         piece = new ChessPiece(teamColor, ChessPiece.PieceType.BISHOP);
-        board.put(position, piece);
+        addPiece(position, piece);
 
         position = new ChessPosition(row, KNIGHT_2_COL);
         piece = new ChessPiece(teamColor, ChessPiece.PieceType.KNIGHT);
-        board.put(position, piece);
+        addPiece(position, piece);
 
         position = new ChessPosition(row, ROOK_2_COL);
         piece = new ChessPiece(teamColor, ChessPiece.PieceType.ROOK);
-        board.put(position, piece);
+        addPiece(position, piece);
     }
 
     /**
@@ -144,7 +149,7 @@ public class ChessBoard {
         for (int col = 1; col <= BOARD_SIZE; col++) {
             ChessPosition position = new ChessPosition(row, col);
             ChessPiece piece = new ChessPiece(teamColor, ChessPiece.PieceType.PAWN);
-            board.put(position, piece);
+            addPiece(position, piece);
         }
     }
 

@@ -14,7 +14,9 @@ public class ChessGame {
     private ChessBoard gameBoard = new ChessBoard();
     private TeamColor teamTurn = TeamColor.WHITE;
 
-    public ChessGame() { }
+    public ChessGame() {
+        gameBoard.resetBoard();
+    }
 
     /**
      * @return Which team's turn it is
@@ -48,6 +50,22 @@ public class ChessGame {
      * startPosition
      */
     public Collection<ChessMove> validMoves(ChessPosition startPosition) {
+        ChessPiece chosenPiece = gameBoard.getPiece(startPosition);
+        if (chosenPiece == null) {
+            return null;
+        }
+        Collection<ChessMove> allMoves = chosenPiece.pieceMoves(gameBoard, startPosition);
+        
+        // Remove the moves that place this piece's king in check
+        // Method 'isInCheck' can determine check based on the current state of the board.
+        // So essentially, make a move, check for check, remove the move if in check.
+
+        // These moves can't be done through the 'makeMove' method because it depends on this method.
+        // Rather, we will manually add the piece to the board and set its old position to null.
+        //      This will be efficient and allow the `isInCheck` method to function properly.
+        // Since we need to make sure that there are only unique moves (and that removing one move removes all of the same)
+        // we'll use a hashSet.
+        
         throw new RuntimeException("Not implemented");
     }
 
@@ -158,13 +176,15 @@ public class ChessGame {
     }
 
     /**
-     * Determines if a chess piece is a knight belonging to the other team
+     * Determines if coordinates contain knight belonging to the other team
      * 
-     * @param potentialKnight A chess piece that may be null
+     * @param row The row of the piece to identify
+     * @param col The column of the piece to identify
      * @param teamColor The friendly team, not the opponent
-     * @return True if `potentialKnight` is a knight from the other team
+     * @return True if coordinates contain a knight from the other team
      */
-    private boolean threatIsKnight(ChessPiece potentialKnight, TeamColor teamColor) {
+    private boolean threatIsKnight(int row, int col, TeamColor teamColor) {
+        ChessPiece potentialKnight = gameBoard.getPiece(new ChessPosition(row, col));
         if (potentialKnight != null && potentialKnight.getTeamColor() != teamColor) {
             return potentialKnight.getPieceType() == PieceType.KNIGHT;
         }
@@ -181,10 +201,37 @@ public class ChessGame {
     private boolean checkThreatKnight(ChessPosition kingPos, TeamColor teamColor) {
         int col = kingPos.getColumn();
         int row = kingPos.getRow();
-        if (col < ChessBoard.BOARD_SIZE) {
-            if (row < ChessBoard.BOARD_SIZE - 1) {
-                ChessPiece potentialThreat = gameBoard.getPiece(new ChessPosition(row + 2, col + 1));
-                return threatIsKnight(potentialThreat, teamColor);
+        int size = ChessBoard.BOARD_SIZE;
+        if (col < size) {
+            if (row < size - 1 && threatIsKnight(row + 2, col + 1, teamColor)) {
+                return true;
+            }
+            if (row > 2 && threatIsKnight(row - 2, col + 1, teamColor)) {
+                return true;
+            }
+        }
+        if (col < size - 1) {
+            if (row < size && threatIsKnight(row + 1, col + 2, teamColor)) {
+                return true;
+            }
+            if (row > 1 && threatIsKnight(row - 1, col + 2, teamColor)) {
+                return true;
+            }
+        }
+        if (col > 1) {
+            if (row < size - 1 && threatIsKnight(row + 2, col - 1, teamColor)) {
+                return true;
+            }
+            if (row > 2 && threatIsKnight(row - 2, col - 1, teamColor)) {
+                return true;
+            }
+        }
+        if (col > 2) {
+            if (row < size && threatIsKnight(row + 1, col - 2, teamColor)) {
+                return true;
+            }
+            if (row > 1 && threatIsKnight(row - 1, col - 2, teamColor)) {
+                return true;
             }
         }
         return false;
@@ -197,26 +244,6 @@ public class ChessGame {
      * @return True if the specified team is in check
      */
     public boolean isInCheck(TeamColor teamColor) {
-        // Do this first since it is required to determine valid moves
-        //
-        // There are two ways to solve this problem:
-        // Method 1: Check possible moves of opponent's pieces
-        // Method 2:
-        //      From this king's perspective, can any piece attack it?
-        //      This would require all diagonal, horizontal, and vertical,
-        //      paths to be checked from the perspective of the king.
-        //      While checking a path, if an opponent's piece is found,
-        //          then we check if that piece can attack along that path.
-        //          We can then go to check the other direction of that
-        //          path or check a different path.
-        //      While checking the path, if a friendly piece is found,
-        //          We can move to the next path.
-        //      Additionally, we must check the maximum of 8 possible knight positions surrounding the king.
-        //          If the opponent has a knight there, the king is in check.
-        //
-        // We'll go with METHOD 2 because it is more scalable and efficient. Although it is more difficult to implement.
-
-        // Get the king position.
         ChessPosition kingPos = gameBoard.getKingPos(teamColor);
         return checkThreatHorizontal(kingPos, teamColor) || checkThreatVertical(kingPos, teamColor)
                             || checkThreatDiagonal(kingPos, teamColor) || checkThreatKnight(kingPos, teamColor);
