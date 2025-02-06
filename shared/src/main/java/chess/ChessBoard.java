@@ -9,9 +9,9 @@ import java.util.Objects;
  * signature of the existing methods.
  */
 public class ChessBoard {
-    public static final int BLACK_ROW = 8;
+    public static final int BLACK_ROW      = 8;
     public static final int BLACK_PAWN_ROW = BLACK_ROW - 1;
-    public static final int WHITE_ROW = 1;
+    public static final int WHITE_ROW      = 1;
     public static final int WHITE_PAWN_ROW = WHITE_ROW + 1;
 
     public static final int ROOK_1_COL     = 1;
@@ -25,11 +25,12 @@ public class ChessBoard {
 
     public static final int BOARD_SIZE     = 8;
 
-    private final HashMap<ChessPosition, ChessPiece> board;
+    private final HashMap<ChessPosition, ChessPiece> board = new HashMap<>();
 
-    public ChessBoard() {
-        board = new HashMap<>();
-    }
+    private ChessPosition whiteKingPos = new ChessPosition(WHITE_ROW, KING_COL);
+    private ChessPosition blackKingPos = new ChessPosition(BLACK_ROW, KING_COL);
+
+    public ChessBoard() { }
 
     /**
      * Adds a chess piece to the chessboard
@@ -39,7 +40,6 @@ public class ChessBoard {
      */
     public void addPiece(ChessPosition position, ChessPiece piece) {
         board.put(position, piece);
-//        throw new RuntimeException("Not implemented");
     }
 
     /**
@@ -51,7 +51,35 @@ public class ChessBoard {
      */
     public ChessPiece getPiece(ChessPosition position) {
         return board.get(position);
-//        throw new RuntimeException("Not implemented");
+    }
+
+    /**
+     * Sets the position of a king on the board. This is not a move.
+     * Only stores the position of a king for this board
+     * 
+     * @param position The new position
+     * @param teamColor The team of the king to set
+     */
+    private void setKingPos(ChessPosition position, ChessGame.TeamColor teamColor) {
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            whiteKingPos = position;
+        } else {
+            blackKingPos = position;
+        }
+    }
+
+    /**
+     * Gets the position of a king on the board
+     * 
+     * @param teamColor The team of the king to get
+     * @return The position of the king
+     */
+    public ChessPosition getKingPos(ChessGame.TeamColor teamColor) {
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            return whiteKingPos;
+        } else {
+            return blackKingPos;
+        }
     }
 
     /**
@@ -130,8 +158,6 @@ public class ChessBoard {
         initializeCapitalPieces(ChessGame.TeamColor.BLACK);
         initializePawns(ChessGame.TeamColor.WHITE);
         initializePawns(ChessGame.TeamColor.BLACK);
-
-//        throw new RuntimeException("Not implemented");
     }
 
     @Override
