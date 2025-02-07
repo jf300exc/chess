@@ -1,6 +1,7 @@
 package chess;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.HashSet;
 import java.util.Iterator;
 
@@ -34,6 +35,17 @@ public class ChessGame {
      */
     public void setTeamTurn(TeamColor team) {
         teamTurn = team;
+    }
+
+    /**
+     * Switches current turn to the other team
+     */
+    private void toggleTeamTurn() {
+        if (teamTurn == TeamColor.WHITE) {
+            teamTurn = TeamColor.BLACK;
+        } else {
+            teamTurn = TeamColor.WHITE;
+        }
     }
 
     /**
@@ -82,7 +94,7 @@ public class ChessGame {
             // Add back moving piece
             gameBoard.addPiece(startPosition, chosenPiece);
         }
-
+        gameBoard.cleanBoard(); // Remove keys that store null
         return allMoves;
     }
 
@@ -93,12 +105,26 @@ public class ChessGame {
      * @throws InvalidMoveException if move is invalid
      */
     public void makeMove(ChessMove move) throws InvalidMoveException {
-        Collection<ChessMove> availableMoves = validMoves(move.getStartPosition());
-        if(availableMoves.contains(move)) {
-            // Make move
-            ChessPiece movingPiece = gameBoard.getPiece(move.getStartPosition());
-            gameBoard.removePiece(move.getStartPosition());
+        ChessPosition startPosition = move.getStartPosition();
+        ChessPiece movingPiece = gameBoard.getPiece(startPosition);
+        if (movingPiece == null) {
+            throw new InvalidMoveException("Starting position does not hold a piece");
+        } else if (movingPiece.getTeamColor() != teamTurn) {
+            throw new InvalidMoveException("Piece does not belong to current player");
+        }
+
+        Collection<ChessMove> availableMoves = validMoves(startPosition);
+        if(availableMoves != null && availableMoves.contains(move)) {
+            gameBoard.removePiece(startPosition);
+            ChessPiece.PieceType promo = move.getPromotionPiece();
+
+            if (promo != null) {
+                movingPiece.setPieceType(promo);
+            }
+
             gameBoard.addPiece(move.getEndPosition(), movingPiece);
+            toggleTeamTurn();
+
         } else {
             throw new InvalidMoveException("This move is not available");
         }
@@ -289,6 +315,24 @@ public class ChessGame {
         return checkThreatHorizontal(kingPos, teamColor) || checkThreatVertical(kingPos, teamColor)
                             || checkThreatDiagonal(kingPos, teamColor) || checkThreatKnight(kingPos, teamColor);
     }
+
+    /**
+     * Determines if a team has no moves available
+     *
+     * @param teamColor The team to check for moves
+     * @return True if there are no moves available
+     */
+    private boolean isNoTurnPossible(TeamColor teamColor) {
+        Set<ChessPosition> positions = gameBoard.getAllPositions();
+        for (ChessPosition pos : positions) {
+            if (gameBoard.getPiece(pos).getTeamColor() == teamColor) {
+                if (!validMoves(pos).isEmpty()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
     
     /**
      * Determines if the given team is in checkmate
@@ -297,7 +341,7 @@ public class ChessGame {
      * @return True if the specified team is in checkmate
      */
     public boolean isInCheckmate(TeamColor teamColor) {
-        throw new RuntimeException("Not implemented");
+        return isInCheck(teamColor) && isNoTurnPossible(teamColor);
     }
 
     /**
@@ -308,7 +352,7 @@ public class ChessGame {
      * @return True if the specified team is in stalemate, otherwise false
      */
     public boolean isInStalemate(TeamColor teamColor) {
-        throw new RuntimeException("Not implemented");
+        return !isInCheck(teamColor) && isNoTurnPossible(teamColor);
     }
 
     /**

@@ -1,7 +1,9 @@
 package chess;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import chess.ChessPiece.PieceType;
 
@@ -57,6 +59,15 @@ public class ChessBoard {
      */
     public ChessPiece getPiece(ChessPosition position) {
         return board.get(position);
+    }
+
+    /**
+     * Gets all filled positions on the board
+     *
+     * @return a Set of ChessPosition
+     */
+    public Set<ChessPosition> getAllPositions() {
+        return new HashSet<>(board.keySet());
     }
 
     /**
@@ -179,6 +190,13 @@ public class ChessBoard {
         initializeCapitalPieces(ChessGame.TeamColor.BLACK);
         initializePawns(ChessGame.TeamColor.WHITE);
         initializePawns(ChessGame.TeamColor.BLACK);
+    }
+
+    /**
+     * Removes all keys that store null
+     */
+    public void cleanBoard() {
+        board.entrySet().removeIf(entry -> entry.getValue() == null);
     }
 
     @Override

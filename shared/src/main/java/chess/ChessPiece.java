@@ -12,7 +12,7 @@ import java.util.HashSet;
  */
 public class ChessPiece {
     private final ChessGame.TeamColor pieceColor;
-    private final PieceType type;
+    private PieceType type;
 
     public ChessPiece(ChessGame.TeamColor pieceColor, ChessPiece.PieceType type) {
         this.pieceColor = pieceColor;
@@ -57,6 +57,15 @@ public class ChessPiece {
      */
     public PieceType getPieceType() {
         return type;
+    }
+
+    /**
+     * Changes the pieces type. Useful for promotions
+     *
+     * @param pieceType The new type of piece to set
+     */
+    public void setPieceType(PieceType pieceType) {
+        this.type = pieceType;
     }
 
     /**
