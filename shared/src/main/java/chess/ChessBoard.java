@@ -34,6 +34,12 @@ public class ChessBoard {
 
     private ChessPosition whiteKingPos;
     private ChessPosition blackKingPos;
+    private ChessPosition enPassantWhite;
+    private ChessPosition enPassantBlack;
+    private boolean castWhiteKingSide = true;
+    private boolean castWhiteQueenSide = true;
+    private boolean castBlackKingSide = true;
+    private boolean castBlackQueenSide = true;
 
     public ChessBoard() { }
 
@@ -109,9 +115,147 @@ public class ChessBoard {
     public ChessPosition getKingPos(ChessGame.TeamColor teamColor) {
         if (teamColor == ChessGame.TeamColor.WHITE) {
             return whiteKingPos;
-        } else {
-            return blackKingPos;
         }
+        return blackKingPos;
+    }
+
+    /**
+     * Gets the destination where an En passant move is allowed for a team
+     *
+     * @param teamColor The team which could perform the En passant.
+     * @return ChessPosition where a pawn from the other team skipped
+     */
+    public ChessPosition getEnPassant(ChessGame.TeamColor teamColor) {
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            return enPassantWhite;
+        }
+        return enPassantBlack;
+    }
+
+    /**
+     * Sets the destination where an En passant move is allowed for a team
+     *
+     * @param enPassantPosition The position to set
+     * @param teamColor The team providing the En Passant move
+     *                  (the team which just moved a pawn two spaces forward)
+     */
+    public void setEnPassant(ChessPosition enPassantPosition, ChessGame.TeamColor teamColor) {
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            enPassantBlack = enPassantPosition;
+        } else {
+            enPassantWhite = enPassantPosition;
+        }
+    }
+
+    /**
+     * Sets the enPassant move for the current turn's team to null
+     *
+     * @param teamColor The team who just lost any option of taking an enPassant move
+     */
+    public void clearEnPassant(ChessGame.TeamColor teamColor) {
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            enPassantWhite = null;
+        } else {
+            enPassantBlack = null;
+        }
+    }
+
+    /**
+     * The type of castle move
+     */
+    public enum CastleType {
+        KING_SIDE,
+        QUEEN_SIDE
+    }
+
+    /**
+     * @param teamColor The team to check for castle status
+     * @return True if this team still has a castle move
+     */
+    public boolean getCastleStatus(ChessGame.TeamColor teamColor, CastleType castleType) {
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            if (castleType == CastleType.KING_SIDE) {
+                return castWhiteKingSide;
+            } else {
+                return castWhiteQueenSide;
+            }
+        }
+        if (castleType == CastleType.KING_SIDE) {
+            return castBlackKingSide;
+        }
+        return castBlackQueenSide;
+    }
+
+    /**
+     * Changes the castling capability for a given team
+     *
+     * @param teamColor The team to address
+     * @param enable If true, enables castling, otherwise disables it
+     */
+    public void setCastleStatus(ChessGame.TeamColor teamColor, CastleType castleType, boolean enable) {
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            if (castleType == CastleType.KING_SIDE) {
+                castWhiteKingSide = enable;
+            } else {
+                castWhiteQueenSide = enable;
+            }
+        } else {
+            if (castleType == CastleType.KING_SIDE) {
+                castBlackKingSide = enable;
+            } else {
+                castBlackQueenSide = enable;
+            }
+        }
+    }
+
+    /**
+     * Places the rook in its new position as a result of a castling move.
+     *
+     * @param move The move of the king causing the castle
+     * @param teamColor The team of the king causing the castle
+     */
+    public void moveCastleRook(ChessMove move, ChessGame.TeamColor teamColor) {
+        int row;
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            row = WHITE_ROW;
+        } else {
+            row = BLACK_ROW;
+        }
+
+        ChessPosition oldLocation;
+        ChessPosition newLocation;
+        int endPosCol = move.getEndPosition().getColumn();
+        int diff = endPosCol - move.getStartPosition().getColumn();
+        if (diff > 0) {
+            // KingSide
+            oldLocation = new ChessPosition(row, BOARD_SIZE);
+            newLocation = new ChessPosition(row, endPosCol - 1);
+        } else {
+            // QueenSide
+            oldLocation = new ChessPosition(row, 1);
+            newLocation = new ChessPosition(row, endPosCol + 1);
+        }
+        ChessPiece movingPiece = getPiece(oldLocation);
+        removePiece(oldLocation);
+        addPiece(newLocation, movingPiece);
+    }
+
+    /**
+     * Captures a pawn that is correlated with the En Passant move available to this team
+     *
+     * @param teamColor The team that is capturing
+     */
+    public void captureEnPassant(ChessGame.TeamColor teamColor) {
+        int row;
+        int col;
+        if (teamColor == ChessGame.TeamColor.WHITE) {
+            row = enPassantWhite.getRow() + ChessPiece.BLACK_DIRECTION;
+            col = enPassantWhite.getColumn();
+        } else {
+            row = enPassantBlack.getRow() + ChessPiece.WHITE_DIRECTION;
+            col = enPassantBlack.getColumn();
+        }
+        removePiece(new ChessPosition(row, col));
     }
 
     /**

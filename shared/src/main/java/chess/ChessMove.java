@@ -12,6 +12,7 @@ public class ChessMove {
     private final ChessPosition startPosition;
     private final ChessPosition endPosition;
     private final ChessPiece.PieceType promotionPiece;
+    private boolean doublePawnMove = false;
 
     public ChessMove(ChessPosition startPosition, ChessPosition endPosition,
                      ChessPiece.PieceType promotionPiece) {
@@ -32,6 +33,33 @@ public class ChessMove {
      */
     public ChessPosition getEndPosition() {
         return endPosition;
+    }
+
+    /**
+     * @return True if this move was set as a double pawn move with `setDoublePawnMove()`
+     */
+    public boolean isDoublePawnMove() {
+        return this.doublePawnMove;
+    }
+
+    /**
+     * Sets this move as a double pawn move
+     */
+    public void setDoublePawnMove() {
+        this.doublePawnMove = true;
+    }
+
+    /**
+     * Determines if this move is castling move
+     * @param pieceType The type of piece this move belongs to
+     * @return True if a castling move, else false
+     */
+    public boolean isCastleMove(ChessPiece.PieceType pieceType) {
+        if (pieceType == ChessPiece.PieceType.KING) {
+            int diff = endPosition.getColumn() - startPosition.getColumn();
+            return (diff > 1) || (diff < -1);
+        }
+        return false;
     }
 
     /**

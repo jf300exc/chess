@@ -11,6 +11,9 @@ import java.util.HashSet;
  * signature of the existing methods.
  */
 public class ChessPiece {
+    public static final int WHITE_DIRECTION = 1;
+    public static final int BLACK_DIRECTION = -1;
+
     private final ChessGame.TeamColor pieceColor;
     private PieceType type;
 
@@ -223,24 +226,25 @@ public class ChessPiece {
         return moves;
     }
 
-    private static final int WHITE_DIRECTION = 1;
-    private static final int BLACK_DIRECTION = -1;
-
     /**
-     * Assumes that the threatenedPiece is within Pawn range.
-     * Returns true if the move is legal.
+     * Determines if a pawn move is valid.
      *
-     * @param threatenedPiece If this is `null` then it blocks attacks and allows straight moves.
-     * @param isAttack Determines if an attack move or a straight move.
+     * @param potentialPosition The position in range of the pawn that it may be able to move to
+     * @param isAttack Determines if an attack (diagonal) move or a straight move.
      * @return True if the move is legal.
      */
-    private boolean isPawnMoveLegal(ChessPiece threatenedPiece, boolean isAttack) {
-        // If not attack, check if not blocked.
-        if (!isAttack && threatenedPiece == null) {
-            return true;
-        }
+    private boolean isPawnMoveLegal(ChessBoard board, ChessPosition potentialPosition, boolean isAttack) {
+        ChessPiece threatenedPiece = board.getPiece(potentialPosition);
         // Check if attack is legal.
-        return isAttack && threatenedPiece != null && threatenedPiece.getTeamColor() != pieceColor;
+        if (isAttack) {
+            if (threatenedPiece != null) {
+                return threatenedPiece.getTeamColor() != pieceColor;
+            } else {
+                return potentialPosition.equals(board.getEnPassant(pieceColor));
+            }
+        }
+        // If not attack, check if not blocked.
+        return threatenedPiece == null;
     }
 
     /**
@@ -257,8 +261,7 @@ public class ChessPiece {
      */
     private boolean pieceAddPawnMove(ChessBoard board, HashSet<ChessMove> moves, ChessPosition myPosition, int destinationRow, int destinationColumn, boolean isAttack) {
         ChessPosition potentialPosition = new ChessPosition(destinationRow, destinationColumn);
-        ChessPiece threatenedPiece = board.getPiece(potentialPosition);
-        if (isPawnMoveLegal(threatenedPiece, isAttack)) {
+        if (isPawnMoveLegal(board, potentialPosition, isAttack)) {
             ChessMove newMove;
             if (destinationRow == ChessBoard.BLACK_ROW || destinationRow == ChessBoard.WHITE_ROW) {
                 // Promote
@@ -271,6 +274,11 @@ public class ChessPiece {
                 newMove = new ChessMove(myPosition, potentialPosition, PieceType.KNIGHT);
             } else {
                 newMove = new ChessMove(myPosition, potentialPosition, null);
+                int diff = myPosition.getRow() - destinationRow;
+                int mask = diff >> (Integer.SIZE - 1);
+                if (((diff + mask) ^ mask) > 1){
+                    newMove.setDoublePawnMove();
+                }
             }
             moves.add(newMove);
             return true;
@@ -302,6 +310,7 @@ public class ChessPiece {
             startingRow = ChessBoard.BLACK_PAWN_ROW;
             boundaryRow = ChessBoard.WHITE_ROW; // White starts at edge of board.
         }
+
         if ((direction == BLACK_DIRECTION && row > boundaryRow) || (direction == WHITE_DIRECTION && row < boundaryRow)) {
             if (pieceAddPawnMove(board, moves, myPosition, row + direction, column, false)) {
                 if (row == startingRow) {
@@ -313,6 +322,42 @@ public class ChessPiece {
             }
             if (column < ChessBoard.BOARD_SIZE) {
                 pieceAddPawnMove(board, moves, myPosition, row + direction, column + 1, true);
+            }
+        }
+        return moves;
+    }
+
+    /**
+     * Assumes that the piece at myPosition is a king. Does not check for check.
+     *
+     * @param board To see other positions on the board
+     * @param myPosition Reference for finding moves
+     * @return The castling moves if there are space
+     */
+    private HashSet<ChessMove> pieceAddCastling(ChessBoard board, ChessPosition myPosition) {
+        HashSet<ChessMove> moves = new HashSet<>();
+        int row = myPosition.getRow();
+        if ((pieceColor == ChessGame.TeamColor.WHITE && row != ChessBoard.WHITE_ROW) ||
+                (pieceColor == ChessGame.TeamColor.BLACK && row != ChessBoard.BLACK_ROW)) {
+            return moves;
+        }
+        // Add castling only if there is empty spaces until the rook
+        ChessBoard.CastleType castleType = ChessBoard.CastleType.QUEEN_SIDE;
+        boolean blocked = true;
+        for (int h = -1; h <= 1; h += 2, castleType = ChessBoard.CastleType.KING_SIDE) {
+            if (!board.getCastleStatus(pieceColor, castleType)) {
+                continue;   // Skip if the castling move is not available
+            }
+            for (int col = myPosition.getColumn() + h; col > 1 && col <= ChessBoard.BOARD_SIZE - 1; col += h) {
+                blocked = false;
+                if (board.getPiece(new ChessPosition(row, col)) != null) {
+                    blocked = true;
+                    break;  // No need to continue
+                }
+            }
+            if (!blocked) {
+                ChessPosition destination = new ChessPosition(row, myPosition.getColumn() + 2*h);
+                moves.add(new ChessMove(myPosition, destination, null));
             }
         }
         return moves;
@@ -332,6 +377,7 @@ public class ChessPiece {
                 moves.addAll(pieceFindHorizontalMoves(board, myPosition, false));
                 moves.addAll(pieceFindVerticalMoves(board, myPosition, false));
                 moves.addAll(pieceFindDiagonalMoves(board, myPosition, false));
+                moves.addAll(pieceAddCastling(board, myPosition));
                 break;
             case QUEEN:
                 moves.addAll(pieceFindHorizontalMoves(board, myPosition, true));

@@ -94,8 +94,62 @@ public class ChessGame {
             // Add back moving piece
             gameBoard.addPiece(startPosition, chosenPiece);
         }
+        castleInvalidate(chosenPiece, startPosition, allMoves);
         gameBoard.cleanBoard(); // Remove keys that store null
         return allMoves;
+    }
+
+    /**
+     * Removes a castling move if the adjacent move no longer exists. King Passes through check.
+     * @param movingPiece The piece that should be a king. If not a king the function returns early
+     * @param startPosition The starting position of the king. Useful for referring to the adjacent locations.
+     *                      This is not checked for starting board location because adding
+     *                      the move is handled elsewhere.
+     * @param allMoves All the moves that passed the validMoves filter
+     */
+    private void castleInvalidate(ChessPiece movingPiece, ChessPosition startPosition, Collection<ChessMove> allMoves) {
+        if (movingPiece.getPieceType() != PieceType.KING) {
+            return;
+        }
+        int row = startPosition.getRow();
+        int col = startPosition.getColumn();
+        ChessPosition castleKingSidePos = new ChessPosition(row, col + 2);
+        ChessMove castleKing = new ChessMove(startPosition, castleKingSidePos, null);
+        ChessMove adjKingSide = new ChessMove(startPosition, new ChessPosition(row , col + 1), null);
+        ChessPosition castleQueenSidePos = new ChessPosition(row, col - 2);
+        ChessMove castleQueen = new ChessMove(startPosition, castleQueenSidePos, null);
+        ChessMove adjQueenSide = new ChessMove(startPosition, new ChessPosition(row , col - 1), null);
+        if (allMoves.contains(castleKing) && !allMoves.contains(adjKingSide)) {
+            allMoves.remove(castleKing);
+        }
+        if (allMoves.contains(castleQueen) && !allMoves.contains(adjQueenSide)) {
+            allMoves.remove(castleQueen);
+        }
+    }
+
+    /**
+     * Adds an En passant option to the board if it becomes available because of `move`.
+     * Assumes that `move` exists in `availableMoves`.
+     *
+     * @param move The move that may be a double move for pawn
+     * @param availableMoves Assumes not null. The moves that the pawn could take legally.
+     */
+    private void checkForEnPassant(ChessMove move, Collection<ChessMove> availableMoves) {
+        // Loop over the collection, when move is equal to one of the available moves
+        //      use the available move to check for a double move
+        for (ChessMove storedMove : availableMoves) {
+            if (storedMove.equals(move) && storedMove.isDoublePawnMove()) {
+                ChessPosition endPosition = move.getEndPosition();
+                int enPassantRow = endPosition.getRow();
+                if (teamTurn == TeamColor.WHITE) {
+                    enPassantRow = enPassantRow - ChessPiece.WHITE_DIRECTION;
+                } else {
+                    enPassantRow = enPassantRow - ChessPiece.BLACK_DIRECTION;
+                }
+                gameBoard.setEnPassant(new ChessPosition(enPassantRow, endPosition.getColumn()), teamTurn);
+                break;  // No need to continue
+            }
+        }
     }
 
     /**
@@ -118,11 +172,33 @@ public class ChessGame {
             gameBoard.removePiece(startPosition);
             ChessPiece.PieceType promo = move.getPromotionPiece();
 
+            PieceType mPieceType = movingPiece.getPieceType();
             if (promo != null) {
                 movingPiece.setPieceType(promo);
+            } else if (mPieceType == PieceType.KING) {
+                // Perform additional steps if this is a castling move
+                if (move.isCastleMove(mPieceType)) {
+                    gameBoard.moveCastleRook(move, teamTurn);
+                }
+                // Set remove both castling options
+                gameBoard.setCastleStatus(teamTurn, ChessBoard.CastleType.KING_SIDE, false);
+                gameBoard.setCastleStatus(teamTurn, ChessBoard.CastleType.KING_SIDE, false);
+            } else if (mPieceType == PieceType.ROOK) {
+                // Remove the castling option for just this rook
+                int startRow = startPosition.getRow();
+                if (startRow == ChessBoard.BOARD_SIZE) {
+                    gameBoard.setCastleStatus(teamTurn, ChessBoard.CastleType.KING_SIDE, false);
+                } else if (startRow == 1) {
+                    gameBoard.setCastleStatus(teamTurn, ChessBoard.CastleType.QUEEN_SIDE, false);
+                }
+            } else if (mPieceType == PieceType.PAWN) {
+                checkForEnPassant(move, availableMoves);
+                if (move.getEndPosition().equals(gameBoard.getEnPassant(teamTurn))) {
+                    gameBoard.captureEnPassant(teamTurn);
+                }
             }
-
             gameBoard.addPiece(move.getEndPosition(), movingPiece);
+            gameBoard.clearEnPassant(teamTurn);
             toggleTeamTurn();
 
         } else {
