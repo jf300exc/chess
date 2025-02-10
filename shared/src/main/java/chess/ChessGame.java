@@ -80,7 +80,7 @@ public class ChessGame {
             gameBoard.removePiece(startPosition);
             // If there is a piece at the destination, save it
             ChessPiece destPiece = gameBoard.getPiece(moveDest);
-            gameBoard.addPiece(moveDest, chosenPiece);
+            gameBoard.addPieceMidGame(moveDest, chosenPiece);
 
             // Safely remove if in check
             if (isInCheck(pieceTeam)) {
@@ -90,9 +90,9 @@ public class ChessGame {
             // Move back
             gameBoard.removePiece(moveDest);
             // Add back saved destination piece
-            gameBoard.addPiece(moveDest, destPiece);
+            gameBoard.addPieceMidGame(moveDest, destPiece);
             // Add back moving piece
-            gameBoard.addPiece(startPosition, chosenPiece);
+            gameBoard.addPieceMidGame(startPosition, chosenPiece);
         }
         castleInvalidate(chosenPiece, startPosition, allMoves);
         gameBoard.cleanBoard(); // Remove keys that store null
@@ -177,19 +177,24 @@ public class ChessGame {
                 movingPiece.setPieceType(promo);
             } else if (mPieceType == PieceType.KING) {
                 // Perform additional steps if this is a castling move
-                if (move.isCastleMove(mPieceType)) {
+                ChessBoard.CastleType castleType = move.isCastleMove(mPieceType);
+                if (castleType != null) {
                     gameBoard.moveCastleRook(move, teamTurn);
+                    // Rook moves, make sure that it is not seen as in its valid position anymore
+                    // (needed to compare boards properly)
+                    gameBoard.setCastleStatus(teamTurn, ChessBoard.CastlePieceTypes.ROOK, castleType, false);
                 }
-                // Set remove both castling options
-                gameBoard.setCastleStatus(teamTurn, ChessBoard.CastleType.KING_SIDE, false);
-                gameBoard.setCastleStatus(teamTurn, ChessBoard.CastleType.KING_SIDE, false);
+                // Remove castling options from the king and from the rook that moved, only these because it will
+                // help match some random board in the test cases.
+                gameBoard.setCastleStatus(teamTurn, ChessBoard.CastlePieceTypes.KING, ChessBoard.CastleType.KING_SIDE, false);
+                gameBoard.setCastleStatus(teamTurn, ChessBoard.CastlePieceTypes.KING, ChessBoard.CastleType.QUEEN_SIDE, false);
             } else if (mPieceType == PieceType.ROOK) {
                 // Remove the castling option for just this rook
                 int startRow = startPosition.getRow();
                 if (startRow == ChessBoard.BOARD_SIZE) {
-                    gameBoard.setCastleStatus(teamTurn, ChessBoard.CastleType.KING_SIDE, false);
+                    gameBoard.setCastleStatus(teamTurn, ChessBoard.CastlePieceTypes.ROOK, ChessBoard.CastleType.KING_SIDE, false);
                 } else if (startRow == 1) {
-                    gameBoard.setCastleStatus(teamTurn, ChessBoard.CastleType.QUEEN_SIDE, false);
+                    gameBoard.setCastleStatus(teamTurn, ChessBoard.CastlePieceTypes.ROOK, ChessBoard.CastleType.QUEEN_SIDE, false);
                 }
             } else if (mPieceType == PieceType.PAWN) {
                 checkForEnPassant(move, availableMoves);
@@ -197,7 +202,7 @@ public class ChessGame {
                     gameBoard.captureEnPassant(teamTurn);
                 }
             }
-            gameBoard.addPiece(move.getEndPosition(), movingPiece);
+            gameBoard.addPieceMidGame(move.getEndPosition(), movingPiece);
             gameBoard.clearEnPassant(teamTurn);
             toggleTeamTurn();
 

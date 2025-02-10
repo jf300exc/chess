@@ -93,16 +93,15 @@ public class ChessPiece {
             // Empty destinations are valid.
             ChessMove newMove = new ChessMove(myPosition, potentialPosition, null);
             moves.add(newMove);
-        } else if (threatenedPiece.getTeamColor() != pieceColor) {
+            return !extended; // If extended then the move won't default to blocking.
+        }
+        if (threatenedPiece.getTeamColor() != pieceColor) {
             // If opponent's piece, then it's a valid destination.
             ChessMove newMove = new ChessMove(myPosition, potentialPosition, null);
             moves.add(newMove);
-            return true; // This is always blocking.
-        } else {
-            // Don't add. This is a friendly piece and is always blocking.
-            return true;
         }
-        return !extended; // If extended then the move won't default to blocking.
+        // Opponent's piece or Friendly piece is always blocking
+        return true;
     }
 
     /**
@@ -170,10 +169,10 @@ public class ChessPiece {
                 for (int new_c = myPosition.getColumn() + ci, new_r = myPosition.getRow() + ri;
                     new_r > 0 && new_c > 0 && new_r <= ChessBoard.BOARD_SIZE && new_c <= ChessBoard.BOARD_SIZE;
                     new_c += ci, new_r += ri) {
-                        if (addMoveAndCheckBlock(board, myPosition, extended, moves, new_r, new_c)) {
-                            break;
-                        }
+                    if (addMoveAndCheckBlock(board, myPosition, extended, moves, new_r, new_c)) {
+                        break;
                     }
+                }
             }
         }
         return moves;

@@ -52,14 +52,18 @@ public class ChessMove {
     /**
      * Determines if this move is castling move
      * @param pieceType The type of piece this move belongs to
-     * @return True if a castling move, else false
+     * @return The type of castle move this is
      */
-    public boolean isCastleMove(ChessPiece.PieceType pieceType) {
+    public ChessBoard.CastleType isCastleMove(ChessPiece.PieceType pieceType) {
         if (pieceType == ChessPiece.PieceType.KING) {
             int diff = endPosition.getColumn() - startPosition.getColumn();
-            return (diff > 1) || (diff < -1);
+            if (diff > 1) {
+                return ChessBoard.CastleType.KING_SIDE;
+            } else if (diff < -1) {
+                return ChessBoard.CastleType.QUEEN_SIDE;
+            }
         }
-        return false;
+        return null;
     }
 
     /**
@@ -78,7 +82,8 @@ public class ChessMove {
             return false;
         }
         ChessMove chessMove = (ChessMove) o;
-        return Objects.equals(startPosition, chessMove.startPosition) && Objects.equals(endPosition, chessMove.endPosition) && promotionPiece == chessMove.promotionPiece;
+        return Objects.equals(startPosition, chessMove.startPosition) &&
+                Objects.equals(endPosition, chessMove.endPosition) && promotionPiece == chessMove.promotionPiece;
     }
 
     @Override

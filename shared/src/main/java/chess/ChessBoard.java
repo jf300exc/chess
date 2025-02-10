@@ -1,11 +1,9 @@
 package chess;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 import chess.ChessPiece.PieceType;
+import chess.ChessGame.TeamColor;
 
 /**
  * A chessboard that can hold and rearrange chess pieces.
@@ -31,17 +29,40 @@ public class ChessBoard {
     public static final int BOARD_SIZE     = 8;
 
     private final HashMap<ChessPosition, ChessPiece> board = new HashMap<>();
+    private final Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> castleRequirements = new EnumMap<>(TeamColor.class);
 
     private ChessPosition whiteKingPos;
     private ChessPosition blackKingPos;
     private ChessPosition enPassantWhite;
     private ChessPosition enPassantBlack;
-    private boolean castWhiteKingSide = true;
-    private boolean castWhiteQueenSide = true;
-    private boolean castBlackKingSide = true;
-    private boolean castBlackQueenSide = true;
 
-    public ChessBoard() { }
+    public ChessBoard() {
+        // Initialize the Castle map for both teams
+        for (TeamColor teamColor : TeamColor.values()) {
+            Map<CastlePieceTypes, Map<CastleType, Boolean>> pieceTypeMap = new EnumMap<>(CastlePieceTypes.class);
+            castleRequirements.put(teamColor, pieceTypeMap);
+
+            // Each piece type will initialize with false values
+            for (CastlePieceTypes pieceType : CastlePieceTypes.values()) {
+                Map<CastleType, Boolean> castleTypeMap = new EnumMap<>(CastleType.class);
+                castleTypeMap.put(CastleType.KING_SIDE, false);
+                castleTypeMap.put(CastleType.QUEEN_SIDE, false);
+                pieceTypeMap.put(pieceType, castleTypeMap);
+            }
+        }
+    }
+
+    public void addPieceMidGame(ChessPosition position, ChessPiece piece) {
+        if (piece == null) {
+            return;
+        }
+        board.put(position, piece);
+
+        // Update the position for the king if it moved
+        if (piece.getPieceType() == PieceType.KING) {
+            setKingPos(position, piece.getTeamColor());
+        }
+    }
 
     /**
      * Adds a chess piece to the chessboard
@@ -50,9 +71,19 @@ public class ChessBoard {
      * @param piece    the piece to add
      */
     public void addPiece(ChessPosition position, ChessPiece piece) {
-        board.put(position, piece);
-        if (piece != null && piece.getPieceType() == PieceType.KING) {
-            setKingPos(position, piece.getTeamColor());
+        if (piece == null) {
+            return;
+        }
+        addPieceMidGame(position, piece);
+
+        TeamColor teamColor = piece.getTeamColor();
+        PieceType pieceType = piece.getPieceType();
+        int row = position.getRow();
+        int col = position.getColumn();
+        if (pieceType == PieceType.ROOK) {
+            meetCastleRequirement(teamColor, CastlePieceTypes.ROOK, row, col);
+        } else if (pieceType == PieceType.KING) {
+            meetCastleRequirement(teamColor, CastlePieceTypes.KING, row, col);
         }
     }
 
@@ -160,6 +191,11 @@ public class ChessBoard {
         }
     }
 
+    public enum CastlePieceTypes {
+        KING,
+        ROOK
+    }
+
     /**
      * The type of castle move
      */
@@ -169,21 +205,44 @@ public class ChessBoard {
     }
 
     /**
+     * Stores any castle requirement that is met by having a piece in the correct location
+     *
+     * @param teamColor The team of the piece in question
+     * @param pieceType The type of the piece in question (either a Rook or King)
+     * @param row The row the piece is in
+     * @param col The col the piece is in
+     */
+    private void meetCastleRequirement(ChessGame.TeamColor teamColor, CastlePieceTypes pieceType, int row, int col) {
+        int teamRow;
+        if (teamColor == TeamColor.WHITE) {
+            teamRow = WHITE_ROW;
+        } else {
+            teamRow = BLACK_ROW;
+        }
+        if (row != teamRow) return;
+
+        if (pieceType == CastlePieceTypes.KING) {
+            if (col == KING_COL) {
+                castleRequirements.get(teamColor).get(pieceType).put(CastleType.KING_SIDE, true);
+                castleRequirements.get(teamColor).get(pieceType).put(CastleType.QUEEN_SIDE, true);
+            }
+        } else if (pieceType == CastlePieceTypes.ROOK) {
+            if (col == ROOK_1_COL) {
+                castleRequirements.get(teamColor).get(pieceType).put(CastleType.QUEEN_SIDE, true);
+            } else if (col == ROOK_2_COL) {
+                castleRequirements.get(teamColor).get(pieceType).put(CastleType.KING_SIDE, true);
+            }
+        }
+    }
+
+    /**
      * @param teamColor The team to check for castle status
      * @return True if this team still has a castle move
      */
     public boolean getCastleStatus(ChessGame.TeamColor teamColor, CastleType castleType) {
-        if (teamColor == ChessGame.TeamColor.WHITE) {
-            if (castleType == CastleType.KING_SIDE) {
-                return castWhiteKingSide;
-            } else {
-                return castWhiteQueenSide;
-            }
-        }
-        if (castleType == CastleType.KING_SIDE) {
-            return castBlackKingSide;
-        }
-        return castBlackQueenSide;
+        boolean isKing = castleRequirements.get(teamColor).get(CastlePieceTypes.KING).get(castleType);
+        boolean isRook = castleRequirements.get(teamColor).get(CastlePieceTypes.ROOK).get(castleType);
+        return isKing && isRook;
     }
 
     /**
@@ -192,20 +251,8 @@ public class ChessBoard {
      * @param teamColor The team to address
      * @param enable If true, enables castling, otherwise disables it
      */
-    public void setCastleStatus(ChessGame.TeamColor teamColor, CastleType castleType, boolean enable) {
-        if (teamColor == ChessGame.TeamColor.WHITE) {
-            if (castleType == CastleType.KING_SIDE) {
-                castWhiteKingSide = enable;
-            } else {
-                castWhiteQueenSide = enable;
-            }
-        } else {
-            if (castleType == CastleType.KING_SIDE) {
-                castBlackKingSide = enable;
-            } else {
-                castBlackQueenSide = enable;
-            }
-        }
+    public void setCastleStatus(ChessGame.TeamColor teamColor, CastlePieceTypes castlePiece, CastleType castleType, boolean enable) {
+        castleRequirements.get(teamColor).get(castlePiece).put(castleType, enable);
     }
 
     /**
@@ -237,7 +284,7 @@ public class ChessBoard {
         }
         ChessPiece movingPiece = getPiece(oldLocation);
         removePiece(oldLocation);
-        addPiece(newLocation, movingPiece);
+        addPieceMidGame(newLocation, movingPiece);
     }
 
     /**
@@ -349,11 +396,15 @@ public class ChessBoard {
             return false;
         }
         ChessBoard that = (ChessBoard) o;
-        return Objects.equals(board, that.board);
+        return Objects.equals(board, that.board) && Objects.equals(whiteKingPos, that.whiteKingPos) &&
+                Objects.equals(blackKingPos, that.blackKingPos) &&
+                Objects.equals(enPassantWhite, that.enPassantWhite) &&
+                Objects.equals(enPassantBlack, that.enPassantBlack) &&
+                Objects.equals(castleRequirements, that.castleRequirements);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(board);
+        return Objects.hash(board, whiteKingPos, blackKingPos, enPassantWhite, enPassantBlack, castleRequirements);
     }
 }
