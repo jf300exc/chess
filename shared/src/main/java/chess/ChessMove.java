@@ -59,7 +59,8 @@ public class ChessMove {
             int diff = endPosition.getColumn() - startPosition.getColumn();
             if (diff > 1) {
                 return ChessBoard.CastleType.KING_SIDE;
-            } else if (diff < -1) {
+            }
+            if (diff < -1) {
                 return ChessBoard.CastleType.QUEEN_SIDE;
             }
         }

@@ -407,7 +407,8 @@ public class ChessGame {
         Set<ChessPosition> positions = gameBoard.getAllPositions();
         for (ChessPosition pos : positions) {
             if (gameBoard.getPiece(pos).getTeamColor() == teamColor) {
-                if (!validMoves(pos).isEmpty()) {
+                Collection<ChessMove> allMoves = validMoves(pos);
+                if (allMoves != null && !allMoves.isEmpty()) {
                     return false;
                 }
             }
