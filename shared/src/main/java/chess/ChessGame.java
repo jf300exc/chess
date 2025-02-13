@@ -190,10 +190,10 @@ public class ChessGame {
                 gameBoard.setCastleStatus(teamTurn, ChessBoard.CastlePieceTypes.KING, ChessBoard.CastleType.QUEEN_SIDE, false);
             } else if (mPieceType == PieceType.ROOK) {
                 // Remove the castling option for just this rook
-                int startRow = startPosition.getRow();
-                if (startRow == ChessBoard.BOARD_SIZE) {
+                int startCol = startPosition.getColumn();
+                if (startCol == ChessBoard.BOARD_SIZE) {
                     gameBoard.setCastleStatus(teamTurn, ChessBoard.CastlePieceTypes.ROOK, ChessBoard.CastleType.KING_SIDE, false);
-                } else if (startRow == 1) {
+                } else if (startCol == 1) {
                     gameBoard.setCastleStatus(teamTurn, ChessBoard.CastlePieceTypes.ROOK, ChessBoard.CastleType.QUEEN_SIDE, false);
                 }
             } else if (mPieceType == PieceType.PAWN) {
