@@ -11,14 +11,11 @@ public class MemoryUserDAO implements UserDAO {
 
     @Override
     public Boolean getUser(UserData userData) {
-        if (allUsernames.contains(userData.username())) {
-            return false;
-        }
-        return !allUserData.contains(userData);
+        return allUsernames.contains(userData.username());
     }
 
     @Override
-    public void createUser(UserData userData) {
+    public void addUser(UserData userData) {
         allUsernames.add(userData.username());
         allUserData.add(userData);
     }
