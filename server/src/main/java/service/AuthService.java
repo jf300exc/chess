@@ -16,6 +16,10 @@ public class AuthService {
         return newAuthData;
     }
 
+    public void clearAuthDataBase() {
+        authdao.clear();
+    }
+
     public static String generateToken() {
         return UUID.randomUUID().toString();
     }

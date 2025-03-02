@@ -8,14 +8,14 @@ import model.AuthData;
 import model.UserData;
 
 public class UserService {
-    static final UserDAO userdao = new MemoryUserDAO();
-    static final AuthService authService = new AuthService();
+    private static final UserDAO userdao = new MemoryUserDAO();
+    private static final AuthService authService = new AuthService();
 
     public RegisterResult register(RegisterRequest registerRequest) {
         UserData newUserData = new UserData(registerRequest.username(),
                 registerRequest.password(), registerRequest.email());
         RegisterResult result;
-        if (userdao.getUser(newUserData)) {
+        if (userdao.findUser(newUserData)) {
             result = new RegisterResult("", "", "Error: already taken");
         } else {
             userdao.addUser(newUserData);
@@ -23,5 +23,9 @@ public class UserService {
             result = new RegisterResult(newUserData.username(), newAuthData.authToken(), "");
         }
         return result;
+    }
+
+    public void clearUserDataBase() {
+        userdao.clear();
     }
 }
