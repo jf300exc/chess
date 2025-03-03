@@ -1,18 +1,18 @@
 package handler;
 
-import Requests.LoginRequest;
-import Requests.RegisterRequest;
-import Requests.RegisterResult;
+import Requests.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dataaccess.DataAccessException;
 import service.AuthService;
+import service.GameService;
 import service.UserService;
 
 public class Handler {
     private static final Gson gson = new Gson();
     private final UserService userService = new UserService();
     private final AuthService authService = new AuthService();
+    private final GameService gameService = new GameService();
 
     public String registerUser(String json) throws DataAccessException {
         RegisterRequest request = gson.fromJson(json, RegisterRequest.class);
@@ -23,19 +23,53 @@ public class Handler {
         if (!result.message().isEmpty()) {
             throw new DataAccessException(result.message());
         }
-        JsonObject jsonObject = gson.toJsonTree(result).getAsJsonObject();
-        jsonObject.entrySet().removeIf(key -> key.getValue().getAsString().isEmpty());
-
-        return jsonObject.toString();
+        return filterEmptyFields(result);
     }
 
-    public String login(String json) throws DataAccessException {
-        RegisterRequest request = gson.fromJson(json, LoginRequest.class);
-        if
+    public String logInUser(String json) throws DataAccessException {
+        LoginRequest request = gson.fromJson(json, LoginRequest.class);
+        if (request.username().isBlank() || request.password().isBlank()) {
+            throw new DataAccessException("Error: bad request");
+        }
+        LoginResult result = userService.login(request);
+        if (!result.message().isEmpty()) {
+            throw new DataAccessException(result.message());
+        }
+        return filterEmptyFields(result);
+    }
+
+    public String logOutUser(String authToken) throws DataAccessException {
+        LogoutRequest request = new LogoutRequest(authToken);
+        if (request.authToken().isBlank()) {
+            throw new DataAccessException("Error: bad request");
+        }
+        LogoutResult result = authService.logout(request);
+        if (!result.message().isEmpty()) {
+            throw new DataAccessException(result.message());
+        }
+        return filterEmptyFields(result);
+    }
+
+    public String listGames(String authToken) throws DataAccessException {
+        ListGamesRequest request = new ListGamesRequest(authToken);
+        if (request.authToken().isBlank()) {
+            throw new DataAccessException("Error: bad request");
+        }
+        ListGamesResult result = gameService.listGames(request);
+        if (!result.message().isEmpty()) {
+            throw new DataAccessException(result.message());
+        }
+        return filterEmptyFields(result);
     }
 
     public void clearDatabase() {
         userService.clearUserDataBase();
         authService.clearAuthDataBase();
+    }
+
+    private String filterEmptyFields(Object obj) {
+        JsonObject jsonObject = gson.toJsonTree(obj).getAsJsonObject();
+        jsonObject.entrySet().removeIf(key -> key.getValue().getAsString().isEmpty());
+        return jsonObject.toString();
     }
 }
