@@ -69,6 +69,8 @@ public class GameService {
         JoinGameResult result;
         if (gameData == null) {
             result = new JoinGameResult("Error: game does not exist");
+        } else if (gameAlreadyJoined(username, gameData)) {
+            result = new JoinGameResult("Error: already taken");
         } else if (playerColor.equals("WHITE") || playerColor.equals("BLACK")) {
             gameData = GameData.updateGameData(playerColor, username, gameData);
             gamedao.addGameData(gameData);
@@ -76,5 +78,9 @@ public class GameService {
         } else {
             result = new JoinGameResult("Error: bad request");
         } return result;
+    }
+
+    private static boolean gameAlreadyJoined(String username, GameData gameData) {
+        return gameData.whiteUsername().contentEquals(username) || gameData.whiteUsername().contentEquals(username);
     }
 }
