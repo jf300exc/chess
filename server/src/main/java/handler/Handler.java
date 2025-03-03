@@ -63,6 +63,43 @@ public class Handler {
         return filterEmptyFields(result);
     }
 
+    public String createGame(String authToken, String json) throws DataAccessException {
+        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
+        String gameName = "";
+        if (jsonObject.has("gameName")) {
+            gameName = jsonObject.get("gameName").getAsString();
+        }
+        if (gameName.isBlank() || authToken.isBlank()) {
+            throw new DataAccessException("Error: bad request");
+        }
+        CreateGameRequest request = new CreateGameRequest(authToken, gameName);
+        CreateGameResult result = gameService.createGame(request);
+        if (!result.message().isEmpty()) {
+            throw new DataAccessException(result.message());
+        }
+        return filterEmptyFields(result);
+    }
+
+    public String joinGame(String authToken, String json) throws DataAccessException {
+        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
+        String playerColor = "", gameID = "";
+        if (jsonObject.has("playerColor")) {
+            playerColor = jsonObject.get("playerColor").getAsString();
+        }
+        if (jsonObject.has("gameID")) {
+            gameID = jsonObject.get("gameID").getAsString();
+        }
+        if (playerColor.isBlank() || gameID.isBlank() || authToken.isBlank()) {
+            throw new DataAccessException("Error: bad request");
+        }
+        JoinGameRequest request = new JoinGameRequest(authToken, playerColor, gameID);
+        JoinGameResult result = gameService.joinGame(request);
+        if (!result.message().isEmpty()) {
+            throw new DataAccessException(result.message());
+        }
+        return filterEmptyFields(result);
+    }
+
     public void clearDatabase() {
         userService.clearUserDataBase();
         authService.clearAuthDataBase();

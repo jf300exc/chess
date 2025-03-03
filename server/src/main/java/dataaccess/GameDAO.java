@@ -2,8 +2,12 @@ package dataaccess;
 
 import model.GameData;
 
-import java.util.List;
+import java.util.Collection;
 
 public interface GameDAO {
-    List<GameData> findGameData();
+    Collection<GameData> findGameData();
+
+    GameData findGameDataByID(String gameID);
+
+    void addGameData(GameData gameData);
 }

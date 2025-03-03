@@ -18,8 +18,12 @@ public class AuthService {
         return newAuthData;
     }
 
-    public boolean matchAuthTokenToAuthData(String authToken) {
-        return authdao.findAuthDataByAuthToken(authToken) != null;
+    public boolean isAuthTokenUnavailable(String authToken) {
+        return authdao.findAuthDataByAuthToken(authToken) == null;
+    }
+
+    public AuthData findAuthDataByAuthToken(String authToken) {
+        return authdao.findAuthDataByAuthToken(authToken);
     }
 
     public LogoutResult logout(LogoutRequest logoutRequest) {
