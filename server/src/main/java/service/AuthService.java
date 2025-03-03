@@ -18,12 +18,17 @@ public class AuthService {
         return newAuthData;
     }
 
+    public boolean matchAuthTokenToAuthData(String authToken) {
+        return authdao.findAuthDataByAuthToken(authToken) != null;
+    }
+
     public LogoutResult logout(LogoutRequest logoutRequest) {
         LogoutResult result;
         AuthData authData = authdao.findAuthDataByAuthToken(logoutRequest.authToken());
         if (authData == null) {
             result = new LogoutResult("Error: unauthorized");
         } else {
+            authdao.deleteAuth(authData);
             result = new LogoutResult("");
         }
         return result;
@@ -33,7 +38,7 @@ public class AuthService {
         authdao.clear();
     }
 
-    public static String generateToken() {
+    private static String generateToken() {
         return UUID.randomUUID().toString();
     }
 }

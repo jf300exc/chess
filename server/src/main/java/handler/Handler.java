@@ -2,6 +2,7 @@ package handler;
 
 import Requests.*;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dataaccess.DataAccessException;
 import service.AuthService;
@@ -69,7 +70,12 @@ public class Handler {
 
     private String filterEmptyFields(Object obj) {
         JsonObject jsonObject = gson.toJsonTree(obj).getAsJsonObject();
-        jsonObject.entrySet().removeIf(key -> key.getValue().getAsString().isEmpty());
+        jsonObject.entrySet().removeIf(entry -> isEmptyString(entry.getValue()));
         return jsonObject.toString();
+    }
+
+    private boolean isEmptyString (JsonElement value) {
+        return value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() &&
+                value.getAsString().isEmpty();
     }
 }
