@@ -38,7 +38,7 @@ public class GameService {
         } else {
             String newGameName = createGameRequest.gameName();
             ChessGame game = new ChessGame();
-            GameData gameData = new GameData(gameIDCounter, "", "", newGameName, game);
+            GameData gameData = new GameData(gameIDCounter, null, null, newGameName, game);
             gamedao.addGameData(gameData);
             String gameID = String.valueOf(gameIDCounter++);
             result = new CreateGameResult(gameID, "");
@@ -69,18 +69,33 @@ public class GameService {
         JoinGameResult result;
         if (gameData == null) {
             result = new JoinGameResult("Error: game does not exist");
-        } else if (gameAlreadyJoined(username, gameData)) {
-            result = new JoinGameResult("Error: already taken");
         } else if (playerColor.equals("WHITE") || playerColor.equals("BLACK")) {
-            gameData = GameData.updateGameData(playerColor, username, gameData);
-            gamedao.addGameData(gameData);
-            result = new JoinGameResult("");
+            result = attemptAddPlayer(playerColor, username, gameData);
         } else {
             result = new JoinGameResult("Error: bad request");
         } return result;
     }
 
-    private static boolean gameAlreadyJoined(String username, GameData gameData) {
-        return gameData.whiteUsername().contentEquals(username) || gameData.whiteUsername().contentEquals(username);
+    private static JoinGameResult attemptAddPlayer(String playerColor, String username, GameData gameData) {
+        JoinGameResult result;
+        if (playerColorUnavailable(playerColor, gameData)) {
+            result = new JoinGameResult("Error: already taken");
+        } else {
+            gameData = GameData.updateGameData(playerColor, username, gameData);
+            gamedao.addGameData(gameData);
+            result = new JoinGameResult("");
+        }
+        return result;
+    }
+
+    private static boolean playerColorUnavailable(String playerColor, GameData gameData) {
+        if (playerColor.equals("WHITE")) {
+            return gameData.whiteUsername() != null;
+        }
+        return gameData.blackUsername() != null;
+    }
+
+    public void clearGameDataBase() {
+        gamedao.clear();
     }
 }

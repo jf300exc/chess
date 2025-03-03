@@ -21,4 +21,9 @@ public class MemoryGameDAO implements GameDAO {
     public void addGameData(GameData gameData) {
         gameDataMap.put(gameData.gameID(), gameData);
     }
+
+    @Override
+    public void clear() {
+        gameDataMap.clear();
+    }
 }

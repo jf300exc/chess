@@ -17,7 +17,7 @@ public class Handler {
 
     public String registerUser(String json) throws DataAccessException {
         RegisterRequest request = gson.fromJson(json, RegisterRequest.class);
-        if (request.username().isBlank() || request.password().isBlank() || request.email().isBlank()) {
+        if (isStringBlank(request.username()) || isStringBlank(request.password()) || isStringBlank(request.email())) {
             throw new DataAccessException("Error: bad request");
         }
         RegisterResult result = userService.register(request);
@@ -29,7 +29,7 @@ public class Handler {
 
     public String logInUser(String json) throws DataAccessException {
         LoginRequest request = gson.fromJson(json, LoginRequest.class);
-        if (request.username().isBlank() || request.password().isBlank()) {
+        if (isStringBlank(request.username()) || isStringBlank(request.password())) {
             throw new DataAccessException("Error: bad request");
         }
         LoginResult result = userService.login(request);
@@ -41,7 +41,7 @@ public class Handler {
 
     public String logOutUser(String authToken) throws DataAccessException {
         LogoutRequest request = new LogoutRequest(authToken);
-        if (request.authToken().isBlank()) {
+        if (isStringBlank(request.authToken())) {
             throw new DataAccessException("Error: bad request");
         }
         LogoutResult result = authService.logout(request);
@@ -53,7 +53,7 @@ public class Handler {
 
     public String listGames(String authToken) throws DataAccessException {
         ListGamesRequest request = new ListGamesRequest(authToken);
-        if (request.authToken().isBlank()) {
+        if (isStringBlank(request.authToken())) {
             throw new DataAccessException("Error: bad request");
         }
         ListGamesResult result = gameService.listGames(request);
@@ -69,7 +69,7 @@ public class Handler {
         if (jsonObject.has("gameName")) {
             gameName = jsonObject.get("gameName").getAsString();
         }
-        if (gameName.isBlank() || authToken.isBlank()) {
+        if (isStringBlank(gameName) || isStringBlank(authToken)) {
             throw new DataAccessException("Error: bad request");
         }
         CreateGameRequest request = new CreateGameRequest(authToken, gameName);
@@ -89,7 +89,7 @@ public class Handler {
         if (jsonObject.has("gameID")) {
             gameID = jsonObject.get("gameID").getAsString();
         }
-        if (playerColor.isBlank() || gameID.isBlank() || authToken.isBlank()) {
+        if (isStringBlank(playerColor) || isStringBlank(gameID) || isStringBlank(authToken)) {
             throw new DataAccessException("Error: bad request");
         }
         JoinGameRequest request = new JoinGameRequest(authToken, playerColor, gameID);
@@ -103,6 +103,7 @@ public class Handler {
     public void clearDatabase() {
         userService.clearUserDataBase();
         authService.clearAuthDataBase();
+        gameService.clearGameDataBase();
     }
 
     private String filterEmptyFields(Object obj) {
@@ -114,5 +115,9 @@ public class Handler {
     private boolean isEmptyString (JsonElement value) {
         return value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() &&
                 value.getAsString().isEmpty();
+    }
+
+    private boolean isStringBlank(String str) {
+        return str == null || str.isBlank();
     }
 }

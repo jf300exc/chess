@@ -10,4 +10,6 @@ public interface GameDAO {
     GameData findGameDataByID(String gameID);
 
     void addGameData(GameData gameData);
+
+    void clear();
 }
