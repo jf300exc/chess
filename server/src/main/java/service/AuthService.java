@@ -12,6 +12,9 @@ public class AuthService {
     static final AuthDAO authdao = new MemoryAuthDAO();
 
     public AuthData createAuth(String username) {
+        if (username == null) {
+            throw new NullPointerException("User must have a username string");
+        }
         String token = generateToken();
         AuthData newAuthData = new AuthData(token, username);
         authdao.addAuth(newAuthData);
@@ -24,6 +27,10 @@ public class AuthService {
 
     public AuthData findAuthDataByAuthToken(String authToken) {
         return authdao.findAuthDataByAuthToken(authToken);
+    }
+
+    public AuthDAO getAuthDatabase() {
+        return authdao;
     }
 
     public LogoutResult logout(LogoutRequest logoutRequest) {

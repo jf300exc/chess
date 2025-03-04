@@ -41,6 +41,10 @@ public class UserService {
         return result;
     }
 
+    public UserDAO getUserDataBase() {
+        return userdao;
+    }
+
     public void clearUserDataBase() {
         userdao.clear();
     }

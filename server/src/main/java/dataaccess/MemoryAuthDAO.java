@@ -2,6 +2,7 @@ package dataaccess;
 
 import model.AuthData;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,6 +17,11 @@ public class MemoryAuthDAO implements AuthDAO {
     @Override
     public AuthData findAuthDataByAuthToken(String authToken) {
         return authData.get(authToken);
+    }
+
+    @Override
+    public Collection<AuthData> getAllAuthData() {
+        return authData.values();
     }
 
     @Override

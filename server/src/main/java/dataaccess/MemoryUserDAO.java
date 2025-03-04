@@ -8,6 +8,11 @@ public class MemoryUserDAO implements UserDAO {
     private final Map<String, UserData> userDataByUsername = new HashMap<>();
 
     @Override
+    public Collection<UserData> getAllUserData() {
+        return userDataByUsername.values();
+    }
+
+    @Override
     public void addUser(UserData userData) {
         userDataByUsername.put(userData.username(), userData);
     }
