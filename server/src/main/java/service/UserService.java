@@ -1,27 +1,27 @@
 package service;
 
-import Requests.LoginRequest;
-import Requests.LoginResult;
-import Requests.RegisterRequest;
-import Requests.RegisterResult;
+import requests.LoginRequest;
+import requests.LoginResult;
+import requests.RegisterRequest;
+import requests.RegisterResult;
 import dataaccess.MemoryUserDAO;
 import dataaccess.UserDAO;
 import model.AuthData;
 import model.UserData;
 
 public class UserService {
-    private static final UserDAO userdao = new MemoryUserDAO();
-    private static final AuthService authService = new AuthService();
+    private static final UserDAO USERDOA = new MemoryUserDAO();
+    private static final AuthService AUTH_SERVICE = new AuthService();
 
     public RegisterResult register(RegisterRequest registerRequest) {
         UserData newUserData = new UserData(registerRequest.username(),
                 registerRequest.password(), registerRequest.email());
         RegisterResult result;
-        if (userdao.findUserDataByUsername(newUserData.username()) != null) {
+        if (USERDOA.findUserDataByUsername(newUserData.username()) != null) {
             result = new RegisterResult("", "", "Error: already taken");
         } else {
-            userdao.addUser(newUserData);
-            AuthData newAuthData = authService.createAuth(newUserData.username());
+            USERDOA.addUser(newUserData);
+            AuthData newAuthData = AUTH_SERVICE.createAuth(newUserData.username());
             result = new RegisterResult(newUserData.username(), newAuthData.authToken(), "");
         }
         return result;
@@ -29,23 +29,23 @@ public class UserService {
 
     public LoginResult login(LoginRequest loginRequest) {
         LoginResult result;
-        UserData userData = userdao.findUserDataByUsername(loginRequest.username());
+        UserData userData = USERDOA.findUserDataByUsername(loginRequest.username());
         if (userData == null) {
             result = new LoginResult("", "", "Error: unauthorized");
         } else if (!userData.password().equals(loginRequest.password())) {
             result = new LoginResult("", "", "Error: unauthorized");
         } else {
-            AuthData newAuthData = authService.createAuth(loginRequest.username());
+            AuthData newAuthData = AUTH_SERVICE.createAuth(loginRequest.username());
             result = new LoginResult(newAuthData.username(), newAuthData.authToken(), "");
         }
         return result;
     }
 
     public UserDAO getUserDataBase() {
-        return userdao;
+        return USERDOA;
     }
 
     public void clearUserDataBase() {
-        userdao.clear();
+        USERDOA.clear();
     }
 }

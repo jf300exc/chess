@@ -1,6 +1,6 @@
 package handler;
 
-import Requests.*;
+import requests.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -10,13 +10,13 @@ import service.GameService;
 import service.UserService;
 
 public class Handler {
-    private static final Gson gson = new Gson();
+    private static final Gson GSON = new Gson();
     private final UserService userService = new UserService();
     private final AuthService authService = new AuthService();
     private final GameService gameService = new GameService();
 
     public String registerUser(String json) throws DataAccessException {
-        RegisterRequest request = gson.fromJson(json, RegisterRequest.class);
+        RegisterRequest request = GSON.fromJson(json, RegisterRequest.class);
         if (isStringBlank(request.username()) || isStringBlank(request.password()) || isStringBlank(request.email())) {
             throw new DataAccessException("Error: bad request");
         }
@@ -28,7 +28,7 @@ public class Handler {
     }
 
     public String logInUser(String json) throws DataAccessException {
-        LoginRequest request = gson.fromJson(json, LoginRequest.class);
+        LoginRequest request = GSON.fromJson(json, LoginRequest.class);
         if (isStringBlank(request.username()) || isStringBlank(request.password())) {
             throw new DataAccessException("Error: bad request");
         }
@@ -64,7 +64,7 @@ public class Handler {
     }
 
     public String createGame(String authToken, String json) throws DataAccessException {
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
+        JsonObject jsonObject = GSON.fromJson(json, JsonObject.class);
         String gameName = "";
         if (jsonObject.has("gameName")) {
             gameName = jsonObject.get("gameName").getAsString();
@@ -81,7 +81,7 @@ public class Handler {
     }
 
     public String joinGame(String authToken, String json) throws DataAccessException {
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
+        JsonObject jsonObject = GSON.fromJson(json, JsonObject.class);
         String playerColor = "", gameID = "";
         if (jsonObject.has("playerColor")) {
             playerColor = jsonObject.get("playerColor").getAsString();
@@ -107,7 +107,7 @@ public class Handler {
     }
 
     private String filterEmptyFields(Object obj) {
-        JsonObject jsonObject = gson.toJsonTree(obj).getAsJsonObject();
+        JsonObject jsonObject = GSON.toJsonTree(obj).getAsJsonObject();
         jsonObject.entrySet().removeIf(entry -> isEmptyString(entry.getValue()));
         return jsonObject.toString();
     }

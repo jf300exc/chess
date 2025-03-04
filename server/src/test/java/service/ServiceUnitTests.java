@@ -1,6 +1,6 @@
 package service;
 
-import Requests.*;
+import requests.*;
 import model.UserData;
 import org.junit.jupiter.api.*;
 

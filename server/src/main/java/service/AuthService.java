@@ -1,7 +1,7 @@
 package service;
 
-import Requests.LogoutRequest;
-import Requests.LogoutResult;
+import requests.LogoutRequest;
+import requests.LogoutResult;
 import dataaccess.AuthDAO;
 import dataaccess.MemoryAuthDAO;
 import model.AuthData;
@@ -9,7 +9,7 @@ import model.AuthData;
 import java.util.UUID;
 
 public class AuthService {
-    static final AuthDAO authdao = new MemoryAuthDAO();
+    static final AuthDAO AUTHDAO = new MemoryAuthDAO();
 
     public AuthData createAuth(String username) {
         if (username == null) {
@@ -17,36 +17,36 @@ public class AuthService {
         }
         String token = generateToken();
         AuthData newAuthData = new AuthData(token, username);
-        authdao.addAuth(newAuthData);
+        AUTHDAO.addAuth(newAuthData);
         return newAuthData;
     }
 
     public boolean isAuthTokenUnavailable(String authToken) {
-        return authdao.findAuthDataByAuthToken(authToken) == null;
+        return AUTHDAO.findAuthDataByAuthToken(authToken) == null;
     }
 
     public AuthData findAuthDataByAuthToken(String authToken) {
-        return authdao.findAuthDataByAuthToken(authToken);
+        return AUTHDAO.findAuthDataByAuthToken(authToken);
     }
 
     public AuthDAO getAuthDatabase() {
-        return authdao;
+        return AUTHDAO;
     }
 
     public LogoutResult logout(LogoutRequest logoutRequest) {
         LogoutResult result;
-        AuthData authData = authdao.findAuthDataByAuthToken(logoutRequest.authToken());
+        AuthData authData = AUTHDAO.findAuthDataByAuthToken(logoutRequest.authToken());
         if (authData == null) {
             result = new LogoutResult("Error: unauthorized");
         } else {
-            authdao.deleteAuth(authData);
+            AUTHDAO.deleteAuth(authData);
             result = new LogoutResult("");
         }
         return result;
     }
 
     public void clearAuthDataBase() {
-        authdao.clear();
+        AUTHDAO.clear();
     }
 
     private static String generateToken() {

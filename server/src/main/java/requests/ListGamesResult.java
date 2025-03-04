@@ -1,4 +1,4 @@
-package Requests;
+package requests;
 
 import model.GameEntry;
 

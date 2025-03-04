@@ -166,10 +166,10 @@ public class ChessPiece {
                 // Initialize with -1 or +1 offsets on both new_c and new_r
                 // Check bounds
                 // Increment with -1 or +1 on both new_c and new_r
-                for (int new_c = myPosition.getColumn() + ci, new_r = myPosition.getRow() + ri;
-                    new_r > 0 && new_c > 0 && new_r <= ChessBoard.BOARD_SIZE && new_c <= ChessBoard.BOARD_SIZE;
-                    new_c += ci, new_r += ri) {
-                    if (addMoveAndCheckBlock(board, myPosition, extended, moves, new_r, new_c)) {
+                for (int newC = myPosition.getColumn() + ci, newR = myPosition.getRow() + ri;
+                    newR > 0 && newC > 0 && newR <= ChessBoard.BOARD_SIZE && newC <= ChessBoard.BOARD_SIZE;
+                    newC += ci, newR += ri) {
+                    if (addMoveAndCheckBlock(board, myPosition, extended, moves, newR, newC)) {
                         break;
                     }
                 }

@@ -23,124 +23,138 @@ public class Server {
         Spark.staticFiles.location("web");
 
         // Lambda function to handle registration
-        post("/user", (request, response) -> {
-            String jsonBody = request.body();
-            String result;
-            try {
-                result = handler.registerUser(jsonBody);
-                response.status(200);
-            } catch (DataAccessException e) {
-                String message = e.getMessage();
-                if (message.equals("Error: bad request")) {
-                    errorValues.put("message", message);
-                    response.status(400);
-                } else if (message.equals("Error: already taken")) {
-                    errorValues.put("message", message);
-                    response.status(403);
-                } else {
-                    errorValues.put("message", "Error: unknown error occurred " + message);
-                    response.status(500);
-                }
-                result = dumpMapToJson();
-            }
-            return result;
-        });
+        post("/user", this::handleUserRegistration);
 
         // Lambda function to login user
-        post("/session", (request, response) -> {
-            String jsonBody = request.body();
-            String result;
-            try {
-                result = handler.logInUser(jsonBody);
-                response.status(200);
-            } catch (DataAccessException e) {
-                result = handleLoginLogoutException(e, response);
-            }
-            return result;
-        });
+        post("/session", this::handleLoginUser);
 
         // Lambda function to log out user
-        delete("/session", (request, response) -> {
-            String authToken = request.headers("Authorization");
-            String result;
-            try {
-                result = handler.logOutUser(authToken);
-                response.status(200);
-            } catch (DataAccessException e) {
-                result = handleLoginLogoutException(e, response);
-            }
-            return result;
-        });
+        delete("/session", this::handleLogoutUser);
 
         // Lambda function to list games
-        get("/game", (request, response) -> {
-            String authToken = request.headers("Authorization");
-            String result;
-            try {
-                result = handler.listGames(authToken);
-                response.status(200);
-            } catch (DataAccessException e) {
-                result = handleLoginLogoutException(e, response);
-            }
-            return result;
-        });
+        get("/game", this::handleListGames);
 
         // Lambda function to create game
-        post("/game", (request, response) -> {
-            String authToken = request.headers("Authorization");
-            String jsonBody = request.body();
-            String result;
-            try {
-                result = handler.createGame(authToken, jsonBody);
-                response.status(200);
-            } catch (DataAccessException e) {
-                result = handleLoginLogoutException(e, response);
-            }
-            return result;
-        });
+        post("/game", this::handleCreateGame);
 
         // Lambda function to join game
-        put("/game", (request, response) -> {
-            String authToken = request.headers("Authorization");
-            String jsonBody = request.body();
-            String result;
-            try {
-                result = handler.joinGame(authToken, jsonBody);
-                response.status(200);
-            } catch (DataAccessException e) {
-                String message = e.getMessage();
-                switch (message) {
-                    case "Error: bad request", "Error: game does not exist" -> {
-                        errorValues.put("message", message);
-                        response.status(400);
-                    }
-                    case "Error: unauthorized" -> {
-                        errorValues.put("message", message);
-                        response.status(401);
-                    }
-                    case "Error: already taken" -> {
-                        errorValues.put("message", message);
-                        response.status(403);
-                    }
-                    default -> {
-                        errorValues.put("message", "Error: unknown error occurred " + message);
-                        response.status(500);
-                    }
-                }
-                result = dumpMapToJson();
-            }
-            return result;
-        });
+        put("/game", this::handleJoinGame);
 
         // Lambda function to clear Database
-        delete("/db", (request, response) -> {
-            handler.clearDatabase();
-            response.status(200);
-            return "{}";
-        });
+        delete("/db", this::handleClearDatabase);
 
         Spark.awaitInitialization();
         return Spark.port();
+    }
+
+    private Object handleUserRegistration(Request request, Response response) {
+        String jsonBody = request.body();
+        String result;
+        try {
+            result = handler.registerUser(jsonBody);
+            response.status(200);
+        } catch (DataAccessException e) {
+            String message = e.getMessage();
+            if (message.equals("Error: bad request")) {
+                errorValues.put("message", message);
+                response.status(400);
+            } else if (message.equals("Error: already taken")) {
+                errorValues.put("message", message);
+                response.status(403);
+            } else {
+                errorValues.put("message", "Error: unknown error occurred " + message);
+                response.status(500);
+            }
+            result = dumpMapToJson();
+        }
+        return result;
+    }
+
+    private Object handleLoginUser(Request request, Response response) {
+        String jsonBody = request.body();
+        String result;
+        try {
+            result = handler.logInUser(jsonBody);
+            response.status(200);
+        } catch (DataAccessException e) {
+            result = handleLoginLogoutException(e, response);
+        }
+        return result;
+    }
+
+    private Object handleLogoutUser(Request request, Response response) {
+        String authToken = request.headers("Authorization");
+        String result;
+        try {
+            result = handler.logOutUser(authToken);
+            response.status(200);
+        } catch (DataAccessException e) {
+            result = handleLoginLogoutException(e, response);
+        }
+        return result;
+    }
+
+    private Object handleListGames(Request request, Response response) {
+        String authToken = request.headers("Authorization");
+        String result;
+        try {
+            result = handler.listGames(authToken);
+            response.status(200);
+        } catch (DataAccessException e) {
+            result = handleLoginLogoutException(e, response);
+        }
+        return result;
+    }
+
+    private Object handleCreateGame(Request request, Response response) {
+        String authToken = request.headers("Authorization");
+        String jsonBody = request.body();
+        String result;
+        try {
+            result = handler.createGame(authToken, jsonBody);
+            response.status(200);
+        } catch (DataAccessException e) {
+            result = handleLoginLogoutException(e, response);
+        }
+        return result;
+    }
+
+    private Object handleJoinGame(Request request, Response response) {
+        String authToken = request.headers("Authorization");
+        String jsonBody = request.body();
+        String result;
+        try {
+            result = handler.joinGame(authToken, jsonBody);
+            response.status(200);
+        } catch (DataAccessException e) {
+            String message = e.getMessage();
+            switch (message) {
+                case "Error: bad request", "Error: game does not exist" -> {
+                    errorValues.put("message", message);
+                    response.status(400);
+                }
+                case "Error: unauthorized" -> {
+                    errorValues.put("message", message);
+                    response.status(401);
+                }
+                case "Error: already taken" -> {
+                    errorValues.put("message", message);
+                    response.status(403);
+                }
+                default -> {
+                    errorValues.put("message", "Error: unknown error occurred " + message);
+                    response.status(500);
+                }
+            }
+            result = dumpMapToJson();
+        }
+        return result;
+    }
+
+    private Object handleClearDatabase(Request request, Response response) {
+        handler.clearDatabase();
+        response.status(200);
+        return "{}";
     }
 
     public void stop() {
