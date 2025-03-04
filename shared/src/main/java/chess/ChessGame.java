@@ -222,27 +222,14 @@ public class ChessGame {
         int row = kingPos.getRow();
         for (int h = -1; h <= 1; h += 2) {
             for (int col = kingPos.getColumn() + h; col > 0 && col <= ChessBoard.BOARD_SIZE; col += h) {
-                ChessPosition horizPosition = new ChessPosition(row, col);
-                ChessPiece potentialThreat = gameBoard.getPiece(horizPosition);
-                // Either return true or break
-                if (potentialThreat != null) {
-                    if (potentialThreat.getTeamColor() != teamColor) {
-                        PieceType threatPieceType = potentialThreat.getPieceType();
-                        if (threatPieceType == PieceType.ROOK || threatPieceType == PieceType.QUEEN) {
-                            return true;
-                        }
-                        if (threatPieceType == PieceType.KING) {
-                            // Checking if the kingPos is a destination of one of the pawn's pieceMoves
-                            Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, horizPosition);
-                            for (ChessMove smallMove : limitedMoves) {
-                                if (kingPos.equals(smallMove.getEndPosition())) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                    break;
+                Boolean inCheck = helperCheckThreat(kingPos, teamColor, row, col);
+                if (inCheck == null) {
+                    continue;
                 }
+                if (inCheck) {
+                    return true;
+                }
+                break;
             }
         }
         return false;
@@ -259,30 +246,51 @@ public class ChessGame {
         int col = kingPos.getColumn();
         for (int v = -1; v <= 1; v += 2) {
             for (int row = kingPos.getRow() + v; row > 0 && row <= ChessBoard.BOARD_SIZE; row += v) {
-                ChessPosition verPosition = new ChessPosition(row, col);
-                ChessPiece potentialThreat = gameBoard.getPiece(verPosition);
-                // Either return true or break
-                if (potentialThreat != null) {
-                    if (potentialThreat.getTeamColor() != teamColor) {
-                        PieceType threatPieceType = potentialThreat.getPieceType();
-                        if (threatPieceType == PieceType.ROOK || threatPieceType == PieceType.QUEEN) {
-                            return true;
-                        }
-                        if (threatPieceType == PieceType.KING) {
-                            // Checking if the kingPos is a destination of one of the pawn's pieceMoves
-                            Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, verPosition);
-                            for (ChessMove smallMove : limitedMoves) {
-                                if (kingPos.equals(smallMove.getEndPosition())) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                    break;
+                Boolean inCheck = helperCheckThreat(kingPos, teamColor, row, col);
+                if (inCheck == null) {
+                    continue;
                 }
+                if (inCheck) {
+                    return true;
+                }
+                break;
             }
         }
         return false;
+    }
+
+    /**
+     * Helper for determining if a horizontally or vertically attacking piece puts a king in check.
+     * Only for horizontal or vertical threats. Not pawns, bishops, or knights.
+     *
+     * @param kingPos The position of the king to check
+     * @param teamColor The team of the given king
+     * @param row The row to currently check
+     * @param col The column to currently check
+     * @return True if there is a piece which puts the king in check, false is a piece is found, null otherwise
+     */
+    private Boolean helperCheckThreat(ChessPosition kingPos, TeamColor teamColor, int row, int col) {
+        ChessPosition threatPosition = new ChessPosition(row, col);
+        ChessPiece potentialThreat = gameBoard.getPiece(threatPosition);
+        if (potentialThreat != null) {
+            if (potentialThreat.getTeamColor() != teamColor) {
+                PieceType threatPieceType = potentialThreat.getPieceType();
+                if (threatPieceType == PieceType.ROOK || threatPieceType == PieceType.QUEEN) {
+                    return true;
+                }
+                if (threatPieceType == PieceType.KING) {
+                    // Checking if the kingPos is a destination of one of the king's pieceMoves
+                    Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, threatPosition);
+                    for (ChessMove smallMove : limitedMoves) {
+                        if (kingPos.equals(smallMove.getEndPosition())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        return null;
     }
 
     /**
@@ -298,31 +306,53 @@ public class ChessGame {
                 for (int col = kingPos.getColumn() + h, row = kingPos.getRow() + v;
                     col > 0 && col <= ChessBoard.BOARD_SIZE && row > 0 && row <= ChessBoard.BOARD_SIZE;
                     col += h, row += v) {
-                        ChessPosition diaPosition = new ChessPosition(row, col);
-                        ChessPiece potentialThreat = gameBoard.getPiece(diaPosition);
-                        // Either return true or break
-                        if (potentialThreat != null) {
-                            if (potentialThreat.getTeamColor() != teamColor) {
-                                PieceType threatPieceType = potentialThreat.getPieceType();
-                                if (threatPieceType == PieceType.BISHOP || threatPieceType == PieceType.QUEEN) {
-                                    return true;
-                                }
-                                if (threatPieceType == PieceType.PAWN || threatPieceType == PieceType.KING) {
-                                    // Checking if the kingPos is a destination of one of the pawn's pieceMoves
-                                    Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, diaPosition);
-                                    for (ChessMove smallMove : limitedMoves) {
-                                        if (kingPos.equals(smallMove.getEndPosition())) {
-                                            return true;
-                                        }
-                                    }
-                                }
-                            }
-                            break;
-                        }
+                    Boolean inCheck = helperCheckThreatDiagonal(kingPos, teamColor, row, col);
+                    if (inCheck == null) {
+                        continue;
                     }
+                    if (inCheck) {
+                        return true;
+                    }
+                    break;
+                }
             }
         }
         return false;
+    }
+
+    /**
+     * Helper for determining if a diagonally attacking piece puts a king in check.
+     * Only for diagonal threats. Not rook or knights.
+     *
+     * @param kingPos The position of the king to check
+     * @param teamColor The team of the given king
+     * @param row The row to currently check
+     * @param col The column to currently check
+     * @return True if there is a piece which puts the king in check, false is a piece is found, null otherwise
+     */
+    private Boolean helperCheckThreatDiagonal(ChessPosition kingPos, TeamColor teamColor, int row, int col) {
+        ChessPosition diaPosition = new ChessPosition(row, col);
+        ChessPiece potentialThreat = gameBoard.getPiece(diaPosition);
+        // Either return true or break
+        if (potentialThreat != null) {
+            if (potentialThreat.getTeamColor() != teamColor) {
+                PieceType threatPieceType = potentialThreat.getPieceType();
+                if (threatPieceType == PieceType.BISHOP || threatPieceType == PieceType.QUEEN) {
+                    return true;
+                }
+                if (threatPieceType == PieceType.PAWN || threatPieceType == PieceType.KING) {
+                    // Checking if the kingPos is a destination of one of the pawn's pieceMoves
+                    Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, diaPosition);
+                    for (ChessMove smallMove : limitedMoves) {
+                        if (kingPos.equals(smallMove.getEndPosition())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        return null;
     }
 
     /**

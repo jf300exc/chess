@@ -219,7 +219,9 @@ public class ChessBoard {
         } else {
             teamRow = BLACK_ROW;
         }
-        if (row != teamRow) return;
+        if (row != teamRow) {
+            return;
+        }
 
         if (pieceType == CastlePieceTypes.KING) {
             if (col == KING_COL) {

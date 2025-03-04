@@ -86,7 +86,8 @@ public class ChessPiece {
      * @param potentialColumn The potential destination column.
      * @return Returns `true` if blocking.
      */
-    private boolean addMoveAndCheckBlock(ChessBoard board, ChessPosition myPosition, boolean extended, HashSet<ChessMove> moves, int potentialRow, int potentialColumn) {
+    private boolean addMoveAndCheckBlock(ChessBoard board, ChessPosition myPosition, boolean extended,
+                                         HashSet<ChessMove> moves, int potentialRow, int potentialColumn) {
         ChessPosition potentialPosition = new ChessPosition(potentialRow, potentialColumn);
         ChessPiece threatenedPiece = board.getPiece(potentialPosition);
         if (threatenedPiece == null) {
@@ -258,7 +259,8 @@ public class ChessPiece {
      * @param isAttack Determines if and only if an opponent should be present to be valid.
      * @return True if move was added.
      */
-    private boolean pieceAddPawnMove(ChessBoard board, HashSet<ChessMove> moves, ChessPosition myPosition, int destinationRow, int destinationColumn, boolean isAttack) {
+    private boolean pieceAddPawnMove(ChessBoard board, HashSet<ChessMove> moves, ChessPosition myPosition,
+                                     int destinationRow, int destinationColumn, boolean isAttack) {
         ChessPosition potentialPosition = new ChessPosition(destinationRow, destinationColumn);
         if (isPawnMoveLegal(board, potentialPosition, isAttack)) {
             ChessMove newMove;
