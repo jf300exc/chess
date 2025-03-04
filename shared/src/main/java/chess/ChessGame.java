@@ -339,6 +339,16 @@ public class ChessGame {
         return null;
     }
 
+    /**
+     * Checks if a King or a Pawn puts a king in check by checking that piece's available moves
+     *
+     * @param threatPiece The King or Pawn that may put the king in check
+     * @param threatPieceType The type of the threatPiece
+     * @param diagonal False means only a king's moves will be checked
+     * @param kingPos The position of the king which may be in check
+     * @param threatPosition The position of the threatPiece
+     * @return True only if the threatPiece can attack the kingPos, else return false
+     */
     private Boolean checkThreatByThreatMoves(ChessPiece threatPiece, PieceType threatPieceType, boolean diagonal,
                                              ChessPosition kingPos, ChessPosition threatPosition) {
         if ((diagonal && threatPieceType == PieceType.PAWN) || threatPieceType == PieceType.KING) {
@@ -350,7 +360,7 @@ public class ChessGame {
                 }
             }
         }
-        return null;
+        return false;
     }
 
     /**
