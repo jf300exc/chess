@@ -278,15 +278,7 @@ public class ChessGame {
                 if (threatPieceType == PieceType.ROOK || threatPieceType == PieceType.QUEEN) {
                     return true;
                 }
-                if (threatPieceType == PieceType.KING) {
-                    // Checking if the kingPos is a destination of one of the king's pieceMoves
-                    Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, threatPosition);
-                    for (ChessMove smallMove : limitedMoves) {
-                        if (kingPos.equals(smallMove.getEndPosition())) {
-                            return true;
-                        }
-                    }
-                }
+                return checkThreatByThreatMoves(potentialThreat, threatPieceType, false, kingPos, threatPosition);
             }
             return false;
         }
@@ -340,17 +332,23 @@ public class ChessGame {
                 if (threatPieceType == PieceType.BISHOP || threatPieceType == PieceType.QUEEN) {
                     return true;
                 }
-                if (threatPieceType == PieceType.PAWN || threatPieceType == PieceType.KING) {
-                    // Checking if the kingPos is a destination of one of the pawn's pieceMoves
-                    Collection<ChessMove> limitedMoves = potentialThreat.pieceMoves(gameBoard, diaPosition);
-                    for (ChessMove smallMove : limitedMoves) {
-                        if (kingPos.equals(smallMove.getEndPosition())) {
-                            return true;
-                        }
-                    }
-                }
+                return checkThreatByThreatMoves(potentialThreat, threatPieceType, true, kingPos, diaPosition);
             }
             return false;
+        }
+        return null;
+    }
+
+    private Boolean checkThreatByThreatMoves(ChessPiece threatPiece, PieceType threatPieceType, boolean diagonal,
+                                             ChessPosition kingPos, ChessPosition threatPosition) {
+        if ((diagonal && threatPieceType == PieceType.PAWN) || threatPieceType == PieceType.KING) {
+            // Check if the kingPos is a destination of one of threatPiece's pieceMoves
+            Collection<ChessMove> limitedMoves = threatPiece.pieceMoves(gameBoard, threatPosition);
+            for (ChessMove smallMove : limitedMoves) {
+                if (kingPos.equals(smallMove.getEndPosition())) {
+                    return true;
+                }
+            }
         }
         return null;
     }
