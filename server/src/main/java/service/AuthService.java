@@ -4,7 +4,6 @@ import dataaccess.SQLAuthDAO;
 import requests.LogoutRequest;
 import requests.LogoutResult;
 import dataaccess.AuthDAO;
-import dataaccess.MemoryAuthDAO;
 import model.AuthData;
 
 import java.util.UUID;

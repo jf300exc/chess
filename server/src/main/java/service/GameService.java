@@ -3,7 +3,7 @@ package service;
 import requests.*;
 import chess.ChessGame;
 import dataaccess.GameDAO;
-import dataaccess.MemoryGameDAO;
+import dataaccess.SQLGameDAO;
 import model.AuthData;
 import model.GameData;
 import model.GameEntry;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 public class GameService {
-    private static final GameDAO GAMEDAO = new MemoryGameDAO();
+    private static final GameDAO GAMEDAO = new SQLGameDAO();
     private static final AuthService AUTH_SERVICE = new AuthService();
     private static int gameIDCounter = 1;
 

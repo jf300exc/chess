@@ -92,7 +92,14 @@ public class SQLGameDAO implements  GameDAO {
 
     @Override
     public void clear() {
+        String query = "TRUNCATE TABLE game_data";
 
+        try (var conn = DatabaseManager.getConnection();
+             var statement = conn.prepareStatement(query)) {
+            statement.executeUpdate();
+        } catch (DataAccessException | SQLException e) {
+            System.err.println("SQLGameDAO: clear: " + e.getMessage());
+        }
     }
 
     static public String serializeChessGame(ChessGame chessGame) {
