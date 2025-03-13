@@ -29,7 +29,7 @@ public class DatabaseManager {
         String createSQLTable = """
                 CREATE TABLE IF NOT EXISTS user_data (
                 username VARCHAR(255) PRIMARY KEY NOT NULL,
-                password VARCHAR(255) NOT NULL,
+                passwordHash VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL
                 );
                 """;

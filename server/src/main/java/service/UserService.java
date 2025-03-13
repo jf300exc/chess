@@ -1,5 +1,7 @@
 package service;
 
+import dataaccess.SQLUserDAO;
+import org.mindrot.jbcrypt.BCrypt;
 import requests.LoginRequest;
 import requests.LoginResult;
 import requests.RegisterRequest;
@@ -10,7 +12,7 @@ import model.AuthData;
 import model.UserData;
 
 public class UserService {
-    private static final UserDAO USERDOA = new MemoryUserDAO();
+    private static final UserDAO USERDOA = new SQLUserDAO();
     private static final AuthService AUTH_SERVICE = new AuthService();
 
     public RegisterResult register(RegisterRequest registerRequest) {
@@ -32,7 +34,7 @@ public class UserService {
         UserData userData = USERDOA.findUserDataByUsername(loginRequest.username());
         if (userData == null) {
             result = new LoginResult("", "", "Error: unauthorized");
-        } else if (!userData.password().equals(loginRequest.password())) {
+        } else if (!verifyPassword(loginRequest.password(), userData.password())) {
             result = new LoginResult("", "", "Error: unauthorized");
         } else {
             AuthData newAuthData = AUTH_SERVICE.createAuth(loginRequest.username());
@@ -47,5 +49,9 @@ public class UserService {
 
     public void clearUserDataBase() {
         USERDOA.clear();
+    }
+
+    private boolean verifyPassword(String password, String hashedPassword) {
+        return BCrypt.checkpw(password, hashedPassword);
     }
 }

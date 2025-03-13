@@ -15,7 +15,7 @@ public class SQLUserDAO implements UserDAO {
     public Collection<UserData> getAllUserData() {
         List<UserData> users = new ArrayList<>();
 
-        String query = "SELECT * FROM users_data";
+        String query = "SELECT * FROM user_data";
         try (var conn = DatabaseManager.getConnection();
              var statement = conn.createStatement();
              var resultSet = statement.executeQuery(query)) {
@@ -36,17 +36,20 @@ public class SQLUserDAO implements UserDAO {
     @Override
     public void addUser(UserData userData) {
         String query = """
-                INSERT INTO users_data (username, password, passwordHash)
+                INSERT INTO user_data (username, passwordHash, email)
                 VALUES (?, ?, ?)
                 """;
         try (var conn = DatabaseManager.getConnection();
              var statement = conn.prepareStatement(query)) {
             statement.setString(1, userData.username());
-            statement.setString(2, userData.password());
 
             // Hash Password
             String passwordHash = hashPassword(userData.password());
-            statement.setString(3, passwordHash);
+            statement.setString(2, passwordHash);
+
+            statement.setString(3, userData.email());
+
+            statement.executeUpdate();
         } catch (DataAccessException | SQLException e) {
             System.err.println("SQLUserDAO: addUser: " + e.getMessage());
         }
@@ -54,18 +57,18 @@ public class SQLUserDAO implements UserDAO {
 
     @Override
     public UserData findUserDataByUsername(String username) {
-        String query = """
-                SELECT * FROM users_data WHERE username = ?
-                """;
         UserData userData = null;
 
+        String query = """
+                SELECT * FROM user_data WHERE username = ?
+                """;
         try (var conn = DatabaseManager.getConnection();
              var statement = conn.prepareStatement(query)) {
             statement.setString(1, username);
 
             try (var resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
-                    String password = resultSet.getString("password");
+                    String password = resultSet.getString("passwordHash");
                     String email = resultSet.getString("email");
 
                     userData = new UserData(username, password, email);
@@ -80,7 +83,14 @@ public class SQLUserDAO implements UserDAO {
 
     @Override
     public void clear() {
+        String query = "TRUNCATE TABLE user_data";
 
+        try (var conn = DatabaseManager.getConnection();
+             var statement = conn.prepareStatement(query)) {
+            statement.executeUpdate();
+        } catch (DataAccessException | SQLException e) {
+            System.err.println("SQLUserDAO: clear: " + e.getMessage());
+        }
     }
 
     private String hashPassword(String password) {
