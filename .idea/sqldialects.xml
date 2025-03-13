@@ -2,6 +2,8 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/server/src/main/java/dataaccess/DatabaseManager.java" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/server/src/main/java/dataaccess/SQLAuthDAO.java" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/server/src/main/java/dataaccess/SQLUserDAO.java" dialect="GenericSQL" />
+    <file url="PROJECT" dialect="MySQL" />
   </component>
 </project>
