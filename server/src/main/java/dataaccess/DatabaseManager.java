@@ -49,11 +49,11 @@ public class DatabaseManager {
     private static void createGameDataTable() throws DataAccessException {
         String createSQLTable = """
                 CREATE TABLE IF NOT EXISTS game_data (
-                gameID INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
+                gameID INT PRIMARY KEY NOT NULL,
                 whiteUsername VARCHAR(255),
                 blackUsername VARCHAR(255),
                 gameName VARCHAR(255) NOT NULL,
-                game JSON NOT NULL
+                game longtext NOT NULL
                 );
                 """;
         tryUpdateDatabase(createSQLTable);

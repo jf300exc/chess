@@ -1,5 +1,6 @@
 package service;
 
+import dataaccess.SQLAuthDAO;
 import requests.LogoutRequest;
 import requests.LogoutResult;
 import dataaccess.AuthDAO;
@@ -9,7 +10,7 @@ import model.AuthData;
 import java.util.UUID;
 
 public class AuthService {
-    static final AuthDAO AUTHDAO = new MemoryAuthDAO();
+    static final AuthDAO AUTHDAO = new SQLAuthDAO();
 
     public AuthData createAuth(String username) {
         if (username == null) {
