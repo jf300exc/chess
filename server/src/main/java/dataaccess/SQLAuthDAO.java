@@ -75,7 +75,17 @@ public class SQLAuthDAO implements AuthDAO {
 
     @Override
     public void deleteAuth(AuthData authData) {
+        String query = """
+                DELETE FROM auth_data WHERE authToken = ?
+                """;
+        try (var conn = DatabaseManager.getConnection();
+             var statement = conn.prepareStatement(query)) {
+            statement.setString(1, authData.authToken());
 
+            statement.executeUpdate();
+        } catch (DataAccessException | SQLException e) {
+            System.err.println("SQLAuthDAO: deleteAuth" + e.getMessage());
+        }
     }
 
     @Override
