@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dataaccess.DataAccessException;
+import dataaccess.DatabaseManager;
 import handler.Handler;
 import spark.*;
 
@@ -16,6 +17,11 @@ public class Server {
     private final Handler handler = new Handler();
     private final Gson errorMessage = new Gson();
     private final Map<String, String> errorValues = new HashMap<>();
+
+    public Server() {
+        // Create the database if it does not exist
+        DatabaseManager.configureDatabase();
+    }
 
     public int run(int desiredPort) {
         Spark.port(desiredPort);
