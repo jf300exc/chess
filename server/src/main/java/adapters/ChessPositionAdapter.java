@@ -1,4 +1,4 @@
-package dataaccess;
+package adapters;
 
 import chess.ChessPosition;
 import com.google.gson.*;

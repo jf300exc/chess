@@ -1,5 +1,6 @@
 package dataaccess;
 
+import adapters.*;
 import chess.ChessBoard;
 import chess.ChessGame;
 import chess.ChessPiece;

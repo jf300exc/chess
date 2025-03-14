@@ -1,4 +1,4 @@
-package dataaccess;
+package adapters;
 
 import chess.ChessPiece;
 import chess.ChessPiece.PieceType;
