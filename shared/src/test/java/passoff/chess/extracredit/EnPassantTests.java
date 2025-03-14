@@ -243,7 +243,7 @@ public class EnPassantTests {
 
         //en passant move works correctly
         Assertions.assertDoesNotThrow(() -> game.makeMove(enPassantMove));
-        Assertions.assertEquals(endBoard, game.getGameBoard(), "Incorrect Board after En Passant Move");
+        Assertions.assertEquals(endBoard, game.getBoard(), "Incorrect Board after En Passant Move");
     }
 
 }

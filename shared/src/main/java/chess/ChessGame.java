@@ -476,7 +476,7 @@ public class ChessGame {
         gameBoard = board;
     }
 
-    public ChessBoard getGameBoard() {
+    public ChessBoard getBoard() {
         return gameBoard;
     }
 

@@ -11,7 +11,7 @@ public class ChessGameAdapter implements JsonSerializer<ChessGame>, JsonDeserial
     public JsonElement serialize(ChessGame chessGame, Type type, JsonSerializationContext jsonSerializationContext) {
         JsonObject jsonObject = new JsonObject();
 
-        jsonObject.add("gameBoard", jsonSerializationContext.serialize(chessGame.getGameBoard()));
+        jsonObject.add("gameBoard", jsonSerializationContext.serialize(chessGame.getBoard()));
 
         jsonObject.add("teamTurn", jsonSerializationContext.serialize(chessGame.getTeamTurn()));
         return jsonObject;

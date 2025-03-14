@@ -55,7 +55,7 @@ public class CastlingTests {
                 | | | | | | | | |
                 | | | | | | | | |
                 | | |K|R| | | |R|
-                """), game.getGameBoard(), INCORRECT_BOARD);
+                """), game.getBoard(), INCORRECT_BOARD);
 
         //reset board
         board = TestUtilities.loadBoard("""
@@ -82,7 +82,7 @@ public class CastlingTests {
                 | | | | | | | | |
                 | | | | | | | | |
                 |R| | | | |R|K| |
-                """), game.getGameBoard(), INCORRECT_BOARD);
+                """), game.getBoard(), INCORRECT_BOARD);
     }
 
 
@@ -122,7 +122,7 @@ public class CastlingTests {
                 | | | | | | | | |
                 | | | | |K| | | |
                 |R| | | | | | | |
-                """), game.getGameBoard(), INCORRECT_BOARD);
+                """), game.getBoard(), INCORRECT_BOARD);
 
 
         //reset board
@@ -150,7 +150,7 @@ public class CastlingTests {
                 | | | | | | | | |
                 | | | | |K| | | |
                 |R| | | | | | | |
-                """), game.getGameBoard(), INCORRECT_BOARD);
+                """), game.getBoard(), INCORRECT_BOARD);
     }
 
 

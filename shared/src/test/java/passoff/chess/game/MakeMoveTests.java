@@ -48,7 +48,7 @@ public class MakeMoveTests {
                 | | | | | | | | |
                 | | | | | | | | |
                 |K| | | | | | | |
-                """), game.getGameBoard(), WRONG_BOARD);
+                """), game.getBoard(), WRONG_BOARD);
     }
 
     @Test
@@ -79,7 +79,7 @@ public class MakeMoveTests {
                 | | | | | | | | |
                 | | | | | | | | |
                 |K|q|k| | | | | |
-                """), game.getGameBoard(), WRONG_BOARD);
+                """), game.getBoard(), WRONG_BOARD);
     }
 
     @Test
@@ -110,7 +110,7 @@ public class MakeMoveTests {
                 | | | | | | | | |
                 | | | | | | | | |
                 |K| | | | | | | |
-                """), game.getGameBoard(), WRONG_BOARD);
+                """), game.getBoard(), WRONG_BOARD);
     }
 
     @Test
@@ -141,7 +141,7 @@ public class MakeMoveTests {
                 | | | | | | | | |
                 | | | | | | | |P|
                 | | | | |K| | | |
-                """), game.getGameBoard(), WRONG_BOARD);
+                """), game.getBoard(), WRONG_BOARD);
     }
 
     @Test
@@ -172,7 +172,7 @@ public class MakeMoveTests {
                 | | | | | | | | |
                 | | | | | | | | |
                 | | | | |K| | | |
-                """), game.getGameBoard(), WRONG_BOARD);
+                """), game.getBoard(), WRONG_BOARD);
     }
 
     @Test
@@ -203,7 +203,7 @@ public class MakeMoveTests {
                 | | | | | | | | |
                 | | | | | | |P| |
                 | | | | | | |K| |
-                """), game.getGameBoard(), WRONG_BOARD);
+                """), game.getBoard(), WRONG_BOARD);
     }
 
     @Test
@@ -365,8 +365,8 @@ public class MakeMoveTests {
         ChessMove whitePromotion = new ChessMove(new ChessPosition(7, 3), new ChessPosition(8, 3), promotionType);
         game.makeMove(whitePromotion);
 
-        Assertions.assertNull(game.getGameBoard().getPiece(whitePromotion.getStartPosition()), pieceAtStart);
-        ChessPiece whiteEndPiece = game.getGameBoard().getPiece(whitePromotion.getEndPosition());
+        Assertions.assertNull(game.getBoard().getPiece(whitePromotion.getStartPosition()), pieceAtStart);
+        ChessPiece whiteEndPiece = game.getBoard().getPiece(whitePromotion.getEndPosition());
         Assertions.assertNotNull(whiteEndPiece, noPieceAtEnd);
         Assertions.assertEquals(promotionType, whiteEndPiece.getPieceType(), incorrectType);
         Assertions.assertEquals(ChessGame.TeamColor.WHITE, whiteEndPiece.getTeamColor(), incorrectColor);
@@ -377,8 +377,8 @@ public class MakeMoveTests {
         ChessMove blackPromotion = new ChessMove(new ChessPosition(2, 5), new ChessPosition(1, 6), promotionType);
         game.makeMove(blackPromotion);
 
-        Assertions.assertNull(game.getGameBoard().getPiece(blackPromotion.getStartPosition()), pieceAtStart);
-        ChessPiece blackEndPiece = game.getGameBoard().getPiece(blackPromotion.getEndPosition());
+        Assertions.assertNull(game.getBoard().getPiece(blackPromotion.getStartPosition()), pieceAtStart);
+        ChessPiece blackEndPiece = game.getBoard().getPiece(blackPromotion.getEndPosition());
         Assertions.assertNotNull(blackEndPiece, noPieceAtEnd);
         Assertions.assertEquals(promotionType, blackEndPiece.getPieceType(), incorrectType);
         Assertions.assertEquals(ChessGame.TeamColor.BLACK, blackEndPiece.getTeamColor(), incorrectColor);
