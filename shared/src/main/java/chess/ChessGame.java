@@ -1,9 +1,6 @@
 package chess;
 
-import java.util.Collection;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
 
 import chess.ChessPiece.PieceType;
 
@@ -491,5 +488,19 @@ public class ChessGame {
      */
     public ChessBoard getGameBoard() {
         return gameBoard;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ChessGame chessGame = (ChessGame) o;
+        return Objects.equals(gameBoard, chessGame.gameBoard) && teamTurn == chessGame.teamTurn;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(gameBoard, teamTurn);
     }
 }
