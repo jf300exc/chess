@@ -133,7 +133,7 @@ public class ChessBoard {
      * @param position The new position
      * @param teamColor The team of the king to set
      */
-    private void setKingPos(ChessPosition position, ChessGame.TeamColor teamColor) {
+    public void setKingPos(ChessPosition position, TeamColor teamColor) {
         if (teamColor == ChessGame.TeamColor.WHITE) {
             whiteKingPos = position;
         } else {

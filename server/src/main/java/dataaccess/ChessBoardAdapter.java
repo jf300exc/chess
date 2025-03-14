@@ -44,8 +44,11 @@ public class ChessBoardAdapter implements JsonDeserializer<ChessBoard>, JsonSeri
             chessBoard.getBoardMap().put(position, piece);
         }
 
+        chessBoard.setKingPos(jsonDeserializationContext.deserialize(obj.get("whiteKingPos"), ChessPosition.class), ChessGame.TeamColor.WHITE);
+        chessBoard.setKingPos(jsonDeserializationContext.deserialize(obj.get("blackKingPos"), ChessPosition.class), ChessGame.TeamColor.BLACK);
+        chessBoard.setEnPassant(jsonDeserializationContext.deserialize(obj.get("enPassantWhite"), ChessPosition.class), ChessGame.TeamColor.WHITE);
+        chessBoard.setEnPassant(jsonDeserializationContext.deserialize(obj.get("enPassantBlack"), ChessPosition.class), ChessGame.TeamColor.BLACK);
 
-
-        return null;
+        return chessBoard;
     }
 }
