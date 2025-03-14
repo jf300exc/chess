@@ -17,7 +17,8 @@ public class ChessPieceAdapter implements JsonSerializer<ChessPiece>, JsonDeseri
     }
 
     @Override
-    public ChessPiece deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+    public ChessPiece deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext)
+            throws JsonParseException {
         JsonObject obj = jsonElement.getAsJsonObject();
 
         TeamColor teamColor = TeamColor.valueOf(obj.get("pieceColor").getAsString());

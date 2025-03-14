@@ -17,7 +17,8 @@ public class ChessPositionAdapter implements JsonSerializer<ChessPosition>, Json
 
 
     @Override
-    public ChessPosition deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+    public ChessPosition deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext)
+            throws JsonParseException {
         JsonObject obj = jsonElement.getAsJsonObject();
         int row = obj.get("row").getAsInt();
         int column = obj.get("column").getAsInt();

@@ -39,7 +39,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(1)
     @DisplayName("Get User Database")
-    public void SQLUserGetAllUserData() {
+    public void sqlUserGetAllUserData() {
         Collection<UserData> users = userDAO.getAllUserData();
         Assertions.assertTrue(users.isEmpty());
         userDAO.addUser(new UserData("test", "test", "test"));
@@ -53,7 +53,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(2)
     @DisplayName("Add a valid User")
-    public void SQLUserAddValidUser() {
+    public void sqlUserAddValidUser() {
         userDAO.addUser(new UserData("test", "test", "test"));
         Collection<UserData> users = userDAO.getAllUserData();
         Assertions.assertEquals(1, users.size());
@@ -62,7 +62,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(3)
     @DisplayName("Add a duplicate User")
-    public void SQLUserAddDuplicateUser() {
+    public void sqlUserAddDuplicateUser() {
         Collection<UserData> users = userDAO.getAllUserData();
         Assertions.assertEquals(1, users.size());
         userDAO.addUser(new UserData("test", "test_", "test_"));
@@ -73,7 +73,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(4)
     @DisplayName("Find User by Username")
-    public void SQLUserFindUserByUsername() {
+    public void sqlUserFindUserByUsername() {
         Collection<UserData> users = userDAO.getAllUserData();
         Assertions.assertEquals(1, users.size());
         UserData data = userDAO.findUserDataByUsername("test");
@@ -83,7 +83,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(5)
     @DisplayName("Find NON User by Username")
-    public void SQLUserFindNonUserByUsername() {
+    public void sqlUserFindNonUserByUsername() {
         Collection<UserData> users = userDAO.getAllUserData();
         Assertions.assertEquals(1, users.size());
         UserData data = userDAO.findUserDataByUsername("test_");
@@ -93,7 +93,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(6)
     @DisplayName("clear UserDAO")
-    public void SQLUserClearUserDAO() {
+    public void sqlUserClearUserDAO() {
         userDAO.clear();
         Collection<UserData> users = userDAO.getAllUserData();
         Assertions.assertEquals(0, users.size());
@@ -103,7 +103,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(7)
     @DisplayName("Get Auth Database")
-    public void SQLAuthGetAuthDatabase() {
+    public void sqlAuthGetAuthDatabase() {
         Collection<AuthData> auths = authDAO.getAllAuthData();
         Assertions.assertEquals(0, auths.size());
         authDAO.addAuth(new AuthData("test", "test"));
@@ -117,7 +117,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(8)
     @DisplayName("Add Auth")
-    public void SQLAuthAddAuth() {
+    public void sqlAuthAddAuth() {
         authDAO.addAuth(new AuthData("testToken", "test"));
         Collection<AuthData> auths = authDAO.getAllAuthData();
         Assertions.assertEquals(1, auths.size());
@@ -126,7 +126,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(9)
     @DisplayName("Add duplicate auth")
-    public void SQLAuthAddDuplicateAuth() {
+    public void sqlAuthAddDuplicateAuth() {
         Collection<AuthData> auths = authDAO.getAllAuthData();
         Assertions.assertEquals(1, auths.size());
         authDAO.addAuth(new AuthData("testToken", "test"));
@@ -137,7 +137,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(10)
     @DisplayName("Find auth Data by Token")
-    public void SQLAuthFindAuthDataByToken() {
+    public void sqlAuthFindAuthDataByToken() {
         Collection<AuthData> auths = authDAO.getAllAuthData();
         Assertions.assertEquals(1, auths.size());
         AuthData data = authDAO.findAuthDataByAuthToken("testToken");
@@ -147,7 +147,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(11)
     @DisplayName("Find auth Data by Non Token")
-    public void SQLAuthFindAuthDataByNonToken() {
+    public void sqlAuthFindAuthDataByNonToken() {
         Collection<AuthData> auths = authDAO.getAllAuthData();
         Assertions.assertEquals(1, auths.size());
         AuthData data = authDAO.findAuthDataByAuthToken("testToken1");
@@ -157,7 +157,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(12)
     @DisplayName("Delete Auth")
-    public void SQLAuthDeleteAuth() {
+    public void sqlAuthDeleteAuth() {
         Collection<AuthData> auths = authDAO.getAllAuthData();
         Assertions.assertEquals(1, auths.size());
         authDAO.deleteAuth(new AuthData("testToken", "test"));
@@ -168,7 +168,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(13)
     @DisplayName("Delete NON Auth")
-    public void SQLAuthDeleteNonAuth() {
+    public void sqlAuthDeleteNonAuth() {
         Collection<AuthData> auths = authDAO.getAllAuthData();
         Assertions.assertEquals(0, auths.size());
         authDAO.addAuth(new AuthData("testToken", "test"));
@@ -182,7 +182,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(14)
     @DisplayName("Clear Auth")
-    public void SQLAuthClearAuth() {
+    public void sqlAuthClearAuth() {
         Collection<AuthData> auths = authDAO.getAllAuthData();
         Assertions.assertEquals(1, auths.size());
         authDAO.clear();
@@ -194,7 +194,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(15)
     @DisplayName("Find Game Data")
-    public void SQLGameFindGameData() {
+    public void sqlGameFindGameData() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(0, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -211,7 +211,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(16)
     @DisplayName("Find Game Data by Id")
-    public void SQLGameFindGameDataById() {
+    public void sqlGameFindGameDataById() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(0, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -229,7 +229,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(17)
     @DisplayName("Find Game Data by NON Id")
-    public void SQLGameFindGameDataByNonId() {
+    public void sqlGameFindGameDataByNonId() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(1, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -241,7 +241,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(18)
     @DisplayName("Add Game Data")
-    public void SQLGameAddGameData() {
+    public void sqlGameAddGameData() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(0, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -260,7 +260,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(19)
     @DisplayName("Add Game twice")
-    public void SQLGameAddGameTwice() {
+    public void sqlGameAddGameTwice() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(2, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -279,7 +279,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(20)
     @DisplayName("Remove Game Data")
-    public void SQLGameRemoveGameData() {
+    public void sqlGameRemoveGameData() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(3, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -297,7 +297,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(21)
     @DisplayName("Remove Wrong Game Data")
-    public void SQLGameRemoveWrongGameData() {
+    public void sqlGameRemoveWrongGameData() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(0, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -317,7 +317,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(22)
     @DisplayName("DeSerialize Game Data")
-    public void SQLGameDeSerializeGameData() {
+    public void sqlGameDeSerializeGameData() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(0, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -342,7 +342,7 @@ public class SQLDAOsUnitTests {
     @Test
     @Order(23)
     @DisplayName("Serialize Game Data")
-    public void SQLGameSerializeGameData() {
+    public void sqlGameSerializeGameData() {
         ChessGame game = new ChessGame();
         var startPos = new ChessPosition(2, 7);
         var endPos = new ChessPosition(4, 7);
@@ -354,8 +354,8 @@ public class SQLDAOsUnitTests {
         }
         SQLGameDAO gameDAO = new SQLGameDAO();
         String json = gameDAO.serializeChessGame(game);
-        var returned_game = gameDAO.deserializeChessGame(json);
-        Assertions.assertEquals(game, returned_game);
+        var returnedGame = gameDAO.deserializeChessGame(json);
+        Assertions.assertEquals(game, returnedGame);
     }
 
     private static void clearAll() {

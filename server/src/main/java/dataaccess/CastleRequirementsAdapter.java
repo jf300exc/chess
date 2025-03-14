@@ -10,10 +10,12 @@ import chess.ChessBoard.CastleType;
 import chess.ChessBoard.CastlePieceTypes;
 import chess.ChessGame.TeamColor;
 
-public class CastleRequirementsAdapter implements JsonSerializer<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>, JsonDeserializer<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>  {
+public class CastleRequirementsAdapter implements JsonSerializer<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>,
+        JsonDeserializer<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>  {
 
     @Override
-    public JsonElement serialize(Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> teamColorMapMap, Type type, JsonSerializationContext jsonSerializationContext) {
+    public JsonElement serialize(Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>
+                                             teamColorMapMap, Type type, JsonSerializationContext jsonSerializationContext) {
         JsonObject jsonObject = new JsonObject();
 
         for (Map.Entry<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> teamEntry : teamColorMapMap.entrySet()) {
@@ -34,7 +36,9 @@ public class CastleRequirementsAdapter implements JsonSerializer<Map<TeamColor, 
     }
 
     @Override
-    public Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+    public Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>
+            deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext)
+            throws JsonParseException {
         JsonObject jsonObject = jsonElement.getAsJsonObject();
         Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> castleRequirementsMap = new EnumMap<>(TeamColor.class);
 

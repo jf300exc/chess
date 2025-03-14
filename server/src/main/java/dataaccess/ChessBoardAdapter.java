@@ -25,7 +25,8 @@ public class ChessBoardAdapter implements JsonDeserializer<ChessBoard>, JsonSeri
         }
         obj.add("board", boardArray);
 
-        obj.add("castleRequirements", jsonSerializationContext.serialize(chessBoard.getCastleRequirements(), new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>() {}.getType()));
+        obj.add("castleRequirements", jsonSerializationContext.serialize(chessBoard.getCastleRequirements(),
+                new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>() {}.getType()));
         obj.add("whiteKingPos", jsonSerializationContext.serialize(chessBoard.getKingPos(TeamColor.WHITE)));
         obj.add("blackKingPos", jsonSerializationContext.serialize(chessBoard.getKingPos(TeamColor.BLACK)));
         obj.add("enPassantWhite", jsonSerializationContext.serialize(chessBoard.getEnPassant(TeamColor.WHITE)));
@@ -35,7 +36,8 @@ public class ChessBoardAdapter implements JsonDeserializer<ChessBoard>, JsonSeri
     }
 
     @Override
-    public ChessBoard deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+    public ChessBoard deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext)
+            throws JsonParseException {
         JsonObject obj = jsonElement.getAsJsonObject();
         ChessBoard chessBoard = new ChessBoard();
 
@@ -48,7 +50,8 @@ public class ChessBoardAdapter implements JsonDeserializer<ChessBoard>, JsonSeri
         }
 
         Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> castleReqs =
-                jsonDeserializationContext.deserialize(obj.get("castleRequirements"), new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>() {}.getType());
+                jsonDeserializationContext.deserialize(obj.get("castleRequirements"),
+                        new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>() {}.getType());
         chessBoard.setCastleRequirements(castleReqs);
 
         chessBoard.setKingPos(jsonDeserializationContext.deserialize(obj.get("whiteKingPos"), ChessPosition.class), TeamColor.WHITE);

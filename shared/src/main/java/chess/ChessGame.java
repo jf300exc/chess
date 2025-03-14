@@ -472,20 +472,10 @@ public class ChessGame {
         return !isInCheck(teamColor) && isNoTurnPossible(teamColor);
     }
 
-    /**
-     * Sets this game's chessboard with a given board
-     *
-     * @param board the new board to use
-     */
     public void setBoard(ChessBoard board) {
         gameBoard = board;
     }
 
-    /**
-     * Gets the current chessboard
-     *
-     * @return the chessboard
-     */
     public ChessBoard getGameBoard() {
         return gameBoard;
     }

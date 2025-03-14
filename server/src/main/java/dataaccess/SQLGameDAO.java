@@ -28,7 +28,9 @@ public class SQLGameDAO implements GameDAO {
                 .registerTypeAdapter(ChessBoard.class, new ChessBoardAdapter())
                 .registerTypeAdapter(ChessPiece.class, new ChessPieceAdapter())
                 .registerTypeAdapter(ChessPosition.class, new ChessPositionAdapter())
-                .registerTypeAdapter(new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>(){}.getType(), new CastleRequirementsAdapter())
+                .registerTypeAdapter(
+                        new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>(){}.getType(),
+                        new CastleRequirementsAdapter())
                 .create();
     }
 

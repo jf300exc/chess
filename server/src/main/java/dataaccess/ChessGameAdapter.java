@@ -18,7 +18,8 @@ public class ChessGameAdapter implements JsonSerializer<ChessGame>, JsonDeserial
     }
 
     @Override
-    public ChessGame deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+    public ChessGame deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext)
+            throws JsonParseException {
         JsonObject jsonObject = jsonElement.getAsJsonObject();
 
         ChessBoard gameBoard = jsonDeserializationContext.deserialize(jsonObject.get("gameBoard"), ChessBoard.class);
