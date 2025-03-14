@@ -489,7 +489,7 @@ public class ChessGame {
      *
      * @return the chessboard
      */
-    public ChessBoard getBoard() {
+    public ChessBoard getGameBoard() {
         return gameBoard;
     }
 }

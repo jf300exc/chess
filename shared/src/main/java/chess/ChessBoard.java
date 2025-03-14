@@ -52,6 +52,10 @@ public class ChessBoard {
         }
     }
 
+    public Map<ChessPosition, ChessPiece> getBoardMap() {
+        return board;
+    }
+
     public void addPieceMidGame(ChessPosition position, ChessPiece piece) {
         if (piece == null) {
             return;

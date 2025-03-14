@@ -82,6 +82,7 @@ public class SQLGameDAO implements  GameDAO {
             statement.setString(4, gameData.gameName());
 
             String gameString = serializeChessGame(gameData.game());
+            ChessGame gameOut = deserializeChessGame(gameString);
             statement.setString(5, gameString);
 
             statement.executeUpdate();

@@ -1,0 +1,51 @@
+package dataaccess;
+
+import chess.ChessBoard;
+import chess.ChessGame;
+import chess.ChessPiece;
+import chess.ChessPosition;
+import com.google.gson.*;
+
+import java.lang.reflect.Type;
+import java.util.Map;
+
+public class ChessBoardAdapter implements JsonDeserializer<ChessBoard>, JsonSerializer<ChessBoard> {
+    @Override
+    public JsonElement serialize(ChessBoard chessBoard, Type type, JsonSerializationContext jsonSerializationContext) {
+        JsonObject obj = new JsonObject();
+
+        JsonArray boardArray = new JsonArray();
+        for (Map.Entry<ChessPosition, ChessPiece> entry : chessBoard.getBoardMap().entrySet()) {
+            JsonObject boardEntry = new JsonObject();
+            boardEntry.add("position", jsonSerializationContext.serialize(entry.getKey()));
+            boardEntry.add("piece", jsonSerializationContext.serialize(entry.getValue()));
+            boardArray.add(boardEntry);
+        }
+        obj.add("board", boardArray);
+
+        obj.add("whiteKingPos", jsonSerializationContext.serialize(chessBoard.getKingPos(ChessGame.TeamColor.WHITE)));
+        obj.add("blackKingPos", jsonSerializationContext.serialize(chessBoard.getKingPos(ChessGame.TeamColor.BLACK)));
+        obj.add("enPassantWhite", jsonSerializationContext.serialize(chessBoard.getEnPassant(ChessGame.TeamColor.WHITE)));
+        obj.add("enPassantBlack", jsonSerializationContext.serialize(chessBoard.getKingPos(ChessGame.TeamColor.BLACK)));
+
+        return obj;
+    }
+
+    @Override
+    public ChessBoard deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+        JsonObject obj = jsonElement.getAsJsonObject();
+        ChessBoard chessBoard = new ChessBoard();
+
+        JsonArray boardArray = obj.getAsJsonArray("board");
+        for (JsonElement boardElement : boardArray) {
+            JsonObject boardEntry = boardElement.getAsJsonObject();
+            ChessPosition position = jsonDeserializationContext.deserialize(boardEntry.get("position"), ChessPosition.class);
+            ChessPiece piece = jsonDeserializationContext.deserialize(boardEntry.get("piece"), ChessPiece.class);
+            chessBoard.getBoardMap().put(position, piece);
+        }
+
+
+
+        return null;
+    }
+}
