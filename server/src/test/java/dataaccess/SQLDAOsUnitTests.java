@@ -7,10 +7,6 @@ import model.AuthData;
 import model.GameData;
 import model.UserData;
 import org.junit.jupiter.api.*;
-import requests.*;
-import service.AuthService;
-import service.GameService;
-import service.UserService;
 
 import java.util.Collection;
 
@@ -320,8 +316,8 @@ public class SQLDAOsUnitTests {
 
     @Test
     @Order(22)
-    @DisplayName("Serialize Game Data")
-    public void SQLGameSerializeGameData() {
+    @DisplayName("DeSerialize Game Data")
+    public void SQLGameDeSerializeGameData() {
         Collection<GameData> gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(0, gameDataList.size());
         int id = GameIDCounter.getNewGameID();
@@ -340,6 +336,26 @@ public class SQLDAOsUnitTests {
         Assertions.assertEquals(1, gameDataList.size());
         GameData returnedData = gameDAO.findGameDataByID(Integer.toString(id));
         Assertions.assertEquals(returnedData, newGameData);
+        Assertions.assertEquals(returnedData.game(), newGameData.game());
+    }
+
+    @Test
+    @Order(23)
+    @DisplayName("Serialize Game Data")
+    public void SQLGameSerializeGameData() {
+        ChessGame game = new ChessGame();
+        var startPos = new ChessPosition(2, 7);
+        var endPos = new ChessPosition(4, 7);
+        ChessMove move = new ChessMove(startPos, endPos, null);
+        try {
+            game.makeMove(move);
+        } catch (Exception e) {
+            Assertions.fail();
+        }
+        SQLGameDAO gameDAO = new SQLGameDAO();
+        String json = gameDAO.serializeChessGame(game);
+        var returned_game = gameDAO.deserializeChessGame(json);
+        Assertions.assertEquals(game, returned_game);
     }
 
     private static void clearAll() {

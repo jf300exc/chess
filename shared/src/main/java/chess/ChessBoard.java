@@ -29,7 +29,7 @@ public class ChessBoard {
     public static final int BOARD_SIZE     = 8;
 
     private final HashMap<ChessPosition, ChessPiece> board = new HashMap<>();
-    private final Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> castleRequirements = new EnumMap<>(TeamColor.class);
+    private Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> castleRequirements = new EnumMap<>(TeamColor.class);
 
     private ChessPosition whiteKingPos;
     private ChessPosition blackKingPos;
@@ -54,6 +54,14 @@ public class ChessBoard {
 
     public Map<ChessPosition, ChessPiece> getBoardMap() {
         return board;
+    }
+
+    public Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> getCastleRequirements() {
+        return castleRequirements;
+    }
+
+    public void setCastleRequirements(Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> castleReqs) {
+        castleRequirements = castleReqs;
     }
 
     public void addPieceMidGame(ChessPosition position, ChessPiece piece) {

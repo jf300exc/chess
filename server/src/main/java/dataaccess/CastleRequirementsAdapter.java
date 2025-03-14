@@ -16,18 +16,18 @@ public class CastleRequirementsAdapter implements JsonSerializer<Map<TeamColor, 
     public JsonElement serialize(Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> teamColorMapMap, Type type, JsonSerializationContext jsonSerializationContext) {
         JsonObject jsonObject = new JsonObject();
 
-        for (Map.Entry<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> entry : teamColorMapMap.entrySet()) {
-            JsonObject innerJson = new JsonObject();
+        for (Map.Entry<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> teamEntry : teamColorMapMap.entrySet()) {
+            JsonObject teamJson = new JsonObject();
 
-            for (Map.Entry<CastlePieceTypes, Map<CastleType, Boolean>> innerEntry : entry.getValue().entrySet()) {
-                JsonObject castleTypeMap = new JsonObject();
+            for (Map.Entry<CastlePieceTypes, Map<CastleType, Boolean>> pieceEntry : teamEntry.getValue().entrySet()) {
+                JsonObject castleTypeJson = new JsonObject();
 
-                for (Map.Entry<CastleType, Boolean> castleEntry : innerEntry.getValue().entrySet()) {
-                    castleTypeMap.addProperty(castleEntry.getKey().name(), castleEntry.getValue());
+                for (Map.Entry<CastleType, Boolean> castleEntry : pieceEntry.getValue().entrySet()) {
+                    castleTypeJson.addProperty(castleEntry.getKey().name(), castleEntry.getValue());
                 }
-                innerJson.add(entry.getKey().name(), castleTypeMap);
+                teamJson.add(pieceEntry.getKey().name(), castleTypeJson);
             }
-            jsonObject.add(entry.getKey().name(), innerJson);
+            jsonObject.add(teamEntry.getKey().name(), teamJson);
         }
 
         return jsonObject;
@@ -38,15 +38,15 @@ public class CastleRequirementsAdapter implements JsonSerializer<Map<TeamColor, 
         JsonObject jsonObject = jsonElement.getAsJsonObject();
         Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> castleRequirementsMap = new EnumMap<>(TeamColor.class);
 
-        for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
-            TeamColor teamColor = TeamColor.valueOf(entry.getKey());
-            JsonObject innerJson = entry.getValue().getAsJsonObject();
+        for (Map.Entry<String, JsonElement> teamEntry : jsonObject.entrySet()) {
+            TeamColor teamColor = TeamColor.valueOf(teamEntry.getKey());
+            JsonObject teamJson = teamEntry.getValue().getAsJsonObject();
 
             Map<CastlePieceTypes, Map<CastleType, Boolean>> pieceTypeMap = new EnumMap<>(CastlePieceTypes.class);
 
-            for (Map.Entry<String, JsonElement> pieceTypeEntry : innerJson.entrySet()) {
-                CastlePieceTypes pieceTypes = CastlePieceTypes.valueOf(pieceTypeEntry.getKey());
-                JsonObject castleTypeMap = pieceTypeEntry.getValue().getAsJsonObject();
+            for (Map.Entry<String, JsonElement> pieceEntry : teamJson.entrySet()) {
+                CastlePieceTypes pieceTypes = CastlePieceTypes.valueOf(pieceEntry.getKey());
+                JsonObject castleTypeMap = pieceEntry.getValue().getAsJsonObject();
 
                 Map<CastleType, Boolean> castleTypeBooleanMap = new EnumMap<>(CastleType.class);
 

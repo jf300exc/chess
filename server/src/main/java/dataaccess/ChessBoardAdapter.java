@@ -1,10 +1,12 @@
 package dataaccess;
 
 import chess.ChessBoard;
-import chess.ChessGame;
+import chess.ChessBoard.*;
+import chess.ChessGame.*;
 import chess.ChessPiece;
 import chess.ChessPosition;
 import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -23,10 +25,11 @@ public class ChessBoardAdapter implements JsonDeserializer<ChessBoard>, JsonSeri
         }
         obj.add("board", boardArray);
 
-        obj.add("whiteKingPos", jsonSerializationContext.serialize(chessBoard.getKingPos(ChessGame.TeamColor.WHITE)));
-        obj.add("blackKingPos", jsonSerializationContext.serialize(chessBoard.getKingPos(ChessGame.TeamColor.BLACK)));
-        obj.add("enPassantWhite", jsonSerializationContext.serialize(chessBoard.getEnPassant(ChessGame.TeamColor.WHITE)));
-        obj.add("enPassantBlack", jsonSerializationContext.serialize(chessBoard.getKingPos(ChessGame.TeamColor.BLACK)));
+        obj.add("castleRequirements", jsonSerializationContext.serialize(chessBoard.getCastleRequirements(), new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>() {}.getType()));
+        obj.add("whiteKingPos", jsonSerializationContext.serialize(chessBoard.getKingPos(TeamColor.WHITE)));
+        obj.add("blackKingPos", jsonSerializationContext.serialize(chessBoard.getKingPos(TeamColor.BLACK)));
+        obj.add("enPassantWhite", jsonSerializationContext.serialize(chessBoard.getEnPassant(TeamColor.WHITE)));
+        obj.add("enPassantBlack", jsonSerializationContext.serialize(chessBoard.getEnPassant(TeamColor.BLACK)));
 
         return obj;
     }
@@ -44,10 +47,14 @@ public class ChessBoardAdapter implements JsonDeserializer<ChessBoard>, JsonSeri
             chessBoard.getBoardMap().put(position, piece);
         }
 
-        chessBoard.setKingPos(jsonDeserializationContext.deserialize(obj.get("whiteKingPos"), ChessPosition.class), ChessGame.TeamColor.WHITE);
-        chessBoard.setKingPos(jsonDeserializationContext.deserialize(obj.get("blackKingPos"), ChessPosition.class), ChessGame.TeamColor.BLACK);
-        chessBoard.setEnPassant(jsonDeserializationContext.deserialize(obj.get("enPassantWhite"), ChessPosition.class), ChessGame.TeamColor.WHITE);
-        chessBoard.setEnPassant(jsonDeserializationContext.deserialize(obj.get("enPassantBlack"), ChessPosition.class), ChessGame.TeamColor.BLACK);
+        Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> castleReqs =
+                jsonDeserializationContext.deserialize(obj.get("castleRequirements"), new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>() {}.getType());
+        chessBoard.setCastleRequirements(castleReqs);
+
+        chessBoard.setKingPos(jsonDeserializationContext.deserialize(obj.get("whiteKingPos"), ChessPosition.class), TeamColor.WHITE);
+        chessBoard.setKingPos(jsonDeserializationContext.deserialize(obj.get("blackKingPos"), ChessPosition.class), TeamColor.BLACK);
+        chessBoard.setEnPassant(jsonDeserializationContext.deserialize(obj.get("enPassantWhite"), ChessPosition.class), TeamColor.BLACK);
+        chessBoard.setEnPassant(jsonDeserializationContext.deserialize(obj.get("enPassantBlack"), ChessPosition.class), TeamColor.WHITE);
 
         return chessBoard;
     }
