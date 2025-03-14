@@ -7,7 +7,7 @@ public class GameIDCounter {
     public static int getNewGameID() {
         String query = "SELECT MAX(gameID) FROM game_data";
 
-        int gameID = -1;
+        int gameID = 0;
 
         try (var conn = DatabaseManager.getConnection();
              var statement = conn.prepareStatement(query)) {
@@ -28,10 +28,10 @@ public class GameIDCounter {
     private static int getInt(ResultSet result) {
         try {
             Integer maxGameId = result.getObject(1, Integer.class);
-            return maxGameId == null ? -1 : maxGameId;
+            return maxGameId == null ? 0 : maxGameId;
         } catch (SQLException e) {
             System.err.println("GameIDCounter: getInt: " + e.getMessage());
-            return -1;
+            return 0;
         }
     }
 

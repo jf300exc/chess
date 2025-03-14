@@ -18,11 +18,6 @@ public class Server {
     private final Gson errorMessage = new Gson();
     private final Map<String, String> errorValues = new HashMap<>();
 
-    public Server() {
-        // Create the database if it does not exist
-        DatabaseManager.configureDatabase();
-    }
-
     public int run(int desiredPort) {
         Spark.port(desiredPort);
 

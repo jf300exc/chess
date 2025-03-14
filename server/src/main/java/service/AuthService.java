@@ -1,5 +1,6 @@
 package service;
 
+import dataaccess.DatabaseManager;
 import dataaccess.SQLAuthDAO;
 import requests.LogoutRequest;
 import requests.LogoutResult;
@@ -10,6 +11,10 @@ import java.util.UUID;
 
 public class AuthService {
     static final AuthDAO AUTHDAO = new SQLAuthDAO();
+
+    public AuthService() {
+        DatabaseManager.configureDatabase();
+    }
 
     public AuthData createAuth(String username) {
         if (username == null) {

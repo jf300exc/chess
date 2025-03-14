@@ -21,9 +21,9 @@ public class SQLUserDAO implements UserDAO {
 
             while (resultSet.next()) {
                 String username = resultSet.getString("username");
-                String password = resultSet.getString("password");
                 String passwordHash = resultSet.getString("passwordHash");
-                users.add(new UserData(username, password, passwordHash));
+                String email = resultSet.getString("email");
+                users.add(new UserData(username, email, passwordHash));
             }
 
         } catch (DataAccessException | SQLException e) {
