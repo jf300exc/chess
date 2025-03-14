@@ -1,5 +1,6 @@
 package service;
 
+import dataaccess.GameIDCounter;
 import requests.*;
 import chess.ChessGame;
 import dataaccess.GameDAO;
@@ -14,7 +15,6 @@ import java.util.Collection;
 public class GameService {
     private static final GameDAO GAMEDAO = new SQLGameDAO();
     private static final AuthService AUTH_SERVICE = new AuthService();
-    private static int gameIDCounter = 1;
 
     public ListGamesResult listGames(ListGamesRequest listGamesRequest) {
         ListGamesResult result;
@@ -38,9 +38,10 @@ public class GameService {
         } else {
             String newGameName = createGameRequest.gameName();
             ChessGame game = new ChessGame();
+            int gameIDCounter = GameIDCounter.getNewGameID();
             GameData gameData = new GameData(gameIDCounter, null, null, newGameName, game);
             GAMEDAO.addGameData(gameData);
-            String gameID = String.valueOf(gameIDCounter++);
+            String gameID = String.valueOf(gameIDCounter);
             result = new CreateGameResult(gameID, "");
         }
         return result;
@@ -81,6 +82,7 @@ public class GameService {
         if (playerColorUnavailable(playerColor, gameData)) {
             result = new JoinGameResult("Error: already taken");
         } else {
+            GAMEDAO.removeGameData(gameData);
             gameData = GameData.updateGameData(playerColor, username, gameData);
             GAMEDAO.addGameData(gameData);
             result = new JoinGameResult("");

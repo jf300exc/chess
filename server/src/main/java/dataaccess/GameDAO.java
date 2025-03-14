@@ -11,5 +11,7 @@ public interface GameDAO {
 
     void addGameData(GameData gameData);
 
+    void removeGameData(GameData gameData);
+
     void clear();
 }

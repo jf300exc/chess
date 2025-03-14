@@ -7,7 +7,6 @@ import chess.ChessPosition;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.google.protobuf.Internal;
 import model.GameData;
 
 import java.sql.SQLException;
@@ -104,12 +103,25 @@ public class SQLGameDAO implements GameDAO {
             statement.setString(4, gameData.gameName());
 
             String gameString = serializeChessGame(gameData.game());
-            ChessGame gameOut = deserializeChessGame(gameString);
             statement.setString(5, gameString);
 
             statement.executeUpdate();
         } catch (DataAccessException | SQLException e) {
             System.err.println("SQLGameDAO: addGameData: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void removeGameData(GameData gameData) {
+        String query = """
+                DELETE FROM game_data WHERE gameID = ?
+                """;
+        try (var conn = DatabaseManager.getConnection();
+             var statement = conn.prepareStatement(query)) {
+            statement.setInt(1, gameData.gameID());
+            statement.executeUpdate();
+        } catch (DataAccessException | SQLException e) {
+            System.err.println("SQLGameDAO: removeGameData: " + e.getMessage());
         }
     }
 
