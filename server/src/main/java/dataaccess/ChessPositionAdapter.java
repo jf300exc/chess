@@ -7,7 +7,6 @@ import java.lang.reflect.Type;
 
 public class ChessPositionAdapter implements JsonSerializer<ChessPosition>, JsonDeserializer<ChessPosition> {
 
-
     @Override
     public JsonElement serialize(ChessPosition position, Type type, JsonSerializationContext jsonSerializationContext) {
         JsonObject obj = new JsonObject();

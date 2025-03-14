@@ -1,15 +1,37 @@
 package dataaccess;
 
+import chess.ChessBoard;
 import chess.ChessGame;
+import chess.ChessPiece;
+import chess.ChessPosition;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+import com.google.protobuf.Internal;
 import model.GameData;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
-public class SQLGameDAO implements  GameDAO {
+import chess.ChessGame.TeamColor;
+import chess.ChessBoard.*;
+
+
+public class SQLGameDAO implements GameDAO {
+    private final Gson gson;
+
+    public SQLGameDAO() {
+        gson = new GsonBuilder()
+                .registerTypeAdapter(ChessGame.class, new ChessGameAdapter())
+                .registerTypeAdapter(ChessBoard.class, new ChessBoardAdapter())
+                .registerTypeAdapter(ChessPiece.class, new ChessPieceAdapter())
+                .registerTypeAdapter(ChessPosition.class, new ChessPositionAdapter())
+                .registerTypeAdapter(new TypeToken<Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>>>(){}.getType(), new CastleRequirementsAdapter())
+                .create();
+    }
 
     @Override
     public Collection<GameData> findGameData() {
@@ -103,11 +125,11 @@ public class SQLGameDAO implements  GameDAO {
         }
     }
 
-    static public String serializeChessGame(ChessGame chessGame) {
-        return new Gson().toJson(chessGame);
+    public String serializeChessGame(ChessGame chessGame) {
+        return gson.toJson(chessGame);
     }
 
-    static public ChessGame deserializeChessGame(String chessGameJSON) {
-        return new Gson().fromJson(chessGameJSON, ChessGame.class);
+    public ChessGame deserializeChessGame(String chessGameJSON) {
+        return gson.fromJson(chessGameJSON, ChessGame.class);
     }
 }
