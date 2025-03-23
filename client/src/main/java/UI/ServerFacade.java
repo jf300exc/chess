@@ -1,11 +1,11 @@
 package UI;
 
 import com.google.gson.Gson;
-import exception.ResponseException;
 import requests.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -14,8 +14,8 @@ import java.net.URL;
 public class ServerFacade {
     private final String serverUrl;
 
-    public ServerFacade(String serverUrl) {
-        this.serverUrl = serverUrl;
+    public ServerFacade(int port) {
+        this.serverUrl = "http://localhost:" + port;
     }
 
     RegisterResult registerClient(RegisterRequest registerRequest) {
@@ -23,7 +23,7 @@ public class ServerFacade {
         return makeRequest("POST", path, registerRequest, RegisterResult.class);
     }
 
-    private <T> T makeRequest(String method, String path, Object request, Class<T> responseClass) {
+    private <T> T makeRequest(String method, String path, Object request, Class<T> responseClass) throws ResponseException {
         try {
             URL url = (new URI(serverUrl + path)).toURL();
             HttpURLConnection http = (HttpURLConnection) url.openConnection();
@@ -34,8 +34,10 @@ public class ServerFacade {
             http.connect();
             throwIfNotSuccessful(http);
             return readBody(http, responseClass);
+        } catch (ResponseException e) {
+            throw e;
         } catch (Exception e) {
-            return null;
+            throw new ResponseException(500, e.getMessage());
         }
     }
 
@@ -54,11 +56,24 @@ public class ServerFacade {
         if (!isSuccessful(status)) {
             try(InputStream respError = http.getErrorStream()) {
                 if (respError != null) {
-                    throw
+                    throw ResponseException.fromJson(respError);
                 }
             }
-            throw new ClientHttpRequestException(status);
+            throw new ResponseException(status, "other failure: " + status);
         }
+    }
+
+    private static <T> T readBody(HttpURLConnection http, Class<T> responseClass) throws IOException {
+        T response = null;
+        if (http.getContentLength() < 0) {
+            try (InputStream respBody = http.getInputStream()) {
+                InputStreamReader reader = new InputStreamReader(respBody);
+                if (responseClass != null) {
+                    response = new Gson().fromJson(reader, responseClass);
+                }
+            }
+        }
+        return response;
     }
 
     private boolean isSuccessful(int status) {

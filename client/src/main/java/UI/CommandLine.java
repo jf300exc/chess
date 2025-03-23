@@ -1,12 +1,17 @@
 package UI;
 
+import requests.RegisterRequest;
+
 import java.util.Scanner;
 
 public class CommandLine {
-    private LoginState loginState;
+    private final ServerFacade serverFacade;
     private final Scanner scanner = new Scanner(System.in);
 
-    public CommandLine() {
+    private LoginState loginState;
+
+    public CommandLine(ServerFacade serverFacade) {
+        this.serverFacade = serverFacade;
         loginState = LoginState.LOGGED_OUT;
     }
 
@@ -27,7 +32,7 @@ public class CommandLine {
         return '[' + loginState.toString() + ']';
     }
 
-    public String getUserInput(String prompt) {
+    private String getUserInput(String prompt) {
         if (prompt != null) {
             System.out.println(prompt);
         }
@@ -35,8 +40,7 @@ public class CommandLine {
         return scanner.nextLine().trim();
     }
 
-
-    public static void displayHelpBeforeLogin() {
+    private static void displayHelpBeforeLogin() {
         String helpMessage = """
                 Available commands for PreLogin UI:
                     Help        Displays this help message.
@@ -47,19 +51,19 @@ public class CommandLine {
         System.out.println(helpMessage);
     }
 
-    public void matchPreLoginCommand(String command) {
+    private void matchPreLoginCommand(String command) {
         if (command != null) {
             switch (command) {
                 case "Help" -> displayHelpBeforeLogin();
                 case "Quit" -> System.exit(0);
-//                case "Login" -> ProcessLoginRequest();
-//                case "Register" -> ProcessRegisterRequest();
+                case "Register" -> processRegisterRequest();
+//                case "Login" -> processLoginRequest();
                 default -> matchArbitraryCommand(command);
             }
         }
     }
 
-    public void matchArbitraryCommand(String command) {
+    private void matchArbitraryCommand(String command) {
         if (command != null) {
             switch (command) {
                 case "clear" -> System.out.print("\033[H\033[2J");
@@ -75,5 +79,13 @@ public class CommandLine {
                 matchPreLoginCommand(userInput);
             }
         }
+    }
+
+    public void processRegisterRequest() {
+        String username = getUserInput("Username: ");
+        String password = getUserInput("Password: ");
+        String email = getUserInput("Email: ");
+        RegisterRequest registerRequest = new RegisterRequest(username, password, email);
+        serverFacade.registerClient(registerRequest);
     }
 }
