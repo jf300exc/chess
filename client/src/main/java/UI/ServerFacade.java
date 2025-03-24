@@ -13,14 +13,63 @@ import java.net.URL;
 
 public class ServerFacade {
     private final String serverUrl;
+    private String authToken = null;
 
     public ServerFacade(int port) {
         this.serverUrl = "http://localhost:" + port;
     }
 
+    public void setAuthToken(String authToken) {
+        this.authToken = authToken;
+    }
+
+    public String getAuthToken() {
+        return authToken;
+    }
+
     RegisterResult registerClient(RegisterRequest registerRequest) {
         var path = "/user";
-        return makeRequest("POST", path, registerRequest, RegisterResult.class);
+        try {
+            return makeRequest("POST", path, registerRequest, RegisterResult.class);
+        } catch (ResponseException e) {
+            return null;
+        }
+    }
+
+    LoginResult loginClient(LoginRequest loginRequest) {
+        var path = "/session";
+        try {
+            return makeRequest("POST", path, loginRequest, LoginResult.class);
+        } catch (ResponseException e) {
+            return null;
+        }
+    }
+
+    LogoutResult logoutClient(LogoutRequest logoutRequest) {
+        var path = "/session";
+        try {
+            return makeRequest("DELETE", path, logoutRequest, LogoutResult.class);
+        } catch (ResponseException e) {
+            return null;
+        }
+    }
+
+    CreateGameResult createGameClient(CreateGameRequest createGameRequest) {
+        var path = "/game";
+        try {
+            return makeRequest("POST", path, createGameRequest, CreateGameResult.class);
+        } catch (ResponseException e) {
+            return null;
+        }
+    }
+
+    ListGamesResult listGamesClient(ListGamesRequest listGamesRequest) {
+        var path = "/game";
+        try {
+            return makeRequest("GET", path, listGamesRequest, ListGamesResult.class);
+        } catch (ResponseException e) {
+            return null;
+        }
     }
 
     private <T> T makeRequest(String method, String path, Object request, Class<T> responseClass) throws ResponseException {
@@ -28,9 +77,19 @@ public class ServerFacade {
             URL url = (new URI(serverUrl + path)).toURL();
             HttpURLConnection http = (HttpURLConnection) url.openConnection();
             http.setRequestMethod(method);
-            http.setDoOutput(true);
 
-            writeBody(request, http);
+            if (!method.equals("GET")) {
+                http.setDoOutput(true);
+            }
+
+            if (authToken != null && !authToken.isEmpty()) {
+                http.setRequestProperty("Authorization", authToken);
+            }
+
+            if (request != null && !method.equals("GET")) {
+                writeBody(request, http);
+            }
+
             http.connect();
             throwIfNotSuccessful(http);
             return readBody(http, responseClass);
