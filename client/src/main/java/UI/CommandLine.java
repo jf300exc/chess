@@ -53,10 +53,6 @@ public class CommandLine {
     private boolean matchPreLoginCommand(String command) {
         boolean noExit = true;
         if (command.isBlank()) {
-            System.out.println("WHITE");
-            BoardDraw.drawBoard(new ChessGame(), ChessGame.TeamColor.WHITE);
-            System.out.println("\nBLACK");
-            BoardDraw.drawBoard(new ChessGame(), ChessGame.TeamColor.BLACK);
             return noExit;
         }
         switch (command) {
@@ -204,7 +200,9 @@ public class CommandLine {
         }
 
         String playerColor = null;
-        if (gamesList.get(Integer.parseInt(gameIDStr)).whiteUsername() != null) {
+        int gameIndex = Integer.parseInt(gameIDStr) - 1;
+        GameEntry gameEntry = gamesList.get(gameIndex);
+        if (gameEntry.whiteUsername() != null && gameEntry.blackUsername() == null) {
             System.out.println("White username is already in use.");
             String confirmation = getUserInput("Join as BLACK? y/n: ");
             if (confirmation.equalsIgnoreCase("y")) {
@@ -212,7 +210,7 @@ public class CommandLine {
             } else {
                 System.out.println("Aborting");
             }
-        } else if (gamesList.get(Integer.parseInt(gameIDStr)).blackUsername() != null) {
+        } else if (gameEntry.whiteUsername() == null && gameEntry.blackUsername() != null) {
             System.out.println("Black username is already in use.");
             String confirmation = getUserInput("Join as WHITE? y/n: ");
             if (confirmation.equalsIgnoreCase("y")) {
@@ -220,6 +218,8 @@ public class CommandLine {
             } else {
                 System.out.println("Aborting");
             }
+        } else if (gameEntry.whiteUsername() != null) {
+            System.out.println("Game full.");
         } else {
             playerColor = getPlayerColorFromUserInput();
         }
@@ -250,7 +250,6 @@ public class CommandLine {
     private void processObserveGameRequest() {
         String gameIDStr = getGameIDFromUserInput();
         if (gameIDStr == null) {
-            System.out.println("Failed to observe game. Try again.");
             return;
         }
         // Draw Game Board from WHITE perspective

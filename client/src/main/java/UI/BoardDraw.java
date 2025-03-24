@@ -8,14 +8,6 @@ import chess.ChessPosition;
 import java.util.Map;
 
 public class BoardDraw {
-    // Light piece sequences
-    private static final String whiteRook = "♖"; // Rook: ♖
-    private static final String whiteKnight = "♘"; // Knight: ♘
-    private static final String whiteBishop = "♗"; // Bishop: ♗
-    private static final String whiteKing = "♔"; // King: ♔
-    private static final String whiteQueen = "♕"; // Queen: ♕
-    private static final String whitePawn = "♙"; // Pawn: ♙
-
     // Dark piece sequences
     private static final String blackRook =  "♜";
     private static final String blackKnight = "♞";
@@ -30,7 +22,6 @@ public class BoardDraw {
     // Background sequences
     private static final String darkBackgroundBrown = "\u001B[48;5;94m";
     private static final String lightBackgroundBlue = "\u001B[48;5;32m";
-
 
     // Text color sequences
     private static final String blackText = "\u001B[30m";
