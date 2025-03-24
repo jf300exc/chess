@@ -208,21 +208,20 @@ public class CommandLine {
             System.out.println("Failed to join game. Try again.");
         } else {
             System.out.println("Successfully joined game as " + playerColor);
-            // Draw Game Board
+            // Draw Game Board from `playerColor` perspective
         }
     }
 
     private void processObserveGameRequest() {
         String gameIDStr = getGameIDFromUserInput();
+        if (gameIDStr == null) {
+            System.out.println("Failed to observe game. Try again.");
+            return;
+        }
+        // Draw Game Board from WHITE perspective
     }
 
     private String getGameIDFromUserInput() {
-
-        int gameID = gamesList.get(gameNum - 1).gameID();
-        return Integer.toString(gameID);
-    }
-
-    private GameEntry getGameFromGameNumber() {
         if (gamesList.isEmpty()) {
             System.out.println("No games loaded. Run 'List Games' to choose a game.");
             return null;
@@ -239,6 +238,8 @@ public class CommandLine {
             System.out.println("Invalid game number. Try again.");
             return null;
         }
+        int gameID = gamesList.get(gameNum - 1).gameID();
+        return Integer.toString(gameID);
     }
 
     private String getPlayerColorFromUserInput() {
@@ -257,5 +258,13 @@ public class CommandLine {
             playerColor = null;
         }
         return playerColor;
+    }
+
+    private void drawGameBoardWhite(ChessGame chessGame) {
+        System.out.println("chessGameWhite");
+    }
+
+    private void drawGameBoardBlack(ChessGame chessGame) {
+        System.out.println("chessGameBlack");
     }
 }
