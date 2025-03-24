@@ -28,8 +28,9 @@ public class BoardDraw {
     private static final String wideSpace = "\u2003";
 
     // Background sequences
-    private static final String orangeBackGround = "\u001B[48;5;214m";
-    private static final String darkBlueBackground = "\u001B[48;5;17m";
+    private static final String darkBackgroundBrown = "\u001B[48;5;94m";
+    private static final String lightBackgroundBlue = "\u001B[48;5;32m";
+
 
     // Text color sequences
     private static final String blackText = "\u001B[30m";
@@ -38,35 +39,46 @@ public class BoardDraw {
     private static final String reset = "\u001B[0m";  // Reset Colors
 
     // Light Pieces with color sequences
-    private static final String lightRookLightBackground =      orangeBackGround + blackRook + reset;
-    private static final String lightRookDarkBackground =       darkBlueBackground + blackRook + reset;
-    private static final String lightKnightLightBackground =    orangeBackGround + blackKnight + reset;
-    private static final String lightKnightDarkBackground =     darkBlueBackground + blackKnight + reset;
-    private static final String lightBishopLightBackground =    orangeBackGround  + blackBishop + reset;
-    private static final String lightBishopDarkBackground =     darkBlueBackground + blackBishop + reset;
-    private static final String lightKingLightBackground =      orangeBackGround + blackKing + reset;
-    private static final String lightKingDarkBackground =       darkBlueBackground + blackKing + reset;
-    private static final String lightQueenLightBackground =     orangeBackGround + blackQueen + reset;
-    private static final String lightQueenDarkBackground =      darkBlueBackground + blackQueen + reset;
-    private static final String lightPawnLightBackground =      orangeBackGround + blackPawn + reset;
-    private static final String lightPawnDarkBackground =       darkBlueBackground + blackPawn + reset;
+    private static final String lightRookLightBackground =      lightBackgroundBlue + blackRook + reset;
+    private static final String lightRookDarkBackground =       darkBackgroundBrown + blackRook + reset;
+    private static final String lightKnightLightBackground =    lightBackgroundBlue + blackKnight + reset;
+    private static final String lightKnightDarkBackground =     darkBackgroundBrown + blackKnight + reset;
+    private static final String lightBishopLightBackground =    lightBackgroundBlue + blackBishop + reset;
+    private static final String lightBishopDarkBackground =     darkBackgroundBrown + blackBishop + reset;
+    private static final String lightKingLightBackground =      lightBackgroundBlue + blackKing + reset;
+    private static final String lightKingDarkBackground =       darkBackgroundBrown + blackKing + reset;
+    private static final String lightQueenLightBackground =     lightBackgroundBlue + blackQueen + reset;
+    private static final String lightQueenDarkBackground =      darkBackgroundBrown + blackQueen + reset;
+    private static final String lightPawnLightBackground =      lightBackgroundBlue + blackPawn + reset;
+    private static final String lightPawnDarkBackground =       darkBackgroundBrown + blackPawn + reset;
 
     // Dark Pieces with color sequences
-    private static final String darkRookLightBackground =   orangeBackGround + blackText + blackRook + reset;
-    private static final String darkRookDarkBackground =    darkBlueBackground + blackText + blackRook + reset;
-    private static final String darkKnightLightBackground = orangeBackGround + blackText + blackKnight + reset;
-    private static final String darkKnightDarkBackground =  darkBlueBackground + blackText + blackKnight + reset;
-    private static final String darkBishopLightBackground = orangeBackGround + blackText + blackBishop + reset;
-    private static final String darkBishopDarkBackground =  darkBlueBackground + blackText + blackBishop + reset;
-    private static final String darkKingLightBackground =   orangeBackGround + blackText + blackKing + reset;
-    private static final String darkKingDarkBackground =    darkBlueBackground + blackText + blackKing + reset;
-    private static final String darkQueenLightBackground = orangeBackGround + blackText + blackQueen + reset;
-    private static final String darkQueenDarkBackground =  darkBlueBackground + blackText + blackQueen + reset;
-    private static final String darkPawnLightBackground = orangeBackGround + blackText + blackPawn + reset;
-    private static final String darkPawnDarkBackground =  darkBlueBackground + blackText + blackPawn + reset;
+    private static final String darkRookLightBackground =   lightBackgroundBlue + blackText + blackRook + reset;
+    private static final String darkRookDarkBackground =    darkBackgroundBrown + blackText + blackRook + reset;
+    private static final String darkKnightLightBackground = lightBackgroundBlue + blackText + blackKnight + reset;
+    private static final String darkKnightDarkBackground =  darkBackgroundBrown + blackText + blackKnight + reset;
+    private static final String darkBishopLightBackground = lightBackgroundBlue + blackText + blackBishop + reset;
+    private static final String darkBishopDarkBackground =  darkBackgroundBrown + blackText + blackBishop + reset;
+    private static final String darkKingLightBackground =   lightBackgroundBlue + blackText + blackKing + reset;
+    private static final String darkKingDarkBackground =    darkBackgroundBrown + blackText + blackKing + reset;
+    private static final String darkQueenLightBackground = lightBackgroundBlue + blackText + blackQueen + reset;
+    private static final String darkQueenDarkBackground =  darkBackgroundBrown + blackText + blackQueen + reset;
+    private static final String darkPawnLightBackground = lightBackgroundBlue + blackText + blackPawn + reset;
+    private static final String darkPawnDarkBackground =  darkBackgroundBrown + blackText + blackPawn + reset;
 
-    private static final String lightBackground = orangeBackGround + wideSpace + reset;
-    private static final String darkBackground =  darkBlueBackground + wideSpace + reset;
+    private static final String lightBackground = lightBackgroundBlue + wideSpace + reset;
+    private static final String darkBackground =  darkBackgroundBrown + wideSpace + reset;
+
+    private static final String thinSpace = "\u2009";
+    private static final String boardHeaderAndFooter =
+                    "h" + thinSpace + thinSpace +
+                    "g" + thinSpace + thinSpace +
+                    "f" + thinSpace + thinSpace +
+                    "e" + thinSpace + thinSpace +
+                    "d" + thinSpace + thinSpace +
+                    "c" + thinSpace + thinSpace +
+                    "b" + thinSpace + thinSpace +
+                    "a";
 
     private static String getRookString(ChessGame.TeamColor teamColor, boolean whiteBackground) {
         if (teamColor == ChessGame.TeamColor.WHITE) {
@@ -215,13 +227,15 @@ public class BoardDraw {
 
     private static void drawBoardWhite(ChessGame chessGame) {
         StringBuilder builder = new StringBuilder();
+        builder.append(boardHeaderAndFooter + "\n");
         Map<ChessPosition, ChessPiece> board = chessGame.getBoard().getBoardMap();
-        for (int i = 8; i >= 0; i--) {
+        for (int i = 8; i > 0; i--) {
             for (int j = 1; j < ChessBoard.BOARD_SIZE + 1; j++) {
                 boolean isWhite = isWhiteBackground(i, j);
                 ChessPiece currPiece = board.get(new ChessPosition(i, j));
                 builder.append(getPieceString(currPiece, isWhite));
             }
+            builder.append("\n");
         }
         System.out.println(builder);
     }

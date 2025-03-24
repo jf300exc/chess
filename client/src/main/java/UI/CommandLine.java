@@ -52,7 +52,10 @@ public class CommandLine {
 
     private boolean matchPreLoginCommand(String command) {
         boolean noExit = true;
-        if (command.isBlank()) return noExit;
+        if (command.isBlank()) {
+            BoardDraw.drawBoard(new ChessGame(), ChessGame.TeamColor.WHITE);
+            return noExit;
+        }
         switch (command) {
             case "Help" -> displayHelpBeforeLogin();
             case "Quit" -> noExit = false;
@@ -76,7 +79,8 @@ public class CommandLine {
     }
 
     private void matchPostLoginCommand(String command) {
-        if (command.isBlank()) return;
+        if (command.isBlank())
+            return;
         switch (command) {
             case "Help" -> displayHelpAfterLogin();
             case "Logout" -> processLogoutRequest();
@@ -231,11 +235,10 @@ public class CommandLine {
         } else {
             System.out.println("Successfully joined game as " + playerColor);
             // Draw Game Board from `playerColor` perspective
+            ChessGame game = new ChessGame();
             if (playerColor.equals("WHITE")) {
-                ChessGame game = new ChessGame();
                 BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE);
             } else {
-                ChessGame game = new ChessGame();
                 BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK);
             }
         }
