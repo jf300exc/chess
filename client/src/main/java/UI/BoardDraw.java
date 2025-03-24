@@ -70,7 +70,18 @@ public class BoardDraw {
     private static final String darkBackground =  darkBackgroundBrown + wideSpace + reset;
 
     private static final String thinSpace = "\u2009";
-    private static final String boardHeaderAndFooter =
+
+    private static final String boardHeaderAndFooterWhite =
+                    "a" + thinSpace + thinSpace +
+                    "b" + thinSpace + thinSpace +
+                    "c" + thinSpace + thinSpace +
+                    "d" + thinSpace + thinSpace +
+                    "e" + thinSpace + thinSpace +
+                    "f" + thinSpace + thinSpace +
+                    "g" + thinSpace + thinSpace +
+                    "h";
+
+    private static final String boardHeaderAndFooterBlack =
                     "h" + thinSpace + thinSpace +
                     "g" + thinSpace + thinSpace +
                     "f" + thinSpace + thinSpace +
@@ -227,20 +238,37 @@ public class BoardDraw {
 
     private static void drawBoardWhite(ChessGame chessGame) {
         StringBuilder builder = new StringBuilder();
-        builder.append(boardHeaderAndFooter + "\n");
+        builder.append("   ").append(boardHeaderAndFooterWhite).append("\n");
         Map<ChessPosition, ChessPiece> board = chessGame.getBoard().getBoardMap();
         for (int i = 8; i > 0; i--) {
-            for (int j = 1; j < ChessBoard.BOARD_SIZE + 1; j++) {
+            builder.append(" ").append(i).append(" ");
+            for (int j = 1; j <= ChessBoard.BOARD_SIZE; j++) {
                 boolean isWhite = isWhiteBackground(i, j);
                 ChessPiece currPiece = board.get(new ChessPosition(i, j));
                 builder.append(getPieceString(currPiece, isWhite));
             }
+            builder.append(" ").append(i);
             builder.append("\n");
         }
+        builder.append("   ").append(boardHeaderAndFooterWhite);
         System.out.println(builder);
     }
 
     private static void drawBoardBlack(ChessGame chessGame) {
-        return;
+        StringBuilder builder = new StringBuilder();
+        builder.append("   ").append(boardHeaderAndFooterBlack).append("\n");
+        Map<ChessPosition, ChessPiece> board = chessGame.getBoard().getBoardMap();
+        for (int i = 1; i <= ChessBoard.BOARD_SIZE; i++) {
+            builder.append(" ").append(i).append(" ");
+            for (int j = 8; j > 0; j--) {
+                boolean isWhite = isWhiteBackground(i, j);
+                ChessPiece currPiece = board.get(new ChessPosition(i, j));
+                builder.append(getPieceString(currPiece, isWhite));
+            }
+            builder.append(" ").append(i);
+            builder.append("\n");
+        }
+        builder.append("   ").append(boardHeaderAndFooterBlack);
+        System.out.println(builder);
     }
 }

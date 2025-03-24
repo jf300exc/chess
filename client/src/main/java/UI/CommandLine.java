@@ -53,7 +53,10 @@ public class CommandLine {
     private boolean matchPreLoginCommand(String command) {
         boolean noExit = true;
         if (command.isBlank()) {
+            System.out.println("WHITE");
             BoardDraw.drawBoard(new ChessGame(), ChessGame.TeamColor.WHITE);
+            System.out.println("\nBLACK");
+            BoardDraw.drawBoard(new ChessGame(), ChessGame.TeamColor.BLACK);
             return noExit;
         }
         switch (command) {
