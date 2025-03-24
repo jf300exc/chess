@@ -183,10 +183,10 @@ public class CommandLine {
     private void printGameInfo(GameEntry gameEntry, int gameNumber) {
         System.out.println(gameNumber + ": " + gameEntry.gameName());
         if (gameEntry.whiteUsername() != null) {
-            System.out.print("  " + gameEntry.whiteUsername());
+            System.out.println("  WHITE username: " + gameEntry.whiteUsername());
         }
         if (gameEntry.blackUsername() != null) {
-            System.out.print("  " + gameEntry.blackUsername());
+            System.out.println("  BLACK username: " + gameEntry.blackUsername());
         }
     }
 
@@ -195,7 +195,29 @@ public class CommandLine {
         if (gameIDStr == null) {
             return;
         }
-        String playerColor = getPlayerColorFromUserInput();
+
+        String playerColor = null;
+        if (gamesList.get(Integer.parseInt(gameIDStr)).whiteUsername() != null) {
+            System.out.println("White username is already in use.");
+            String confirmation = getUserInput("Join as BLACK? y/n: ");
+            if (confirmation.equalsIgnoreCase("y")) {
+                playerColor = "BLACK";
+            } else {
+                System.out.println("Aborting");
+            }
+        } else if (gamesList.get(Integer.parseInt(gameIDStr)).blackUsername() != null) {
+            System.out.println("Black username is already in use.");
+            String confirmation = getUserInput("Join as WHITE? y/n: ");
+            if (confirmation.equalsIgnoreCase("y")) {
+                playerColor = "WHITE";
+            } else {
+                System.out.println("Aborting");
+            }
+        } else {
+            playerColor = getPlayerColorFromUserInput();
+        }
+
+        // Abort if no playerColor is chosen
         if (playerColor == null) {
             return;
         }
@@ -209,6 +231,13 @@ public class CommandLine {
         } else {
             System.out.println("Successfully joined game as " + playerColor);
             // Draw Game Board from `playerColor` perspective
+            if (playerColor.equals("WHITE")) {
+                ChessGame game = new ChessGame();
+                BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE);
+            } else {
+                ChessGame game = new ChessGame();
+                BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK);
+            }
         }
     }
 
@@ -219,6 +248,8 @@ public class CommandLine {
             return;
         }
         // Draw Game Board from WHITE perspective
+        ChessGame chessGame = new ChessGame();
+        BoardDraw.drawBoard(chessGame, ChessGame.TeamColor.WHITE);
     }
 
     private String getGameIDFromUserInput() {
@@ -258,13 +289,5 @@ public class CommandLine {
             playerColor = null;
         }
         return playerColor;
-    }
-
-    private void drawGameBoardWhite(ChessGame chessGame) {
-        System.out.println("chessGameWhite");
-    }
-
-    private void drawGameBoardBlack(ChessGame chessGame) {
-        System.out.println("chessGameBlack");
     }
 }

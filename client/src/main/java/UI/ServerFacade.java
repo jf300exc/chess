@@ -75,7 +75,7 @@ public class ServerFacade {
     JoinGameResult joinGameClient(JoinGameRequest joinGameRequest) {
         var path = "/game";
         try {
-            return makeRequest("POST", path, joinGameRequest, JoinGameResult.class);
+            return makeRequest("PUT", path, joinGameRequest, JoinGameResult.class);
         } catch (ResponseException e) {
             return null;
         }
