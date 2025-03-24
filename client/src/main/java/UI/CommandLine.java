@@ -1,5 +1,6 @@
 package UI;
 
+import chess.ChessGame;
 import model.GameEntry;
 import requests.*;
 
@@ -81,6 +82,8 @@ public class CommandLine {
             case "Logout" -> processLogoutRequest();
             case "Create Game" -> processCreateGameRequest();
             case "List Games" -> processListGamesRequest();
+            case "Play Game" -> processPlayGameRequest();
+            case "Observe Game" -> processObserveGameRequest();
             case "Quit" -> System.out.println("Unavailable. Logout first.");
             default -> matchArbitraryCommand(command);
         }
@@ -185,5 +188,74 @@ public class CommandLine {
         if (gameEntry.blackUsername() != null) {
             System.out.print("  " + gameEntry.blackUsername());
         }
+    }
+
+    private void processPlayGameRequest() {
+        String gameIDStr = getGameIDFromUserInput();
+        if (gameIDStr == null) {
+            return;
+        }
+        String playerColor = getPlayerColorFromUserInput();
+        if (playerColor == null) {
+            return;
+        }
+
+        String authToken = serverFacade.getAuthToken();
+        JoinGameRequest joinGameRequest = new JoinGameRequest(authToken, playerColor, gameIDStr);
+        JoinGameResult result = serverFacade.joinGameClient(joinGameRequest);
+
+        if (result == null) {
+            System.out.println("Failed to join game. Try again.");
+        } else {
+            System.out.println("Successfully joined game as " + playerColor);
+            // Draw Game Board
+        }
+    }
+
+    private void processObserveGameRequest() {
+        String gameIDStr = getGameIDFromUserInput();
+    }
+
+    private String getGameIDFromUserInput() {
+
+        int gameID = gamesList.get(gameNum - 1).gameID();
+        return Integer.toString(gameID);
+    }
+
+    private GameEntry getGameFromGameNumber() {
+        if (gamesList.isEmpty()) {
+            System.out.println("No games loaded. Run 'List Games' to choose a game.");
+            return null;
+        }
+
+        String gameNumStr = getUserInput("Game Number: ");
+        int gameNum;
+        try {
+            gameNum = Integer.parseInt(gameNumStr);
+        } catch (NumberFormatException e) {
+            gameNum = -1;
+        }
+        if (gameNum <= 0 || gameNum > gamesList.size()) {
+            System.out.println("Invalid game number. Try again.");
+            return null;
+        }
+    }
+
+    private String getPlayerColorFromUserInput() {
+        System.out.println("""
+                Choose a player color
+                  1. WHITE
+                  2. BLACK""");
+        String playerColorNum = getUserInput("Pick color number: ");
+        String playerColor;
+        if (playerColorNum.trim().equals("1")) {
+            playerColor = "WHITE";
+        } else if (playerColorNum.trim().equals("2")) {
+            playerColor = "BLACK";
+        } else {
+            System.out.println("Invalid color number. Try again.");
+            playerColor = null;
+        }
+        return playerColor;
     }
 }

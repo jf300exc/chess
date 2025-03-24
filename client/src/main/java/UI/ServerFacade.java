@@ -72,6 +72,15 @@ public class ServerFacade {
         }
     }
 
+    JoinGameResult joinGameClient(JoinGameRequest joinGameRequest) {
+        var path = "/game";
+        try {
+            return makeRequest("POST", path, joinGameRequest, JoinGameResult.class);
+        } catch (ResponseException e) {
+            return null;
+        }
+    }
+
     private <T> T makeRequest(String method, String path, Object request, Class<T> responseClass) throws ResponseException {
         try {
             URL url = (new URI(serverUrl + path)).toURL();
