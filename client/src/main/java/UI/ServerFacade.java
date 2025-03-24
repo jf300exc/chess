@@ -27,7 +27,7 @@ public class ServerFacade {
         return authToken;
     }
 
-    RegisterResult registerClient(RegisterRequest registerRequest) {
+    public RegisterResult registerClient(RegisterRequest registerRequest) {
         var path = "/user";
         try {
             return makeRequest("POST", path, registerRequest, RegisterResult.class);
@@ -36,7 +36,7 @@ public class ServerFacade {
         }
     }
 
-    LoginResult loginClient(LoginRequest loginRequest) {
+    public LoginResult loginClient(LoginRequest loginRequest) {
         var path = "/session";
         try {
             return makeRequest("POST", path, loginRequest, LoginResult.class);
@@ -45,7 +45,7 @@ public class ServerFacade {
         }
     }
 
-    LogoutResult logoutClient(LogoutRequest logoutRequest) {
+    public LogoutResult logoutClient(LogoutRequest logoutRequest) {
         var path = "/session";
         try {
             return makeRequest("DELETE", path, logoutRequest, LogoutResult.class);
@@ -54,7 +54,7 @@ public class ServerFacade {
         }
     }
 
-    CreateGameResult createGameClient(CreateGameRequest createGameRequest) {
+    public CreateGameResult createGameClient(CreateGameRequest createGameRequest) {
         var path = "/game";
         try {
             return makeRequest("POST", path, createGameRequest, CreateGameResult.class);
@@ -63,7 +63,7 @@ public class ServerFacade {
         }
     }
 
-    ListGamesResult listGamesClient(ListGamesRequest listGamesRequest) {
+    public ListGamesResult listGamesClient(ListGamesRequest listGamesRequest) {
         var path = "/game";
         try {
             return makeRequest("GET", path, listGamesRequest, ListGamesResult.class);
@@ -72,7 +72,7 @@ public class ServerFacade {
         }
     }
 
-    JoinGameResult joinGameClient(JoinGameRequest joinGameRequest) {
+    public JoinGameResult joinGameClient(JoinGameRequest joinGameRequest) {
         var path = "/game";
         try {
             return makeRequest("PUT", path, joinGameRequest, JoinGameResult.class);
