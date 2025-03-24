@@ -81,6 +81,7 @@ public class CommandLine {
             case "Logout" -> processLogoutRequest();
             case "Create Game" -> processCreateGameRequest();
             case "List Games" -> processListGamesRequest();
+            case "Quit" -> System.out.println("Unavailable. Logout first.");
             default -> matchArbitraryCommand(command);
         }
     }
