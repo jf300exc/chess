@@ -23,14 +23,6 @@ public class CommandLine {
         LOGGED_IN,
     }
 
-    public void setLoginState(LoginState loginState) {
-        this.loginState = loginState;
-    }
-
-    public LoginState getLoginState() {
-        return loginState;
-    }
-
     private String loginStatePromptString() {
         return '[' + loginState.toString() + ']';
     }
@@ -53,6 +45,7 @@ public class CommandLine {
     private boolean matchPreLoginCommand(String command) {
         boolean noExit = true;
         if (command.isBlank()) {
+            BoardDraw.drawBoard(new ChessGame(), ChessGame.TeamColor.WHITE);
             return noExit;
         }
         switch (command) {
@@ -94,7 +87,7 @@ public class CommandLine {
 
     private void matchArbitraryCommand(String command) {
         if (command.equals("clear")) {
-            System.out.print("\033[H\033[2J");
+            System.out.print(EscapeSequences.ERASE_SCREEN);
         } else {
             System.out.println("Unknown command");
         }
@@ -176,9 +169,13 @@ public class CommandLine {
         } else {
             // List the games that currently exist on the server
             int i = 1;
-            for (GameEntry gameEntry : result.games()) {
-                printGameInfo(gameEntry, i++);
-                gamesList.add(gameEntry);
+            if (result.games().isEmpty()) {
+                System.out.println("No games found. Create a game with `Create Game`");
+            } else {
+                for (GameEntry gameEntry : result.games()) {
+                    printGameInfo(gameEntry, i++);
+                    gamesList.add(gameEntry);
+                }
             }
         }
     }
