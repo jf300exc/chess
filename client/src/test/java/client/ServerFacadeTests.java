@@ -1,6 +1,6 @@
 package client;
 
-import UI.ServerFacade;
+import ui.ServerFacade;
 import dataaccess.SQLAuthDAO;
 import dataaccess.SQLGameDAO;
 import dataaccess.SQLUserDAO;

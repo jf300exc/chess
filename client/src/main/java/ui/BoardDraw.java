@@ -1,19 +1,20 @@
-package UI;
+package ui;
 
 import chess.ChessBoard;
 import chess.ChessGame;
 import chess.ChessPiece;
 import chess.ChessPosition;
 
+import java.util.AbstractMap;
 import java.util.Map;
 
-import static UI.EscapeSequences.BLACK_ROOK;
-import static UI.EscapeSequences.BLACK_KNIGHT;
-import static UI.EscapeSequences.BLACK_BISHOP;
-import static UI.EscapeSequences.BLACK_KING;
-import static UI.EscapeSequences.BLACK_QUEEN;
-import static UI.EscapeSequences.BLACK_PAWN;
-import static UI.EscapeSequences.EMPTY;
+import static ui.EscapeSequences.BLACK_ROOK;
+import static ui.EscapeSequences.BLACK_KNIGHT;
+import static ui.EscapeSequences.BLACK_BISHOP;
+import static ui.EscapeSequences.BLACK_KING;
+import static ui.EscapeSequences.BLACK_QUEEN;
+import static ui.EscapeSequences.BLACK_PAWN;
+import static ui.EscapeSequences.EMPTY;
 
 public class BoardDraw {
 
@@ -80,101 +81,37 @@ public class BoardDraw {
                     THIN_SPACE + " b " + THIN_SPACE +
                     THIN_SPACE + " a";
 
-    private static String getRookString(ChessGame.TeamColor teamColor, boolean whiteBackground) {
-        if (teamColor == ChessGame.TeamColor.WHITE) {
-            if (whiteBackground) {
-                return LIGHT_ROOK_LIGHT_BACKGROUND;
-            } else {
-                return LIGHT_ROOK_DARK_BACKGROUND;
-            }
-        } else {
-            if (whiteBackground) {
-                return DARK_ROOK_LIGHT_BACKGROUND;
-            } else {
-                return DARK_ROOK_DARK_BACKGROUND;
-            }
-        }
-    }
+    private static final Map<String, String> PIECE_BACKGROUND_MAP = Map.ofEntries(
+            new AbstractMap.SimpleEntry<>("ROOK_WHITE_true", LIGHT_ROOK_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("ROOK_WHITE_false", LIGHT_ROOK_DARK_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("ROOK_BLACK_true", DARK_ROOK_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("ROOK_BLACK_false", DARK_ROOK_DARK_BACKGROUND),
 
-    private static String getKnightString(ChessGame.TeamColor teamColor, boolean whiteBackground) {
-        if (teamColor == ChessGame.TeamColor.WHITE) {
-            if (whiteBackground) {
-                return LIGHT_KNIGHT_LIGHT_BACKGROUND;
-            } else {
-                return LIGHT_KNIGHT_DARK_BACKGROUND;
-            }
-        } else {
-            if (whiteBackground) {
-                return DARK_KNIGHT_LIGHT_BACKGROUND;
-            } else {
-                return DARK_KNIGHT_DARK_BACKGROUND;
-            }
-        }
-    }
+            new AbstractMap.SimpleEntry<>("KNIGHT_WHITE_true", LIGHT_KNIGHT_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("KNIGHT_WHITE_false", LIGHT_KNIGHT_DARK_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("KNIGHT_BLACK_true", DARK_KNIGHT_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("KNIGHT_BLACK_false", DARK_KNIGHT_DARK_BACKGROUND),
 
-    private static String getBishopString(ChessGame.TeamColor teamColor, boolean whiteBackground) {
-        if (teamColor == ChessGame.TeamColor.WHITE) {
-            if (whiteBackground) {
-                return LIGHT_BISHOP_LIGHT_BACKGROUND;
-            } else {
-                return LIGHT_BISHOP_DARK_BACKGROUND;
-            }
-        } else {
-            if (whiteBackground) {
-                return DARK_BISHOP_LIGHT_BACKGROUND;
-            } else {
-                return DARK_BISHOP_DARK_BACKGROUND;
-            }
-        }
-    }
+            new AbstractMap.SimpleEntry<>("BISHOP_WHITE_true", LIGHT_BISHOP_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("BISHOP_WHITE_false", LIGHT_BISHOP_DARK_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("BISHOP_BLACK_true", DARK_BISHOP_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("BISHOP_BLACK_false", DARK_BISHOP_DARK_BACKGROUND),
 
-    private static String getKingString(ChessGame.TeamColor teamColor, boolean whiteBackground) {
-        if (teamColor == ChessGame.TeamColor.WHITE) {
-            if (whiteBackground) {
-                return LIGHT_KING_LIGHT_BACKGROUND;
-            } else {
-                return LIGHT_KING_DARK_BACKGROUND;
-            }
-        } else {
-            if (whiteBackground) {
-                return DARK_KING_LIGHT_BACKGROUND;
-            } else {
-                return DARK_KING_DARK_BACKGROUND;
-            }
-        }
-    }
+            new AbstractMap.SimpleEntry<>("KING_WHITE_true", LIGHT_KING_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("KING_WHITE_false", LIGHT_KING_DARK_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("KING_BLACK_true", DARK_KING_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("KING_BLACK_false", DARK_KING_DARK_BACKGROUND),
 
-    private static String getQueenString(ChessGame.TeamColor teamColor, boolean whiteBackground) {
-        if (teamColor == ChessGame.TeamColor.WHITE) {
-            if (whiteBackground) {
-                return LIGHT_QUEEN_LIGHT_BACKGROUND;
-            } else {
-                return LIGHT_QUEEN_DARK_BACKGROUND;
-            }
-        } else {
-            if (whiteBackground) {
-                return DARK_QUEEN_LIGHT_BACKGROUND;
-            } else {
-                return DARK_QUEEN_DARK_BACKGROUND;
-            }
-        }
-    }
+            new AbstractMap.SimpleEntry<>("QUEEN_WHITE_true", LIGHT_QUEEN_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("QUEEN_WHITE_false", LIGHT_QUEEN_DARK_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("QUEEN_BLACK_true", DARK_QUEEN_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("QUEEN_BLACK_false", DARK_QUEEN_DARK_BACKGROUND),
 
-    private static String getPawnString(ChessGame.TeamColor teamColor, boolean whiteBackground) {
-        if (teamColor == ChessGame.TeamColor.WHITE) {
-            if (whiteBackground) {
-                return LIGHT_PAWN_LIGHT_BACKGROUND;
-            } else {
-                return LIGHT_PAWN_DARK_BACKGROUND;
-            }
-        } else {
-            if (whiteBackground) {
-                return DARK_PAWN_LIGHT_BACKGROUND;
-            } else {
-                return DARK_PAWN_DARK_BACKGROUND;
-            }
-        }
-    }
+            new AbstractMap.SimpleEntry<>("PAWN_WHITE_true", LIGHT_PAWN_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("PAWN_WHITE_false", LIGHT_PAWN_DARK_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("PAWN_BLACK_true", DARK_PAWN_LIGHT_BACKGROUND),
+            new AbstractMap.SimpleEntry<>("PAWN_BLACK_false", DARK_PAWN_DARK_BACKGROUND)
+    );
 
     private static String getSpaceString(boolean whiteBackground) {
         if (whiteBackground) {
@@ -190,27 +127,8 @@ public class BoardDraw {
         }
         ChessPiece.PieceType pieceType = chessPiece.getPieceType();
         ChessGame.TeamColor teamColor = chessPiece.getTeamColor();
-        switch (pieceType) {
-            case ROOK -> {
-                return getRookString(teamColor, whiteBackground);
-            }
-            case KNIGHT -> {
-                return getKnightString(teamColor, whiteBackground);
-            }
-            case BISHOP -> {
-                return getBishopString(teamColor, whiteBackground);
-            }
-            case KING -> {
-                return getKingString(teamColor, whiteBackground);
-            }
-            case QUEEN -> {
-                return getQueenString(teamColor, whiteBackground);
-            }
-            case PAWN -> {
-                return getPawnString(teamColor, whiteBackground);
-            }
-            default -> throw new RuntimeException("Unknown piece type: " + pieceType);
-        }
+        String key = pieceType.name() + "_" + teamColor + "_" + whiteBackground;
+        return PIECE_BACKGROUND_MAP.getOrDefault(key, "INVALID");
     }
 
     private static boolean isWhiteBackground(int row, int column) {
@@ -232,9 +150,7 @@ public class BoardDraw {
         for (int i = 8; i > 0; i--) {
             builder.append(" ").append(i).append(" ");
             for (int j = 1; j <= ChessBoard.BOARD_SIZE; j++) {
-                boolean isWhite = isWhiteBackground(i, j);
-                ChessPiece currPiece = board.get(new ChessPosition(i, j));
-                builder.append(getPieceString(currPiece, isWhite));
+                appendPieceString(i, j, board, builder);
             }
             builder.append(" ").append(i);
             builder.append("\n");
@@ -250,9 +166,7 @@ public class BoardDraw {
         for (int i = 1; i <= ChessBoard.BOARD_SIZE; i++) {
             builder.append(" ").append(i).append(" ");
             for (int j = 8; j > 0; j--) {
-                boolean isWhite = isWhiteBackground(i, j);
-                ChessPiece currPiece = board.get(new ChessPosition(i, j));
-                builder.append(getPieceString(currPiece, isWhite));
+                appendPieceString(i, j, board, builder);
             }
             builder.append(" ").append(i);
             builder.append("\n");
@@ -261,5 +175,11 @@ public class BoardDraw {
         System.out.println(builder);
         System.out.print(EscapeSequences.RESET_BG_COLOR);
         System.out.print(EscapeSequences.RESET_TEXT_COLOR);
+    }
+
+    private static void appendPieceString(int row, int col, Map<ChessPosition, ChessPiece> boardMap, StringBuilder stringBuilder) {
+        boolean isWhite = isWhiteBackground(row, col);
+        ChessPiece currPiece = boardMap.get(new ChessPosition(row, col));
+        stringBuilder.append(getPieceString(currPiece, isWhite));
     }
 }
