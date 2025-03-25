@@ -1,6 +1,5 @@
 import UI.CommandLine;
 import UI.ServerFacade;
-import server.Server;
 
 public class Main {
     public static void main(String[] args) {
