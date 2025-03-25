@@ -1,13 +1,13 @@
 package service;
 
 import dataaccess.GameIDCounter;
-import requests.*;
 import chess.ChessGame;
 import dataaccess.GameDAO;
 import dataaccess.SQLGameDAO;
 import model.AuthData;
 import model.GameData;
 import model.GameEntry;
+import requests.*;
 
 import java.util.ArrayList;
 import java.util.Collection;

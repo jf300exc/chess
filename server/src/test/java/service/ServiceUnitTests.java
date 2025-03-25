@@ -1,8 +1,8 @@
 package service;
 
-import requests.*;
 import model.UserData;
 import org.junit.jupiter.api.*;
+import requests.*;
 
 import java.util.Collection;
 
