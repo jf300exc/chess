@@ -62,23 +62,23 @@ public class BoardDraw {
 
     private static final String BOARD_HEADER_AND_FOOTER_WHITE =
                     THIN_SPACE + " a " + THIN_SPACE +
-                            THIN_SPACE + " b " + THIN_SPACE +
-                            THIN_SPACE + " c " + THIN_SPACE +
-                            THIN_SPACE + " d " + THIN_SPACE +
-                            THIN_SPACE + " e " + THIN_SPACE +
-                            THIN_SPACE + " f " + THIN_SPACE +
-                            THIN_SPACE + " g " + THIN_SPACE +
-                            THIN_SPACE + " h";
+                    THIN_SPACE + " b " + THIN_SPACE +
+                    THIN_SPACE + " c " + THIN_SPACE +
+                    THIN_SPACE + " d " + THIN_SPACE +
+                    THIN_SPACE + " e " + THIN_SPACE +
+                    THIN_SPACE + " f " + THIN_SPACE +
+                    THIN_SPACE + " g " + THIN_SPACE +
+                    THIN_SPACE + " h";
 
     private static final String BOARD_HEADER_AND_FOOTER_BLACK =
-                    THIN_SPACE + "h" + THIN_SPACE +
-                            THIN_SPACE + "g" + THIN_SPACE +
-                            THIN_SPACE + "f" + THIN_SPACE +
-                            THIN_SPACE + "e" + THIN_SPACE +
-                            THIN_SPACE + "d" + THIN_SPACE +
-                            THIN_SPACE + "c" + THIN_SPACE +
-                            THIN_SPACE + "b" + THIN_SPACE +
-                            THIN_SPACE + "a";
+                    THIN_SPACE + " h " + THIN_SPACE +
+                    THIN_SPACE + " g " + THIN_SPACE +
+                    THIN_SPACE + " f " + THIN_SPACE +
+                    THIN_SPACE + " e " + THIN_SPACE +
+                    THIN_SPACE + " d " + THIN_SPACE +
+                    THIN_SPACE + " c " + THIN_SPACE +
+                    THIN_SPACE + " b " + THIN_SPACE +
+                    THIN_SPACE + " a";
 
     private static String getRookString(ChessGame.TeamColor teamColor, boolean whiteBackground) {
         if (teamColor == ChessGame.TeamColor.WHITE) {
