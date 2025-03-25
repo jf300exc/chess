@@ -70,8 +70,9 @@ public class CommandLine {
     }
 
     private void matchPostLoginCommand(String command) {
-        if (command.isBlank())
+        if (command.isBlank()) {
             return;
+        }
         switch (command) {
             case "Help" -> displayHelpAfterLogin();
             case "Logout" -> processLogoutRequest();
