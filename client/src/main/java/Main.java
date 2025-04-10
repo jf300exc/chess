@@ -8,10 +8,10 @@ public class Main {
 
     public static void main(String[] args) {
         ServerFacade httpFacade = new ServerFacade(PORT);
-        CommandLine commandLine = new CommandLine(httpFacade);
 
         try {
-            WebSocketClient webSocketClient = new WebSocketClient(PORT, cli);
+            CommandLine commandLine = new CommandLine(httpFacade);
+            WebSocketClient webSocketClient = new WebSocketClient(PORT, commandLine);
             commandLine.setWebSocket(webSocketClient);
             System.out.println("♕ Welcome to 240 Chess Client. Type Help to get started. ♕");
             commandLine.run();

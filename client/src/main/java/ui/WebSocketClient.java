@@ -5,17 +5,17 @@ import java.net.URI;
 
 public class WebSocketClient extends Endpoint {
 
+    private final WebSocketListener listener;
     private Session session;
 
-    public WebSocketClient(int port) throws Exception {
-        URI uri = new URI("ws:://localhost:" + port + "/ws");
+    public WebSocketClient(int port, WebSocketListener listener) throws Exception {
+        this.listener = listener;
+        URI uri = new URI("ws://localhost:" + port + "/ws");
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
         this.session = container.connectToServer(this, uri);
-
         this.session.addMessageHandler(new MessageHandler.Whole<String>() {
             public void onMessage(String message) {
-                System.out.println("Message Received: " + message);
-                // TODO: Add ServerMessage functionality
+                listener.onMessage(message);
             }
         });
     }

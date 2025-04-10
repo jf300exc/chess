@@ -14,7 +14,9 @@ public class WSServer {
     @OnWebSocketMessage
     public void onMessage(Session session, String message) throws Exception {
         System.out.println("Websocket message received: " + message);
-        session.getRemote().sendString("WebSocket response: " + message);
+        String response = "WebSocket response: " + message;
+        System.out.println("  Sending response: " + response);
+        session.getRemote().sendString(response);
     }
 
     @OnWebSocketClose

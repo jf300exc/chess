@@ -6,12 +6,12 @@ import requests.*;
 
 import java.util.*;
 
-public class CommandLine {
+public class CommandLine implements WebSocketListener {
     private final Scanner scanner = new Scanner(System.in);
     private final List<GameEntry> gamesList = new ArrayList<>();
     private final ServerFacade serverFacade;
-    private WebSocketClient ws;
 
+    private WebSocketClient ws;
     private LoginState loginState;
 
     public CommandLine(ServerFacade serverFacade) {
@@ -21,6 +21,13 @@ public class CommandLine {
 
     public void setWebSocket(WebSocketClient ws) {
         this.ws = ws;
+    }
+
+    @Override
+    public void onMessage(String message) {
+        String received = "Websocket Message: " + message;
+        System.out.println(received);
+        // TODO: Forward to UI mechanics
     }
 
     public enum LoginState{
@@ -47,11 +54,11 @@ public class CommandLine {
         System.out.println(helpMessage);
     }
 
-    private boolean matchPreLoginCommand(String command) {
-        boolean noExit = true;
+    private boolean matchPreLoginCommand(String command) throws Exception {
         if (command.isBlank()) {
-            return noExit;
+            return true;
         }
+        boolean noExit = true;
         switch (command) {
             case "Help" -> displayHelpBeforeLogin();
             case "Quit" -> noExit = false;
@@ -59,6 +66,7 @@ public class CommandLine {
             case "Login" -> processLoginRequest();
             default -> matchArbitraryCommand(command);
         }
+        ws.send(command);
         return noExit;
     }
 
@@ -98,7 +106,7 @@ public class CommandLine {
         }
     }
 
-    public void run() {
+    public void run() throws Exception {
         for (;;) {
             String userInput = getUserInput(null);
             if (loginState == LoginState.LOGGED_OUT) {
