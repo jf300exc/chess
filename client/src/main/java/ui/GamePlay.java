@@ -1,5 +1,7 @@
 package ui;
 
+import websocket.commands.UserGameCommand;
+
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -24,20 +26,20 @@ public class GamePlay implements WebSocketListener {
         // TODO: Forward to UI mechanics
     }
 
-    public void playGame() throws Exception {
+    public void playGame(UserGameCommand connectRequest) throws Exception {
         this.userType = UserType.PLAYER;
-        runGamePlayUI();
         ws.connectClient();
-        ws.send("Play Game Request Successful");
+        ws.sendString("Play Game Request Successful");
+        ws.sendCommand(connectRequest);
+        runGamePlayUI();
         ws.closeClient();
-
     }
 
     public void observeGame() throws Exception {
         this.userType = UserType.OBSERVER;
         runGamePlayUI();
         ws.connectClient();
-        ws.send("Observe Game Request Successful");
+        ws.sendString("Observe Game Request Successful");
         ws.closeClient();
     }
 

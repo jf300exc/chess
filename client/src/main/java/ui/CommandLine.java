@@ -2,6 +2,8 @@ package ui;
 
 import chess.ChessGame;
 import model.GameEntry;
+import websocket.commands.UserGameCommand;
+import websocket.commands.UserGameCommand.CommandType;
 import requests.*;
 
 import java.util.*;
@@ -245,7 +247,8 @@ public class CommandLine {
         } else {
             BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK);
         }
-        gamePlay.playGame();
+        var connectRequest = new UserGameCommand(CommandType.CONNECT, authToken, gameEntry.gameID());
+        gamePlay.playGame(connectRequest);
     }
 
     private void processObserveGameRequest() throws Exception {
