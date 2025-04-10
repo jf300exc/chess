@@ -61,9 +61,9 @@ public class GamePlay implements WebSocketListener {
         System.out.println("\n\n\n");
         LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
         if (userType == UserType.PLAYER) {
-            BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.BLACK);
+            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.BLACK));
         } else {
-            BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.WHITE);
+            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.WHITE));
         }
     }
 

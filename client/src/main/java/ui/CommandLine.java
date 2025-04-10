@@ -243,9 +243,9 @@ public class CommandLine {
         // Draw Game Board from `playerColor` perspective
         ChessGame game = new ChessGame();
         if (playerColor.equals("WHITE")) {
-            BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE);
+            System.out.println(BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE));
         } else {
-            BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK);
+            System.out.println(BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK));
         }
         var connectRequest = new UserGameCommand(CommandType.CONNECT, authToken, gameEntry.gameID());
         gamePlay.playGame(connectRequest);
@@ -258,7 +258,7 @@ public class CommandLine {
         }
         // Draw Game Board from WHITE perspective
         ChessGame chessGame = new ChessGame();
-        BoardDraw.drawBoard(chessGame, ChessGame.TeamColor.WHITE);
+        System.out.println(BoardDraw.drawBoard(chessGame, ChessGame.TeamColor.WHITE));
         String authToken = serverFacade.getAuthToken();
         int gameIndex = Integer.parseInt(gameIDStr) - 1;
         GameEntry gameEntry = gamesList.get(gameIndex);

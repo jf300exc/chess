@@ -135,15 +135,15 @@ public class BoardDraw {
         return (row + column) % 2 == 1;
     }
 
-    public static void drawBoard(ChessGame chessGame, ChessGame.TeamColor teamColor) {
+    public static String drawBoard(ChessGame chessGame, ChessGame.TeamColor teamColor) {
         if (teamColor == null || teamColor == ChessGame.TeamColor.WHITE) {
-            drawBoardWhite(chessGame);
+            return drawBoardWhite(chessGame);
         } else {
-            drawBoardBlack(chessGame);
+            return drawBoardBlack(chessGame);
         }
     }
 
-    private static void drawBoardWhite(ChessGame chessGame) {
+    private static String drawBoardWhite(ChessGame chessGame) {
         StringBuilder builder = new StringBuilder();
         builder.append("   ").append(BOARD_HEADER_AND_FOOTER_WHITE).append("\n");
         Map<ChessPosition, ChessPiece> board = chessGame.getBoard().getBoardMap();
@@ -156,10 +156,10 @@ public class BoardDraw {
             builder.append("\n");
         }
         builder.append("   ").append(BOARD_HEADER_AND_FOOTER_WHITE);
-        System.out.println(builder);
+        return builder.toString();
     }
 
-    private static void drawBoardBlack(ChessGame chessGame) {
+    private static String drawBoardBlack(ChessGame chessGame) {
         StringBuilder builder = new StringBuilder();
         builder.append("   ").append(BOARD_HEADER_AND_FOOTER_BLACK).append("\n");
         Map<ChessPosition, ChessPiece> board = chessGame.getBoard().getBoardMap();
@@ -172,9 +172,9 @@ public class BoardDraw {
             builder.append("\n");
         }
         builder.append("   ").append(BOARD_HEADER_AND_FOOTER_BLACK);
-        System.out.println(builder);
-        System.out.print(EscapeSequences.RESET_BG_COLOR);
-        System.out.print(EscapeSequences.RESET_TEXT_COLOR);
+        builder.append(EscapeSequences.RESET_BG_COLOR);
+        builder.append(EscapeSequences.RESET_TEXT_COLOR);
+        return builder.toString();
     }
 
     private static void appendPieceString(int row, int col, Map<ChessPosition, ChessPiece> boardMap, StringBuilder stringBuilder) {
