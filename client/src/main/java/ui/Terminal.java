@@ -48,22 +48,25 @@ public class Terminal {
 
     private static void render() {
         StringBuilder sb = new StringBuilder();
-        sb.append("\033[s");  // Save cursor position
-//        sb.append(EscapeSequences.ERASE_SCROLL_BACK);
-        sb.append(EscapeSequences.moveCursorToLocation(0, 0));
-        sb.append(EscapeSequences.ERASE_LINE);
-        sb.append(EscapeSequences.moveCursorToLocation(0, 1));
-        sb.append(EscapeSequences.ERASE_LINE);
-        sb.append("Line1").append(i).append('\n');
-        sb.append("Line2").append(i++);
 
+        // Save cursor position
+        sb.append("\033[s");
+
+        // Erase Notification and GameBoard
+        addEraseLines(sb, 0, 10);
+
+        // Notifications
+        sb.append("Line1").append(i).append('\n');
+        sb.append("Line2").append(i++).append('\n');
+
+        // Game
         var game = new ChessGame();
         sb.append(BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE));
 
+        // Restore cursor position
+        sb.append("\n\033[u");
 
-        sb.append("\033[u");  // Restore cursor position
-
-
+        // Output in single call to terminal
         System.out.print(sb.toString());
         System.out.flush();
     }
@@ -77,12 +80,29 @@ public class Terminal {
         // TODO: Handle input
 
         StringBuilder sb = new StringBuilder();
-        sb.append(EscapeSequences.ERASE_LINE);
-        sb.append(EscapeSequences.moveCursorToLocation(0, 4));
-        sb.append(EscapeSequences.ERASE_LINE);
-        sb.append(EscapeSequences.moveCursorToLocation(0, 3));
-        sb.append(EscapeSequences.ERASE_LINE);
+        addEraseLine(sb);
+        addSwitchEraseLine(sb, 15);
+        addSwitchEraseLine(sb, 14);
         System.out.print(sb.toString());
         System.out.flush();
+    }
+
+    private static void addSwitchLine(StringBuilder sb, int line) {
+        sb.append(EscapeSequences.moveCursorToLocation(0, line));
+    }
+
+    private static void addEraseLine(StringBuilder sb) {
+        sb.append(EscapeSequences.ERASE_LINE);
+    }
+
+    private static void addSwitchEraseLine(StringBuilder sb, int line) {
+        addSwitchLine(sb, line);
+        addEraseLine(sb);
+    }
+
+    private static void addEraseLines(StringBuilder sb, int startLine, int stopLine) {
+        for (int i = startLine; i <= stopLine; i++) {
+            addSwitchEraseLine(sb, i);
+        }
     }
 }
