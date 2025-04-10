@@ -7,10 +7,18 @@ public class Main {
     private static final int PORT = 8080;
 
     public static void main(String[] args) {
-        ServerFacade facade = new ServerFacade(PORT);
-        WebSocketClient webSocketClient = new WebSocketClient(PORT);
-        System.out.println("♕ Welcome to 240 Chess Client. Type Help to get started. ♕");
-        CommandLine commandLine = new CommandLine(facade);
-        commandLine.run();
+        ServerFacade httpFacade = new ServerFacade(PORT);
+        CommandLine commandLine = new CommandLine(httpFacade);
+
+        try {
+            WebSocketClient webSocketClient = new WebSocketClient(PORT, cli);
+            commandLine.setWebSocket(webSocketClient);
+            System.out.println("♕ Welcome to 240 Chess Client. Type Help to get started. ♕");
+            commandLine.run();
+        } catch (Exception e) {
+            System.err.println("Failed to initialize WebSocket");
+            System.err.println(e.getMessage());
+        }
+
     }
 }

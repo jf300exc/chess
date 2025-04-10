@@ -10,12 +10,17 @@ public class CommandLine {
     private final Scanner scanner = new Scanner(System.in);
     private final List<GameEntry> gamesList = new ArrayList<>();
     private final ServerFacade serverFacade;
+    private WebSocketClient ws;
 
     private LoginState loginState;
 
     public CommandLine(ServerFacade serverFacade) {
         this.serverFacade = serverFacade;
         loginState = LoginState.LOGGED_OUT;
+    }
+
+    public void setWebSocket(WebSocketClient ws) {
+        this.ws = ws;
     }
 
     public enum LoginState{
