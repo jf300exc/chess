@@ -80,7 +80,8 @@ public class GamePlay implements WebSocketListener {
         ws.connectClient();
         ws.sendString("Connection Request");
         ws.sendCommand(connectRequest);
-        runGamePlayUI();
+//        runGamePlayUI();
+        Terminal.start();
         ws.closeClient();
     }
 

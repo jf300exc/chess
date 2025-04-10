@@ -1,6 +1,7 @@
 package ui;
 
 import chess.ChessBoard;
+import ui.EscapeSequences;
 
 import java.util.concurrent.*;
 import java.util.*;
@@ -17,18 +18,18 @@ public class Terminal {
         // Rendering thread for the terminal
         new Thread(() -> {
             while (running) {
-                // TODO: Render board
+                render();
                 try { Thread.sleep(100); } catch (InterruptedException ignored) {}
             }
         }, "Renderer").start();
 
-        new Thread(() -> {
-            while (running) {
-                System.out.print("\n> ");
-                String input = scanner.nextLine();
-                // TODO: Handle input
-            }
-        }, "Terminal-Input").start();
+//        new Thread(() -> {
+//            while (running) {
+//                System.out.print("\n> ");
+//                String input = scanner.nextLine();
+//                // TODO: Handle input
+//            }
+//        }, "Terminal-Input").start();
     }
 
     public static void stop() {
@@ -43,5 +44,21 @@ public class Terminal {
         synchronized (boardLock) {
             currentBoard = chessBoard;
         }
+    }
+
+    public static void render() {
+        StringBuilder sb = new StringBuilder();
+//        sb.append(EscapeSequences.ERASE_SCREEN);
+//        sb.append(EscapeSequences.moveCursorToLocation(0, 0));
+//        sb.append("Line\n");
+
+        String ERASE_SCREEN = "♕";
+
+        System.out.print(ERASE_SCREEN);
+//        System.out.print(sb.toString());
+        System.out.flush();
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException ignored) { }
     }
 }
