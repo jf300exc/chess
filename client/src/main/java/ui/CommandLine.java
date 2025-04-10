@@ -66,7 +66,6 @@ public class CommandLine implements WebSocketListener {
             case "Login" -> processLoginRequest();
             default -> matchArbitraryCommand(command);
         }
-        ws.send(command);
         return noExit;
     }
 
@@ -82,7 +81,7 @@ public class CommandLine implements WebSocketListener {
         System.out.println(helpMessage);
     }
 
-    private void matchPostLoginCommand(String command) {
+    private void matchPostLoginCommand(String command) throws Exception {
         if (command.isBlank()) {
             return;
         }
@@ -203,7 +202,7 @@ public class CommandLine implements WebSocketListener {
         }
     }
 
-    private void processPlayGameRequest() {
+    private void processPlayGameRequest() throws Exception {
         String gameIDStr = getGameIDFromUserInput();
         if (gameIDStr == null) {
             return;
@@ -245,16 +244,21 @@ public class CommandLine implements WebSocketListener {
 
         if (result == null) {
             System.out.println("Failed to join game. Try again.");
-        } else {
-            System.out.println("Successfully joined game as " + playerColor);
-            // Draw Game Board from `playerColor` perspective
-            ChessGame game = new ChessGame();
-            if (playerColor.equals("WHITE")) {
-                BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE);
-            } else {
-                BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK);
-            }
+            return;
         }
+
+        System.out.println("Successfully joined game as " + playerColor);
+        // Draw Game Board from `playerColor` perspective
+        ChessGame game = new ChessGame();
+        if (playerColor.equals("WHITE")) {
+            BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE);
+        } else {
+            BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK);
+        }
+
+        ws.connectClient();
+        ws.send("Play Game Request Successful");
+        ws.closeClient();
     }
 
     private void processObserveGameRequest() {
