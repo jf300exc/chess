@@ -71,6 +71,7 @@ public class WSServer {
     }
 
     public void sendMessage(Session session, String message) throws IOException {
+        System.out.println("Sending Message: " + message);
         session.getRemote().sendString(message);
     }
 

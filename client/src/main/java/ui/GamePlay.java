@@ -8,6 +8,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import websocket.commands.UserGameCommand;
+import websocket.messages.LoadGameMessage;
 
 import java.util.Map;
 import java.util.Objects;
@@ -47,7 +48,7 @@ public class GamePlay implements WebSocketListener {
             System.out.println("Received String: " + message);
             return;
         }
-        String messageType = json.get("type").getAsString();
+        String messageType = json.get("serverMessageType").getAsString();
         System.out.println("Received Message: " + messageType);
         switch (messageType) {
             case "LOAD_GAME" -> processLoadGameMessage(message);
@@ -57,7 +58,13 @@ public class GamePlay implements WebSocketListener {
     }
 
     void processLoadGameMessage(String message) {
-        throw new RuntimeException("Not implemented");
+        System.out.println("\n\n\n");
+        LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
+        if (userType == UserType.PLAYER) {
+            BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.BLACK);
+        } else {
+            BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.WHITE);
+        }
     }
 
     void processErrorMessage(String message) {
@@ -147,7 +154,7 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void leaveGame() {
-        throw new RuntimeException("Not implemented");
+//        throw new RuntimeException("Not implemented");
     }
 
     private void gamePlayMakeMove() {
