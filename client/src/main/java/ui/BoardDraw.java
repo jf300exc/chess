@@ -61,25 +61,25 @@ public class BoardDraw {
 
     private static final String THIN_SPACE = "\u2009";
 
-    private static final String BOARD_HEADER_AND_FOOTER_WHITE =
-                    THIN_SPACE + " a " + THIN_SPACE +
-                    THIN_SPACE + " b " + THIN_SPACE +
-                    THIN_SPACE + " c " + THIN_SPACE +
-                    THIN_SPACE + " d " + THIN_SPACE +
-                    THIN_SPACE + " e " + THIN_SPACE +
-                    THIN_SPACE + " f " + THIN_SPACE +
-                    THIN_SPACE + " g " + THIN_SPACE +
-                    THIN_SPACE + " h";
+    private static final String BOARD_HEADER_AND_FOOTER_WHITE = " a  b  c  d  e  f  g  h";
+//                    THIN_SPACE + " a " + THIN_SPACE +
+//                    THIN_SPACE + " b " + THIN_SPACE +
+//                    THIN_SPACE + " c " + THIN_SPACE +
+//                    THIN_SPACE + " d " + THIN_SPACE +
+//                    THIN_SPACE + " e " + THIN_SPACE +
+//                    THIN_SPACE + " f " + THIN_SPACE +
+//                    THIN_SPACE + " g " + THIN_SPACE +
+//                    THIN_SPACE + " h";
 
-    private static final String BOARD_HEADER_AND_FOOTER_BLACK =
-                    THIN_SPACE + " h " + THIN_SPACE +
-                    THIN_SPACE + " g " + THIN_SPACE +
-                    THIN_SPACE + " f " + THIN_SPACE +
-                    THIN_SPACE + " e " + THIN_SPACE +
-                    THIN_SPACE + " d " + THIN_SPACE +
-                    THIN_SPACE + " c " + THIN_SPACE +
-                    THIN_SPACE + " b " + THIN_SPACE +
-                    THIN_SPACE + " a";
+    private static final String BOARD_HEADER_AND_FOOTER_BLACK = " h  g  f  e  d  c  b  a";
+//                    THIN_SPACE + " h " + THIN_SPACE +
+//                    THIN_SPACE + " g " + THIN_SPACE +
+//                    THIN_SPACE + " f " + THIN_SPACE +
+//                    THIN_SPACE + " e " + THIN_SPACE +
+//                    THIN_SPACE + " d " + THIN_SPACE +
+//                    THIN_SPACE + " c " + THIN_SPACE +
+//                    THIN_SPACE + " b " + THIN_SPACE +
+//                    THIN_SPACE + " a";
 
     private static final Map<String, String> PIECE_BACKGROUND_MAP = Map.ofEntries(
             new AbstractMap.SimpleEntry<>("ROOK_WHITE_true", LIGHT_ROOK_LIGHT_BACKGROUND),

@@ -1,3 +1,4 @@
+import chess.ChessGame;
 import ui.*;
 
 public class Main {
@@ -19,6 +20,7 @@ public class Main {
 //        }
         System.out.print(EscapeSequences.ERASE_SCROLL_BACK);
         System.out.print(EscapeSequences.ERASE_SCREEN);
-        Terminal.start();
+        Terminal.start("WHITE");
+        Terminal.setChessGame(new ChessGame());
     }
 }

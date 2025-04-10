@@ -75,13 +75,13 @@ public class GamePlay implements WebSocketListener {
         throw new RuntimeException("Not implemented");
     }
 
-    public void playGame(UserGameCommand connectRequest) throws Exception {
+    public void playGame(UserGameCommand connectRequest, String playerColor) throws Exception {
         this.userType = UserType.PLAYER;
         ws.connectClient();
         ws.sendString("Connection Request");
         ws.sendCommand(connectRequest);
 //        runGamePlayUI();
-        Terminal.start();
+        Terminal.start(playerColor);
         ws.closeClient();
     }
 

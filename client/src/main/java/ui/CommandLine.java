@@ -243,12 +243,12 @@ public class CommandLine {
         // Draw Game Board from `playerColor` perspective
         ChessGame game = new ChessGame();
         if (playerColor.equals("WHITE")) {
-            System.out.println(BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE));
+//            System.out.println(BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE));
         } else {
-            System.out.println(BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK));
+//            System.out.println(BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK));
         }
         var connectRequest = new UserGameCommand(CommandType.CONNECT, authToken, gameEntry.gameID());
-        gamePlay.playGame(connectRequest);
+        gamePlay.playGame(connectRequest, playerColor);
     }
 
     private void processObserveGameRequest() throws Exception {
