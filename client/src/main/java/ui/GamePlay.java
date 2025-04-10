@@ -1,12 +1,30 @@
 package ui;
 
+import adapters.*;
+import chess.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 import websocket.commands.UserGameCommand;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 
 public class GamePlay implements WebSocketListener {
     private final Scanner scanner = new Scanner(System.in);
+    private final Gson gson = new GsonBuilder()
+            .registerTypeAdapter(ChessGame.class, new ChessGameAdapter())
+            .registerTypeAdapter(ChessBoard.class, new ChessBoardAdapter())
+            .registerTypeAdapter(ChessPiece.class, new ChessPieceAdapter())
+            .registerTypeAdapter(ChessPosition.class, new ChessPositionAdapter())
+            .registerTypeAdapter(
+                    new TypeToken<Map<ChessGame.TeamColor, Map<ChessBoard.CastlePieceTypes, Map<ChessBoard.CastleType, Boolean>>>>(){}.getType(),
+                    new CastleRequirementsAdapter())
+            .create();
+
     private WebSocketClient ws;
     private UserType userType;
 
@@ -21,25 +39,50 @@ public class GamePlay implements WebSocketListener {
 
     @Override
     public void onMessage(String message) {
-        String received = "Websocket Message: " + message;
-        System.out.println(received);
-        // TODO: Forward to UI mechanics
+        System.out.println("\n\nReceived Websocket Message");
+        JsonObject json;
+        try {
+            json = JsonParser.parseString(message).getAsJsonObject();
+        } catch (Exception e) {
+            System.out.println("Received String: " + message);
+            return;
+        }
+        String messageType = json.get("type").getAsString();
+        System.out.println("Received Message: " + messageType);
+        switch (messageType) {
+            case "LOAD_GAME" -> processLoadGameMessage(message);
+            case "ERROR" -> processErrorMessage(message);
+            case "NOTIFICATION" -> processNotificationMessage(message);
+        }
+    }
+
+    void processLoadGameMessage(String message) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    void processErrorMessage(String message) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    void processNotificationMessage(String message) {
+        throw new RuntimeException("Not implemented");
     }
 
     public void playGame(UserGameCommand connectRequest) throws Exception {
         this.userType = UserType.PLAYER;
         ws.connectClient();
-        ws.sendString("Play Game Request Successful");
+        ws.sendString("Connection Request");
         ws.sendCommand(connectRequest);
         runGamePlayUI();
         ws.closeClient();
     }
 
-    public void observeGame() throws Exception {
+    public void observeGame(UserGameCommand connectRequest) throws Exception {
         this.userType = UserType.OBSERVER;
-        runGamePlayUI();
         ws.connectClient();
-        ws.sendString("Observe Game Request Successful");
+        ws.sendString("Connection Request");
+        ws.sendCommand(connectRequest);
+        runGamePlayUI();
         ws.closeClient();
     }
 

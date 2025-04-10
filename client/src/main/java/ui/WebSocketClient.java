@@ -58,7 +58,6 @@ public class WebSocketClient extends Endpoint {
                 listener.onMessage(message);
             }
         });
-
     }
 
     public boolean isSessionOpen() {
