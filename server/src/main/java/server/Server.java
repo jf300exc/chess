@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dataaccess.DataAccessException;
+import websocket.WSServer;
 import handler.Handler;
 import spark.*;
 
@@ -19,6 +20,8 @@ public class Server {
 
     public int run(int desiredPort) {
         Spark.port(desiredPort);
+
+        Spark.webSocket("/ws", WSServer.class);
 
         Spark.staticFiles.location("web");
 
@@ -43,6 +46,7 @@ public class Server {
         // Lambda function to clear Database
         delete("/db", this::handleClearDatabase);
 
+        Spark.init();
         Spark.awaitInitialization();
         return Spark.port();
     }
