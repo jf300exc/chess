@@ -11,8 +11,8 @@ public class Main {
 
         try {
             CommandLine commandLine = new CommandLine(httpFacade);
-            WebSocketClient webSocketClient = new WebSocketClient(PORT, commandLine);
-            commandLine.setWebSocket(webSocketClient);
+            WebSocketClient webSocketClient = new WebSocketClient(PORT, commandLine.gamePlay);
+            commandLine.gamePlay.setWebSocket(webSocketClient);
             System.out.println("♕ Welcome to 240 Chess Client. Type Help to get started. ♕");
             commandLine.run();
         } catch (Exception e) {

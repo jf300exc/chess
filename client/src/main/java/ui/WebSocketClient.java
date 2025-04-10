@@ -16,18 +16,6 @@ public class WebSocketClient extends Endpoint {
         this.listener = listener;
     }
 
-//    public WebSocketClient(int port, WebSocketListener listener) throws Exception {
-//        this.listener = listener;
-//        URI uri = new URI("ws://localhost:" + port + "/ws");
-//        WebSocketContainer container = ContainerProvider.getWebSocketContainer();
-//        this.session = container.connectToServer(this, uri);
-//        this.session.addMessageHandler(new MessageHandler.Whole<String>() {
-//            public void onMessage(String message) {
-//                listener.onMessage(message);
-//            }
-//        });
-//    }
-
     public void connectClient() throws Exception {
         if (session != null && session.isOpen()) {
             System.err.println("Can't connect to WebSocket: Already Connected");

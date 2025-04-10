@@ -6,28 +6,18 @@ import requests.*;
 
 import java.util.*;
 
-public class CommandLine implements WebSocketListener {
+public class CommandLine {
     private final Scanner scanner = new Scanner(System.in);
     private final List<GameEntry> gamesList = new ArrayList<>();
     private final ServerFacade serverFacade;
 
-    private WebSocketClient ws;
+    public final GamePlay gamePlay = new GamePlay();
+
     private LoginState loginState;
 
     public CommandLine(ServerFacade serverFacade) {
         this.serverFacade = serverFacade;
         loginState = LoginState.LOGGED_OUT;
-    }
-
-    public void setWebSocket(WebSocketClient ws) {
-        this.ws = ws;
-    }
-
-    @Override
-    public void onMessage(String message) {
-        String received = "Websocket Message: " + message;
-        System.out.println(received);
-        // TODO: Forward to UI mechanics
     }
 
     public enum LoginState{
@@ -54,7 +44,7 @@ public class CommandLine implements WebSocketListener {
         System.out.println(helpMessage);
     }
 
-    private boolean matchPreLoginCommand(String command) throws Exception {
+    private boolean matchPreLoginCommand(String command) {
         if (command.isBlank()) {
             return true;
         }
@@ -255,13 +245,10 @@ public class CommandLine implements WebSocketListener {
         } else {
             BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK);
         }
-
-        ws.connectClient();
-        ws.send("Play Game Request Successful");
-        ws.closeClient();
+        gamePlay.playGame();
     }
 
-    private void processObserveGameRequest() {
+    private void processObserveGameRequest() throws Exception {
         String gameIDStr = getGameIDFromUserInput();
         if (gameIDStr == null) {
             return;
@@ -269,6 +256,7 @@ public class CommandLine implements WebSocketListener {
         // Draw Game Board from WHITE perspective
         ChessGame chessGame = new ChessGame();
         BoardDraw.drawBoard(chessGame, ChessGame.TeamColor.WHITE);
+        gamePlay.observeGame();
     }
 
     private String getGameIDFromUserInput() {
