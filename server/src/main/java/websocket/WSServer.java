@@ -10,8 +10,11 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import dataaccess.AuthDAO;
 import dataaccess.GameDAO;
+import dataaccess.SQLAuthDAO;
 import dataaccess.SQLGameDAO;
+import model.AuthData;
 import model.GameData;
 import org.eclipse.jetty.websocket.api.annotations.*;
 import org.eclipse.jetty.websocket.api.*;
@@ -24,7 +27,6 @@ import websocket.messages.ServerMessage.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 @WebSocket
 public class WSServer {
@@ -37,9 +39,12 @@ public class WSServer {
                     new TypeToken<Map<ChessGame.TeamColor, Map<ChessBoard.CastlePieceTypes, Map<ChessBoard.CastleType, Boolean>>>>(){}.getType(),
                     new CastleRequirementsAdapter())
             .create();
+
     private final GameDAO gameDAO = new SQLGameDAO();
-    private final Map<Integer, Set<Session>> connectedGamePlayers = new ConcurrentHashMap<>();
-    private final Map<Integer, Set<Session>> connectedGameObservers = new ConcurrentHashMap<>();
+    private final AuthDAO authDAO = new SQLAuthDAO();
+
+    private static final Map<Integer, Set<Session>> connectedGamePlayers = new ConcurrentHashMap<>();
+    private static final Map<Integer, Set<Session>> connectedGameObservers = new ConcurrentHashMap<>();
 
     @OnWebSocketConnect
     public void onConnect(Session session) {
@@ -59,22 +64,27 @@ public class WSServer {
         }
 
         String commandType = json.get("commandType").getAsString();
-        if (commandType.equals("CONNECT")) {
-            System.out.println("Connected to " + session);
-            UserGameCommand command = gson.fromJson(json, UserGameCommand.class);
-            processConnectCommand(session, command);
-        } else if (commandType.equals("MAKE_MOVE")) {
-            System.out.println("Received MakeMoveCommand");
-            MakeMoveCommand command = gson.fromJson(json, MakeMoveCommand.class);
-            processMakeMoveCommand(session, command);
-        } else if (commandType.equals("LEAVE")) {
-            System.out.println("Received LeaveCommand");
-            UserGameCommand command = gson.fromJson(message, UserGameCommand.class);
-            processLeaveCommand(session, command);
-        } else if (commandType.equals("RESIGN")) {
-            System.out.println("Received ResignCommand");
-            UserGameCommand command = gson.fromJson(message, UserGameCommand.class);
-            processResignCommand(session, command);
+        switch (commandType) {
+            case "CONNECT" -> {
+                System.out.println("Connected to " + session);
+                UserGameCommand command = gson.fromJson(json, UserGameCommand.class);
+                processConnectCommand(session, command);
+            }
+            case "MAKE_MOVE" -> {
+                System.out.println("Received MakeMoveCommand");
+                MakeMoveCommand command = gson.fromJson(json, MakeMoveCommand.class);
+                processMakeMoveCommand(session, command);
+            }
+            case "LEAVE" -> {
+                System.out.println("Received LeaveCommand");
+                UserGameCommand command = gson.fromJson(message, UserGameCommand.class);
+                processLeaveCommand(session, command);
+            }
+            case "RESIGN" -> {
+                System.out.println("Received ResignCommand");
+                UserGameCommand command = gson.fromJson(message, UserGameCommand.class);
+                processResignCommand(session, command);
+            }
         }
     }
 
@@ -89,13 +99,45 @@ public class WSServer {
     }
 
     private void processConnectCommand(Session session, UserGameCommand command) throws IOException {
-        String gameIDStr = Integer.toString(command.getGameID());
+        int gameID = command.getGameID();
+        String gameIDStr = Integer.toString(gameID);
         GameData gameData = gameDAO.findGameDataByID(gameIDStr);
         LoadGameMessage message = new LoadGameMessage(ServerMessageType.LOAD_GAME, gameData);
         sendMessage(session, convertToJson(message));
+
+        if (!connectedGamePlayers.containsKey(gameID)) {
+            connectedGamePlayers.put(gameID, Collections.synchronizedSet(new HashSet<>()));
+        }
+        if (!connectedGameObservers.containsKey(gameID)) {
+            connectedGameObservers.put(gameID, Collections.synchronizedSet(new HashSet<>()));
+        }
+
+        String notificationMessage;
+        AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
+        boolean isObserving;
+        if (authData != null && (Objects.equals(authData.username(), gameData.blackUsername()) ||
+                    Objects.equals(authData.username(), gameData.whiteUsername()))) {
+            notificationMessage = authData.username() + " has joined the game";
+            isObserving = false;
+        } else {
+            assert authData != null;
+            notificationMessage = authData.username() + " is observing this game";
+            isObserving = true;
+        }
+
         // TODO: Send a notification to all players connect and observing
-        var message = new NotificationMessage(ServerMessageType.NOTIFICATION, )
-        for (var playerSession : connectedGamePlayers.get(command.getGameID())) {
+        var notification = new NotificationMessage(ServerMessageType.NOTIFICATION, notificationMessage);
+        for (Session playerSession : connectedGamePlayers.get(gameID)) {
+            sendMessage(playerSession, gson.toJson(notification));
+        }
+        for (Session observerSession : connectedGameObservers.get(gameID)) {
+            sendMessage(observerSession, gson.toJson(notification));
+        }
+
+        if (isObserving) {
+            connectedGameObservers.put(gameID, connectedGamePlayers.get(gameID));
+        } else {
+            connectedGamePlayers.get(gameID).add(session);
         }
     }
 
