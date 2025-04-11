@@ -37,6 +37,23 @@ public class ChessPosition {
     }
 
     @Override
+    public String toString() {
+        String colStr;
+        switch (this.col) {
+            case 1 -> colStr = "a";
+            case 2 -> colStr = "b";
+            case 3 -> colStr = "c";
+            case 4 -> colStr = "d";
+            case 5 -> colStr = "e";
+            case 6 -> colStr = "f";
+            case 7 -> colStr = "g";
+            case 8 -> colStr = "h";
+            default -> colStr = Integer.toString(this.col);
+        }
+        return row + colStr;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) {
             return false;

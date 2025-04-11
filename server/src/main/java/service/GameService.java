@@ -82,8 +82,8 @@ public class GameService {
         if (playerColorUnavailable(playerColor, gameData)) {
             result = new JoinGameResult("Error: already taken");
         } else {
-            GAMEDAO.removeGameData(gameData);
-            gameData = GameData.updateGameData(playerColor, username, gameData);
+            GAMEDAO.removeGameDataByGameID(gameData);
+            gameData = GameData.updateGameDataUsers(playerColor, username, gameData);
             GAMEDAO.addGameData(gameData);
             result = new JoinGameResult("");
         }

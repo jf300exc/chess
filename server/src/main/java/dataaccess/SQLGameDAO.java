@@ -115,7 +115,7 @@ public class SQLGameDAO implements GameDAO {
     }
 
     @Override
-    public void removeGameData(GameData gameData) {
+    public void removeGameDataByGameID(GameData gameData) {
         String query = """
                 DELETE FROM game_data WHERE gameID = ?
                 """;

@@ -11,7 +11,7 @@ public class ChessPositionAdapter implements JsonSerializer<ChessPosition>, Json
     public JsonElement serialize(ChessPosition position, Type type, JsonSerializationContext jsonSerializationContext) {
         JsonObject obj = new JsonObject();
         obj.addProperty("row", position.getRow());
-        obj.addProperty("column", position.getColumn());
+        obj.addProperty("col", position.getColumn());
         return obj;
     }
 
@@ -21,7 +21,8 @@ public class ChessPositionAdapter implements JsonSerializer<ChessPosition>, Json
             throws JsonParseException {
         JsonObject obj = jsonElement.getAsJsonObject();
         int row = obj.get("row").getAsInt();
-        int column = obj.get("column").getAsInt();
+        // "col" not "column"
+        int column = obj.get("col").getAsInt();
         return new ChessPosition(row, column);
     }
 

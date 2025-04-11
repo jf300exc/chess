@@ -288,7 +288,7 @@ public class SQLDAOsUnitTests {
         gameDAO.addGameData(newGameData);
         gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(4, gameDataList.size());
-        gameDAO.removeGameData(newGameData);
+        gameDAO.removeGameDataByGameID(newGameData);
         gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(3, gameDataList.size());
         clearAll();
@@ -308,7 +308,7 @@ public class SQLDAOsUnitTests {
         Assertions.assertEquals(1, gameDataList.size());
         id = GameIDCounter.getNewGameID();
         GameData wrongGameData = new GameData(id, null, null, "wrongGame", game);
-        gameDAO.removeGameData(wrongGameData);
+        gameDAO.removeGameDataByGameID(wrongGameData);
         gameDataList = gameDAO.findGameData();
         Assertions.assertEquals(1, gameDataList.size());
         clearAll();

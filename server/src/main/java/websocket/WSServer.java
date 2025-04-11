@@ -1,10 +1,7 @@
 package websocket;
 
 import adapters.*;
-import chess.ChessBoard;
-import chess.ChessGame;
-import chess.ChessPiece;
-import chess.ChessPosition;
+import chess.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -74,6 +71,7 @@ public class WSServer {
             }
             case "MAKE_MOVE" -> {
                 System.out.println("Received MakeMoveCommand");
+                System.out.println("Command:\n" + json);
                 MakeMoveCommand command = gson.fromJson(json, MakeMoveCommand.class);
                 processMakeMoveCommand(session, command);
             }
@@ -118,19 +116,19 @@ public class WSServer {
 
 
         // Validate Connect Command
-        System.out.println("Retrieving game data for gameID: " + gameIDStr);
-        GameData gameData = gameDAO.findGameDataByID(gameIDStr);
-        if (gameData == null) {
-            System.out.println("Received invalid gameID: " + gameIDStr);
-            ErrorMessage error = new ErrorMessage(ServerMessageType.ERROR, "Invalid game ID: " + gameIDStr);
-            sendMessage(session, gson.toJson(error));
-            return;
-        }
         System.out.println("Retrieving AuthData of session with authToken: " + command.getAuthToken());
         AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
         if (authData == null) {
             System.out.println("Received invalid authToken: " + command.getAuthToken());
             ErrorMessage error = new ErrorMessage(ServerMessageType.ERROR, "Invalid authToken");
+            sendMessage(session, gson.toJson(error));
+            return;
+        }
+        System.out.println("Retrieving game data for gameID: " + gameIDStr);
+        GameData gameData = gameDAO.findGameDataByID(gameIDStr);
+        if (gameData == null) {
+            System.out.println("Received invalid gameID: " + gameIDStr);
+            ErrorMessage error = new ErrorMessage(ServerMessageType.ERROR, "Invalid game ID: " + gameIDStr);
             sendMessage(session, gson.toJson(error));
             return;
         }
@@ -195,7 +193,80 @@ public class WSServer {
     }
 
     private void processMakeMoveCommand(Session session, MakeMoveCommand command) throws IOException {
-        throw new RuntimeException("Not implemented yet");
+        ErrorMessage errorMessage = null;
+        int gameID = command.getGameID();
+        GameData gameData = gameDAO.findGameDataByID(Integer.toString(gameID));
+        ChessMove move = command.getMove();
+        ChessGame.TeamColor playerColor = null;
+
+        // Validate
+        AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
+        if (authData == null) {
+            System.out.println("Received invalid authToken: " + command.getAuthToken());
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Invalid authToken");
+        } else if (gameData == null) {
+            System.out.println("Received invalid gameID: " + gameID);
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Invalid game ID: " + gameID);
+        } else if ((playerColor = getPlayerColorFromUsername(gameData, authData.username())) == null) {
+            System.out.println("Move attempted with observer");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Can't make a move as an observer");
+        } else if (gameData.game().getTeamTurn() != playerColor) {
+            System.out.println("Move attempted with wrong player");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "It's not your turn");
+        } else {
+            System.out.println("Attempting Move");
+            try {
+                gameData.game().makeMove(move);
+            } catch (InvalidMoveException e) {
+                errorMessage = new ErrorMessage(ServerMessageType.ERROR, e.getMessage());
+            }
+        }
+        if (errorMessage != null) {
+            sendMessage(session, gson.toJson(errorMessage));
+            return;
+        }
+
+        // Move successful
+        gameDAO.removeGameDataByGameID(gameData);
+        gameDAO.addGameData(gameData);
+
+        // Send LOAD_GAME Message to all Clients
+        var loadGameMessage = new LoadGameMessage(ServerMessageType.LOAD_GAME, gameData);
+        // Send Notification Message to all OTHER Clients
+        ChessPiece.PieceType pieceType = gameData.game().getBoard().getPiece(move.getEndPosition()).getPieceType();
+        var moveMessage = getMoveString(authData.username(), move, pieceType);
+        var notificationMessage = new NotificationMessage(ServerMessageType.NOTIFICATION, moveMessage);
+
+        // Checkmate StaleMate Notifications
+        NotificationMessage secondNotification = null;
+        ChessGame.TeamColor opponentColor = getOtherTeamColor(playerColor);
+        String opponentUsername = getOtherPlayerUsername(gameData, playerColor);
+        if (gameData.game().isInCheck(opponentColor)) {
+            secondNotification = new NotificationMessage(ServerMessageType.NOTIFICATION, opponentUsername + " is in check");
+        }
+        if (gameData.game().isInCheckmate(opponentColor)) {
+            secondNotification = new NotificationMessage(ServerMessageType.NOTIFICATION, opponentUsername + " is in checkmate");
+        }
+        if (gameData.game().isInStalemate(opponentColor)) {
+            secondNotification = new NotificationMessage(ServerMessageType.NOTIFICATION, opponentUsername + " is in stalemate");
+        }
+        for (Session playerSession : connectedGamePlayers.get(gameID)) {
+            sendMessage(playerSession, gson.toJson(loadGameMessage));
+            if (!session.equals(playerSession)) {
+                sendMessage(playerSession, gson.toJson(notificationMessage));
+            }
+            if (secondNotification != null) {
+                sendMessage(playerSession, gson.toJson(secondNotification));
+            }
+        }
+        for (Session observerSession : connectedGameObservers.get(gameID)) {
+            sendMessage(observerSession, gson.toJson(loadGameMessage));
+            sendMessage(observerSession, gson.toJson(notificationMessage));
+            if (secondNotification != null) {
+                sendMessage(observerSession, gson.toJson(secondNotification));
+            }
+        }
+
     }
 
     private void processLeaveCommand(Session session, UserGameCommand command) throws IOException {
@@ -204,6 +275,49 @@ public class WSServer {
 
     private void processResignCommand(Session session, UserGameCommand command) throws IOException {
         throw new RuntimeException("Not implemented yet");
+    }
+
+    private boolean validateAuthData(String authToken) {
+        return authToken != null && authDAO.findAuthDataByAuthToken(authToken) != null;
+    }
+
+    private boolean validateGameID(int gameID) {
+        return validateGameID(Integer.toString(gameID));
+    }
+
+    private boolean validateGameID(String gameIDStr) {
+        return gameDAO.findGameDataByID(gameIDStr) != null;
+    }
+
+    private String getMoveString(String username, ChessMove move, ChessPiece.PieceType pieceType) {
+        String message = username + " moved " + pieceType.toString() + ": ";
+        message = message + move.getStartPosition().toString();
+        message = message + " -> " + move.getEndPosition().toString();
+        return message;
+    }
+
+    private String getOtherPlayerUsername(GameData gameData, ChessGame.TeamColor playerColor) {
+        return switch (playerColor) {
+            case WHITE -> gameData.blackUsername();
+            case BLACK -> gameData.whiteUsername();
+        };
+    }
+
+    private ChessGame.TeamColor getOtherTeamColor(ChessGame.TeamColor teamColor) {
+        return switch (teamColor) {
+            case WHITE -> ChessGame.TeamColor.BLACK;
+            case BLACK -> ChessGame.TeamColor.WHITE;
+        };
+    }
+
+    private ChessGame.TeamColor getPlayerColorFromUsername(GameData gameData, String username) {
+        if (username.equals(gameData.blackUsername())) {
+            return ChessGame.TeamColor.BLACK;
+        } else if (username.equals(gameData.whiteUsername())) {
+            return ChessGame.TeamColor.WHITE;
+        } else {
+            return null;
+        }
     }
 
     private String convertToJson(Object o) {

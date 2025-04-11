@@ -23,7 +23,7 @@ public class MemoryGameDAO implements GameDAO {
     }
 
     @Override
-    public void removeGameData(GameData gameData) {
+    public void removeGameDataByGameID(GameData gameData) {
         gameDataMap.remove(gameData.gameID());
     }
 
