@@ -20,6 +20,7 @@ import org.eclipse.jetty.websocket.api.annotations.*;
 import org.eclipse.jetty.websocket.api.*;
 import websocket.commands.MakeMoveCommand;
 import websocket.commands.UserGameCommand;
+import websocket.messages.ErrorMessage;
 import websocket.messages.LoadGameMessage;
 import websocket.messages.NotificationMessage;
 import websocket.messages.ServerMessage.*;
@@ -38,6 +39,7 @@ public class WSServer {
             .registerTypeAdapter(
                     new TypeToken<Map<ChessGame.TeamColor, Map<ChessBoard.CastlePieceTypes, Map<ChessBoard.CastleType, Boolean>>>>(){}.getType(),
                     new CastleRequirementsAdapter())
+//            .setPrettyPrinting()
             .create();
 
     private final GameDAO gameDAO = new SQLGameDAO();
@@ -90,10 +92,17 @@ public class WSServer {
 
     @OnWebSocketClose
     public void onClose(Session session, int statusCode, String reason) {
-        System.out.println("Websocket Closed: " + reason);
-        for (int gameID : gameIDBySession.get(session)) {
-            connectedGamePlayers.get(gameID).remove(session);
-            connectedGameObservers.get(gameID).remove(session);
+        System.out.println("Websocket Closed. Reason: " + reason);
+        if (gameIDBySession.containsKey(session)) {
+            int size = gameIDBySession.get(session).size();
+            System.out.println("  Connection was in " + size + " games");
+            for (int gameID : gameIDBySession.get(session)) {
+                System.out.println("  Removing session from gameID: " + gameID);
+                connectedGamePlayers.get(gameID).remove(session);
+                connectedGameObservers.get(gameID).remove(session);
+            }
+        } else {
+            System.out.println("  Connection was in no games.");
         }
     }
 
@@ -106,8 +115,27 @@ public class WSServer {
         System.out.println("Received ConnectCommand");
         int gameID = command.getGameID();
         String gameIDStr = Integer.toString(gameID);
+
+
+        // Validate Connect Command
         System.out.println("Retrieving game data for gameID: " + gameIDStr);
         GameData gameData = gameDAO.findGameDataByID(gameIDStr);
+        if (gameData == null) {
+            System.out.println("Received invalid gameID: " + gameIDStr);
+            ErrorMessage error = new ErrorMessage(ServerMessageType.ERROR, "Invalid game ID: " + gameIDStr);
+            sendMessage(session, gson.toJson(error));
+            return;
+        }
+        System.out.println("Retrieving AuthData of session with authToken: " + command.getAuthToken());
+        AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
+        if (authData == null) {
+            System.out.println("Received invalid authToken: " + command.getAuthToken());
+            ErrorMessage error = new ErrorMessage(ServerMessageType.ERROR, "Invalid authToken");
+            sendMessage(session, gson.toJson(error));
+            return;
+        }
+
+        // Proceed
         System.out.println("Preparing Load Game message");
         LoadGameMessage message = new LoadGameMessage(ServerMessageType.LOAD_GAME, gameData);
         System.out.println("Sending Load Game message");
@@ -116,27 +144,32 @@ public class WSServer {
         if (!connectedGamePlayers.containsKey(gameID)) {
             System.out.println("Initializing Player Set for gameID: " + gameID);
             connectedGamePlayers.put(gameID, Collections.synchronizedSet(new HashSet<>()));
+        } else {
+            System.out.println("Player Set for gameID exists: " + gameID);
         }
         if (!connectedGameObservers.containsKey(gameID)) {
             System.out.println("Initializing Observer Set for gameID: " + gameID);
             connectedGameObservers.put(gameID, Collections.synchronizedSet(new HashSet<>()));
+        } else {
+            System.out.println("Observer Set for gameID exists: " + gameID);
         }
         if (!gameIDBySession.containsKey(session)) {
             System.out.println("Initializing gameID Set for session");
-            gameIDBySession.put(session, Collections.synchronizedSet(new HashSet<>()));
+            Set<Integer> gameIDSet = Collections.synchronizedSet(new HashSet<>());
+            gameIDSet.add(gameID);
+            gameIDBySession.put(session, gameIDSet);
+        } else {
+            System.out.println("gameID Set for session exists: " + gameID);
         }
 
         String notificationMessage;
-        System.out.println("Retrieving AuthData of session");
-        AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
         boolean isObserving;
-        if (authData != null && (Objects.equals(authData.username(), gameData.blackUsername()) ||
-                    Objects.equals(authData.username(), gameData.whiteUsername()))) {
+        if (Objects.equals(authData.username(), gameData.blackUsername()) ||
+                    Objects.equals(authData.username(), gameData.whiteUsername())) {
             System.out.println("Found Username as Game Player: Preparing player joined notification");
             notificationMessage = authData.username() + " has joined the game";
             isObserving = false;
         } else {
-            assert authData != null;
             System.out.println("Did not find username as Game Player: Preparing observer joined notification");
             notificationMessage = authData.username() + " is observing this game";
             isObserving = true;

@@ -1,18 +1,17 @@
 package websocket.messages;
 
-import javax.management.Notification;
 import java.util.Objects;
 
 public class NotificationMessage extends ServerMessage {
-    private final String notificationMessage;
+    private final String message;
 
-    public NotificationMessage(ServerMessageType type, String notificationMessage) {
+    public NotificationMessage(ServerMessageType type, String message) {
         super(type);
-        this.notificationMessage = notificationMessage;
+        this.message = message;
     }
 
-    public String getNotificationMessage() {
-        return notificationMessage;
+    public String getMessage() {
+        return message;
     }
 
     @Override
@@ -24,11 +23,11 @@ public class NotificationMessage extends ServerMessage {
             return false;
         }
         NotificationMessage that = (NotificationMessage) o;
-        return Objects.equals(notificationMessage, that.notificationMessage);
+        return Objects.equals(message, that.message);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), notificationMessage);
+        return Objects.hash(super.hashCode(), message);
     }
 }

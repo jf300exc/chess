@@ -12,10 +12,8 @@ import websocket.messages.LoadGameMessage;
 import websocket.messages.NotificationMessage;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 public class GamePlay implements WebSocketListener {
     private final Scanner scanner = new Scanner(System.in);
@@ -66,7 +64,7 @@ public class GamePlay implements WebSocketListener {
 
     void processLoadGameMessage(String message) {
         LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
-        Terminal.setChessGame(loadGameMessage.getGameData().game());
+        Terminal.setChessGame(loadGameMessage.getGame().game());
 //        if (userType == UserType.PLAYER) {
 //            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.BLACK));
 //        } else {
@@ -81,8 +79,8 @@ public class GamePlay implements WebSocketListener {
     void processNotificationMessage(String message) {
         Terminal.addLogMessage("Processing Notification Message");
         var notification = gson.fromJson(message, NotificationMessage.class);
-        Terminal.addLogMessage("  Message: " + notification.getNotificationMessage());
-        Terminal.addNotification(notification.getNotificationMessage());
+        Terminal.addLogMessage("  Message: " + notification.getMessage());
+        Terminal.addNotification(notification.getMessage());
     }
 
     public void playGame(UserGameCommand connectRequest, String playerColor) throws Exception {
