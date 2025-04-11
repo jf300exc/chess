@@ -18,8 +18,7 @@ public class Main {
 //            System.err.println("Failed to initialize WebSocket");
 //            System.err.println(e.getMessage());
 //        }
-        System.out.print(EscapeSequences.ERASE_SCROLL_BACK);
-        System.out.print(EscapeSequences.ERASE_SCREEN);
+
         Terminal.start("WHITE");
         Terminal.setChessGame(new ChessGame());
     }

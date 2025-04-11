@@ -54,7 +54,6 @@ public class WSServer {
     @OnWebSocketMessage
     public void onMessage(Session session, String message) throws Exception {
         System.out.println("Websocket message received: " + message);
-        String response;
         JsonObject json;
         try {
             json = JsonParser.parseString(message).getAsJsonObject();
@@ -125,7 +124,6 @@ public class WSServer {
             isObserving = true;
         }
 
-        // TODO: Send a notification to all players connect and observing
         var notification = new NotificationMessage(ServerMessageType.NOTIFICATION, notificationMessage);
         for (Session playerSession : connectedGamePlayers.get(gameID)) {
             sendMessage(playerSession, gson.toJson(notification));
@@ -135,7 +133,7 @@ public class WSServer {
         }
 
         if (isObserving) {
-            connectedGameObservers.put(gameID, connectedGamePlayers.get(gameID));
+            connectedGameObservers.get(gameID).add(session);
         } else {
             connectedGamePlayers.get(gameID).add(session);
         }

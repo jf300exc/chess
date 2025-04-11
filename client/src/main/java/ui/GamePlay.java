@@ -13,6 +13,8 @@ import websocket.messages.LoadGameMessage;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 public class GamePlay implements WebSocketListener {
     private final Scanner scanner = new Scanner(System.in);
@@ -25,6 +27,8 @@ public class GamePlay implements WebSocketListener {
                     new TypeToken<Map<ChessGame.TeamColor, Map<ChessBoard.CastlePieceTypes, Map<ChessBoard.CastleType, Boolean>>>>(){}.getType(),
                     new CastleRequirementsAdapter())
             .create();
+
+    private final ConcurrentLinkedQueue<String> userInputQueue = new ConcurrentLinkedQueue<>();
 
     private WebSocketClient ws;
     private UserType userType;
@@ -108,6 +112,8 @@ public class GamePlay implements WebSocketListener {
 
     private void runGamePlayUI() throws Exception {
         for (;;) {
+            Thread.sleep(200);
+
             String userInput = getUserInput(null);
             if (!matchGamePlayCommand(userInput)) {
                 break;

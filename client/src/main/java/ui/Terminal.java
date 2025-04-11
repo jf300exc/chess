@@ -1,26 +1,39 @@
 package ui;
 
-import chess.ChessBoard;
 import chess.ChessGame;
-import ui.EscapeSequences;
 
 import java.util.concurrent.*;
 import java.util.*;
 
 public class Terminal {
     private static final ConcurrentLinkedQueue<String> notifications = new ConcurrentLinkedQueue<>();
-    private static ChessGame currentGameState = null;
+    private static final ConcurrentLinkedQueue<String> logMessages = new ConcurrentLinkedQueue<>();
+    private static final Deque<String> currentLogMessages = new ArrayDeque<>(); // Only accessed by the render thread
+    private static final int lastLogMessageIndex = 0;
+//    private static final int currentLogLength = 0;
     private static ChessGame.TeamColor currentTeamColor = null;
     private static final Object boardLock = new Object();
-    private static final Object teamColorLock = new Object();
-    private static int i = 0;
+    private static int deleteI = 0;
 
     private static final Scanner scanner = new Scanner(System.in);
+    private static volatile ChessGame currentGameState = null;
     private static volatile boolean running = false;
 
     public static void start(String teamColor) {
         setPlayerColor(teamColor);
         new Thread(Terminal::waitForGameData, "Pre-Game Thread").start();
+    }
+
+    public static void waitForGameData() {
+        System.out.print("Waiting for game data...");
+        while(currentGameState == null) {
+            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+        }
+        System.out.print(EscapeSequences.ERASE_SCROLL_BACK);
+        System.out.print(EscapeSequences.ERASE_SCREEN);
+        System.out.println(currentTeamColor);
+        running = true;
+        startInterface();
     }
 
     private static void startInterface() {
@@ -31,6 +44,7 @@ public class Terminal {
                 try { Thread.sleep(200); } catch (InterruptedException ignored) {}
             }
         }, "Renderer").start();
+        // Thread to get user input
         new Thread(() -> {
             while (running) {
                 getInput();
@@ -46,23 +60,14 @@ public class Terminal {
         notifications.add(notification);
     }
 
-    public static void waitForGameData() {
-        System.out.print("Waiting for game data...");
-        while(currentGameState == null) {
-            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-        }
-//        StringBuilder sb = new StringBuilder();
-//        addEraseLine(sb);
-//        System.out.print(sb.toString());
-        System.out.println(currentTeamColor);
-        running = true;
-        startInterface();
+    public static void addLogMessage(String message) {
+        logMessages.add(message);
     }
 
     public static void setChessGame(ChessGame chessGame) {
-//        synchronized (boardLock) {
+        synchronized (boardLock) {
             currentGameState = chessGame;
-//        }
+        }
     }
 
     public static void setPlayerColor(String playerColor) {
@@ -74,9 +79,7 @@ public class Terminal {
     }
 
     public static void setPlayerColor(ChessGame.TeamColor color) {
-        synchronized (teamColorLock) {
-            currentTeamColor = color;
-        }
+        currentTeamColor = color;
     }
 
     private static void render() {
@@ -90,17 +93,28 @@ public class Terminal {
         addSwitchLine(sb, 0);
 
         // Notifications
-        sb.append("Line1").append(i).append('\n');
-        sb.append("Line2").append(i++).append('\n');
+//        sb.append("Line1").append(i).append('\n');
+//        sb.append("Line2").append(i++).append('\n');
+        for (int i = 0; i < 2; i++) {
+            String notification = notifications.poll();
+            if (notification != null) {
+                sb.append(notification).append("\n");
+            } else {
+                sb.append("Incr: ").append(deleteI).append("\n");
+            }
+        }
+        deleteI++;
 
         // Game
         sb.append(BoardDraw.drawBoard(currentGameState, currentTeamColor));
+
+        addLogLines(sb);
 
         // Restore cursor position
         sb.append("\n\033[u");
 
         // Output in single call to terminal
-        System.out.print(sb.toString());
+        System.out.print(sb);
         System.out.flush();
     }
 
@@ -119,7 +133,7 @@ public class Terminal {
         addEraseLine(sb);
         addSwitchEraseLine(sb, 15);
         addSwitchEraseLine(sb, 14);
-        System.out.print(sb.toString());
+        System.out.print(sb);
         System.out.flush();
     }
 
@@ -148,5 +162,35 @@ public class Terminal {
 
     private static void addPrompt(StringBuilder sb) {
         sb.append(">>> ");
+    }
+
+    private static void addLogLines(StringBuilder sb) {
+        // Look for 5 messages at once
+        boolean any = false;
+        for (int i = 0; i < 5; i++) {
+            String logMessage = logMessages.poll();
+            if (logMessage != null) {
+                if (currentLogMessages.size() >= 10) {
+                    currentLogMessages.poll();
+                }
+                currentLogMessages.add(logMessage);
+                any = true;
+            }
+        }
+        if (any) {
+            displayLogMessages(sb);
+        }
+    }
+
+    private static void displayLogMessages(StringBuilder sb) {
+        // Cut off the oldest log messages if needed
+        int startLine = 16;
+        int endLine = 26;
+        addEraseLines(sb, startLine, endLine);
+        int lineInc = 0;
+        for (String logLine : currentLogMessages) {
+            addSwitchLine(sb, startLine + lineInc++);
+            sb.append(logLine);
+        }
     }
 }
