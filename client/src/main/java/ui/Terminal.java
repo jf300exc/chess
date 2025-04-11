@@ -2,11 +2,14 @@ package ui;
 
 import chess.ChessGame;
 
+import java.sql.Array;
 import java.util.concurrent.*;
 import java.util.*;
 
 public class Terminal {
     private static final ConcurrentLinkedQueue<String> notifications = new ConcurrentLinkedQueue<>();
+    private static final String[] currentNotificationMessages = new String[2];
+    private static final int[] currentNotificationCounters = {0, 0};
     private static final ConcurrentLinkedQueue<String> logMessages = new ConcurrentLinkedQueue<>();
     private static final Deque<String> currentLogMessages = new ArrayDeque<>(); // Only accessed by the render thread
     private static final int lastLogMessageIndex = 0;
@@ -18,6 +21,8 @@ public class Terminal {
     private static final Scanner scanner = new Scanner(System.in);
     private static volatile ChessGame currentGameState = null;
     private static volatile boolean running = false;
+    private static volatile boolean renderThread = false;
+    private static volatile boolean inputThread = false;
 
     public static void start(String teamColor) {
         setPlayerColor(teamColor);
@@ -41,21 +46,34 @@ public class Terminal {
     private static void startInterface() {
         // Rendering thread for the terminal
         new Thread(() -> {
+            renderThread = true;
             while (running) {
                 render();
                 try { Thread.sleep(300); } catch (InterruptedException ignored) {}
             }
+            renderThread = false;
         }, "Renderer").start();
         // Thread to get user input
         new Thread(() -> {
+            inputThread = true;
             while (running) {
                 getInput();
             }
+            inputThread = false;
         }, "Terminal-Input").start();
     }
 
     public static void stop() {
         running = false;
+
+        // Return cursor
+        StringBuilder sb = new StringBuilder();
+        returnCursor(sb);
+
+        while (renderThread || inputThread) {
+            Thread.onSpinWait();
+        }
+        System.out.println(sb);
     }
 
     public static void addNotification(String notification) {
@@ -95,17 +113,13 @@ public class Terminal {
         addSwitchLine(sb, 0);
 
         // Notifications
-//        sb.append("Line1").append(i).append('\n');
-//        sb.append("Line2").append(i++).append('\n');
         for (int i = 0; i < 2; i++) {
+//            sb.append("Line1").append(i).append('\n');
+//            sb.append("Line2").append(i++).append('\n');
             String notification = notifications.poll();
-            if (notification != null) {
-                sb.append(notification).append("\n");
-            } else {
-                sb.append("Incr: ").append(deleteI).append("\n");
-            }
+            prepareNotifications(notification);
         }
-        deleteI++;
+        addNotifications(sb);
 
         // Game
         sb.append(BoardDraw.drawBoard(currentGameState, currentTeamColor));
@@ -138,6 +152,11 @@ public class Terminal {
         addSwitchEraseLine(sb, 14);
         System.out.print(sb);
         System.out.flush();
+    }
+
+    private static void returnCursor(StringBuilder sb) {
+        addSwitchLine(sb, 26);
+        sb.append("\n");
     }
 
     private static void addSwitchLine(StringBuilder sb, int line) {
@@ -194,6 +213,47 @@ public class Terminal {
         for (String logLine : currentLogMessages) {
             addSwitchLine(sb, startLine + lineInc++);
             sb.append(logLine);
+        }
+    }
+
+    private static void addNotifications(StringBuilder sb) {
+        if (currentNotificationMessages[0] != null) {
+            sb.append(currentNotificationMessages[0]).append("\n");
+        } else {
+            sb.append("Incr: ").append(currentNotificationCounters[0]).append("\n");
+        }
+        if (currentNotificationMessages[1] != null) {
+            sb.append(currentNotificationMessages[1]).append("\n");
+        } else {
+            sb.append("Incr: ").append(currentNotificationCounters[1]).append("\n");
+        }
+        currentNotificationCounters[0]++;
+        currentNotificationCounters[1]++;
+    }
+
+    private static void prepareNotifications(String notificationMessage) {
+        if (notificationMessage != null) {
+            shiftNotifications(notificationMessage);
+        }
+        removeOldNotifications();
+    }
+
+    private static void shiftNotifications(String notification) {
+        if (currentNotificationMessages[1] != null) {
+            currentNotificationMessages[0] = currentNotificationMessages[1];
+            currentNotificationMessages[1] = notification;
+            currentNotificationCounters[1] = 0;
+        } else {
+            currentNotificationMessages[0] = notification;
+            currentNotificationCounters[0] = 0;
+        }
+    }
+
+    private static void removeOldNotifications() {
+        while (currentNotificationCounters[0] >= 25 && currentNotificationMessages[0] != null) {
+            currentNotificationMessages[0] = currentNotificationMessages[1];
+            currentNotificationCounters[0] = currentNotificationCounters[1];
+            currentNotificationMessages[1] = null;
         }
     }
 }

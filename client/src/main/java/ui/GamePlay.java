@@ -9,6 +9,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import websocket.commands.UserGameCommand;
 import websocket.messages.LoadGameMessage;
+import websocket.messages.NotificationMessage;
 
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +46,6 @@ public class GamePlay implements WebSocketListener {
     @Override
     public void onMessage(String message) {
 //        Terminal.addLogMessage("Received WebSocket message");
-        System.out.println("Received Websocket Message");
         JsonObject json;
         try {
             json = JsonParser.parseString(message).getAsJsonObject();
@@ -79,7 +79,10 @@ public class GamePlay implements WebSocketListener {
     }
 
     void processNotificationMessage(String message) {
-        throw new RuntimeException("Not implemented");
+        Terminal.addLogMessage("Processing Notification Message");
+        var notification = gson.fromJson(message, NotificationMessage.class);
+        Terminal.addLogMessage("  Message: " + notification.getNotificationMessage());
+        Terminal.addNotification(notification.getNotificationMessage());
     }
 
     public void playGame(UserGameCommand connectRequest, String playerColor) throws Exception {
@@ -88,6 +91,7 @@ public class GamePlay implements WebSocketListener {
         ws.sendString("Connection Request");
         ws.sendCommand(connectRequest);
         Terminal.start(playerColor);
+        runGamePlayUI();
         ws.closeClient();
         Terminal.addLogMessage("Stopping Terminal");
         Terminal.stop();
@@ -98,6 +102,7 @@ public class GamePlay implements WebSocketListener {
         ws.connectClient();
         ws.sendString("Connection Request");
         ws.sendCommand(connectRequest);
+        Terminal.start("WHITE");
         runGamePlayUI();
         ws.closeClient();
         Terminal.addLogMessage("Stopping Terminal");
