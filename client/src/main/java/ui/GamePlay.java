@@ -28,7 +28,7 @@ public class GamePlay implements WebSocketListener {
                     new CastleRequirementsAdapter())
             .create();
 
-    private final ConcurrentLinkedQueue<String> userInputQueue = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<String> userInputQueue = new ConcurrentLinkedQueue<>();
 
     private WebSocketClient ws;
     private UserType userType;
@@ -44,16 +44,19 @@ public class GamePlay implements WebSocketListener {
 
     @Override
     public void onMessage(String message) {
-        System.out.println("\n\nReceived Websocket Message");
+//        Terminal.addLogMessage("Received WebSocket message");
+        System.out.println("Received Websocket Message");
         JsonObject json;
         try {
             json = JsonParser.parseString(message).getAsJsonObject();
         } catch (Exception e) {
-            System.out.println("Received String: " + message);
+            Terminal.addLogMessage("Received String: " + message);
+//            System.out.println("Received String: " + message);
             return;
         }
         String messageType = json.get("serverMessageType").getAsString();
-        System.out.println("Received Message: " + messageType);
+        Terminal.addLogMessage("Received Message: " + messageType);
+//        System.out.println("Received Message: " + messageType);
         switch (messageType) {
             case "LOAD_GAME" -> processLoadGameMessage(message);
             case "ERROR" -> processErrorMessage(message);
@@ -62,13 +65,13 @@ public class GamePlay implements WebSocketListener {
     }
 
     void processLoadGameMessage(String message) {
-        System.out.println("\n\n\n");
         LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
-        if (userType == UserType.PLAYER) {
-            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.BLACK));
-        } else {
-            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.WHITE));
-        }
+        Terminal.setChessGame(loadGameMessage.getGameData().game());
+//        if (userType == UserType.PLAYER) {
+//            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.BLACK));
+//        } else {
+//            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.WHITE));
+//        }
     }
 
     void processErrorMessage(String message) {
@@ -84,9 +87,10 @@ public class GamePlay implements WebSocketListener {
         ws.connectClient();
         ws.sendString("Connection Request");
         ws.sendCommand(connectRequest);
-//        runGamePlayUI();
         Terminal.start(playerColor);
         ws.closeClient();
+        Terminal.addLogMessage("Stopping Terminal");
+        Terminal.stop();
     }
 
     public void observeGame(UserGameCommand connectRequest) throws Exception {
@@ -96,6 +100,8 @@ public class GamePlay implements WebSocketListener {
         ws.sendCommand(connectRequest);
         runGamePlayUI();
         ws.closeClient();
+        Terminal.addLogMessage("Stopping Terminal");
+        Terminal.stop();
     }
 
     private String userTypePromptString() {
@@ -105,17 +111,16 @@ public class GamePlay implements WebSocketListener {
         return "[OBSERVING]";
     }
 
-    private String getUserInput(String prompt) {
-        System.out.print(Objects.requireNonNullElseGet(prompt, () -> userTypePromptString() + " >>> "));
-        return scanner.nextLine().trim();
+    public static void addUserInput(String input) {
+        userInputQueue.add(input);
     }
 
     private void runGamePlayUI() throws Exception {
         for (;;) {
-            Thread.sleep(200);
-
-            String userInput = getUserInput(null);
-            if (!matchGamePlayCommand(userInput)) {
+            String userInput = userInputQueue.poll();
+            if (userInput == null) {
+                try { Thread.sleep(200); } catch (InterruptedException ignored) { }
+            } else if (!matchGamePlayCommand(userInput)) {
                 break;
             }
         }
@@ -141,7 +146,8 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void matchArbitraryCommand(String command) {
-        System.out.println("Unknown command.");
+        Terminal.addLogMessage("Unknown command: " + command);
+//        System.out.println("Unknown command.");
     }
 
     private static void displayGamePlayHelp() {
@@ -153,7 +159,11 @@ public class GamePlay implements WebSocketListener {
                     Make Move               Make a move. (Ex. a2a4)
                     Resign                  Forfeit the game.
                     Highlight Legal Moves   Highlights available moves.""";
-        System.out.println(helpMessage);
+        String[] messages = helpMessage.split("\n");
+        for (String message : messages) {
+            Terminal.addLogMessage(message);
+        }
+//        System.out.println(helpMessage);
     }
 
     private void redrawBoard() {

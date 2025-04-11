@@ -25,9 +25,11 @@ public class Terminal {
     }
 
     public static void waitForGameData() {
-        System.out.print("Waiting for game data...");
+        int waitTime = 0;
+        System.out.println("Waiting for game data...");
         while(currentGameState == null) {
             try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+            if (++waitTime > 100) { return; }
         }
         System.out.print(EscapeSequences.ERASE_SCROLL_BACK);
         System.out.print(EscapeSequences.ERASE_SCREEN);
@@ -41,7 +43,7 @@ public class Terminal {
         new Thread(() -> {
             while (running) {
                 render();
-                try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
             }
         }, "Renderer").start();
         // Thread to get user input
@@ -125,6 +127,7 @@ public class Terminal {
         System.out.print(sb.toString());
         String input = scanner.nextLine().trim();
         System.out.print("Got input: " + input);
+        GamePlay.addUserInput(input);
         try { Thread.sleep(500); } catch (InterruptedException ignored) {}
 
         // TODO: Handle input
@@ -167,7 +170,7 @@ public class Terminal {
     private static void addLogLines(StringBuilder sb) {
         // Look for 5 messages at once
         boolean any = false;
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             String logMessage = logMessages.poll();
             if (logMessage != null) {
                 if (currentLogMessages.size() >= 10) {

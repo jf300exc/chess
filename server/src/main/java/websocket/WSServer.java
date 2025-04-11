@@ -45,6 +45,7 @@ public class WSServer {
 
     private static final Map<Integer, Set<Session>> connectedGamePlayers = new ConcurrentHashMap<>();
     private static final Map<Integer, Set<Session>> connectedGameObservers = new ConcurrentHashMap<>();
+    private static final Map<Session, Set<Integer>> gameIDBySession = new ConcurrentHashMap<>();
 
     @OnWebSocketConnect
     public void onConnect(Session session) {
@@ -90,6 +91,10 @@ public class WSServer {
     @OnWebSocketClose
     public void onClose(Session session, int statusCode, String reason) {
         System.out.println("Websocket Closed: " + reason);
+        for (int gameID : gameIDBySession.get(session)) {
+            connectedGamePlayers.get(gameID).remove(session);
+            connectedGameObservers.get(gameID).remove(session);
+        }
     }
 
     public void sendMessage(Session session, String message) throws IOException {
@@ -98,43 +103,60 @@ public class WSServer {
     }
 
     private void processConnectCommand(Session session, UserGameCommand command) throws IOException {
+        System.out.println("Received ConnectCommand");
         int gameID = command.getGameID();
         String gameIDStr = Integer.toString(gameID);
+        System.out.println("Retrieving game data for gameID: " + gameIDStr);
         GameData gameData = gameDAO.findGameDataByID(gameIDStr);
+        System.out.println("Preparing Load Game message");
         LoadGameMessage message = new LoadGameMessage(ServerMessageType.LOAD_GAME, gameData);
+        System.out.println("Sending Load Game message");
         sendMessage(session, convertToJson(message));
 
         if (!connectedGamePlayers.containsKey(gameID)) {
+            System.out.println("Initializing Player Set for gameID: " + gameID);
             connectedGamePlayers.put(gameID, Collections.synchronizedSet(new HashSet<>()));
         }
         if (!connectedGameObservers.containsKey(gameID)) {
+            System.out.println("Initializing Observer Set for gameID: " + gameID);
             connectedGameObservers.put(gameID, Collections.synchronizedSet(new HashSet<>()));
+        }
+        if (!gameIDBySession.containsKey(session)) {
+            System.out.println("Initializing gameID Set for session");
+            gameIDBySession.put(session, Collections.synchronizedSet(new HashSet<>()));
         }
 
         String notificationMessage;
+        System.out.println("Retrieving AuthData of session");
         AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
         boolean isObserving;
         if (authData != null && (Objects.equals(authData.username(), gameData.blackUsername()) ||
                     Objects.equals(authData.username(), gameData.whiteUsername()))) {
+            System.out.println("Found Username as Game Player: Preparing player joined notification");
             notificationMessage = authData.username() + " has joined the game";
             isObserving = false;
         } else {
             assert authData != null;
+            System.out.println("Did not find username as Game Player: Preparing observer joined notification");
             notificationMessage = authData.username() + " is observing this game";
             isObserving = true;
         }
 
         var notification = new NotificationMessage(ServerMessageType.NOTIFICATION, notificationMessage);
+        System.out.println("Sending Notifications to players if any");
         for (Session playerSession : connectedGamePlayers.get(gameID)) {
             sendMessage(playerSession, gson.toJson(notification));
         }
+        System.out.println("Sending Notifications to observers if any");
         for (Session observerSession : connectedGameObservers.get(gameID)) {
             sendMessage(observerSession, gson.toJson(notification));
         }
 
         if (isObserving) {
+            System.out.println("Adding Observer to gameID: " + gameID);
             connectedGameObservers.get(gameID).add(session);
         } else {
+            System.out.println("Adding Player to gameID: " + gameID);
             connectedGamePlayers.get(gameID).add(session);
         }
     }
