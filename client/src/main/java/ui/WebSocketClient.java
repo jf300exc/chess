@@ -66,8 +66,13 @@ public class WebSocketClient extends Endpoint {
     }
 
     public void closeClient() throws IOException {
-        if (isSessionOpen()) {
-            session.close();
+        try {
+            if (isSessionOpen()) {
+                session.close();
+            }
+        } catch (IOException e) {
+            System.out.println("Error closing WebSocket");
+            Terminal.stop();
         }
     }
 

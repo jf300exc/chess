@@ -15,8 +15,8 @@ public class Main {
             System.out.println("♕ Welcome to 240 Chess Client. Type Help to get started. ♕");
             commandLine.run();
         } catch (Exception e) {
-            System.err.println("Failed to initialize WebSocket");
-            System.err.println(e.getMessage());
+            System.err.println("WebSocket Client Side Error: " + e.getMessage());
+            Terminal.stop();
         }
     }
 }

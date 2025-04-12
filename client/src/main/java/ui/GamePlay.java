@@ -7,16 +7,14 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
-import websocket.commands.UserGameCommand;
+import websocket.commands.*;
+import websocket.commands.UserGameCommand.*;
 import websocket.messages.LoadGameMessage;
 import websocket.messages.NotificationMessage;
 
 import java.util.Map;
-import java.util.Scanner;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class GamePlay implements WebSocketListener {
-    private final Scanner scanner = new Scanner(System.in);
     private final Gson gson = new GsonBuilder()
             .registerTypeAdapter(ChessGame.class, new ChessGameAdapter())
             .registerTypeAdapter(ChessBoard.class, new ChessBoardAdapter())
@@ -27,10 +25,10 @@ public class GamePlay implements WebSocketListener {
                     new CastleRequirementsAdapter())
             .create();
 
-    private static final ConcurrentLinkedQueue<String> userInputQueue = new ConcurrentLinkedQueue<>();
-
     private WebSocketClient ws;
     private UserType userType;
+    private String userAuthToken;
+    private int currentGameID;
 
     enum UserType {
         PLAYER,
@@ -43,20 +41,16 @@ public class GamePlay implements WebSocketListener {
 
     @Override
     public void onMessage(String message) {
-        System.out.println("Received Message");
         Terminal.addLogMessage("Received WebSocket message");
-//        System.out.println(message);
         JsonObject json;
         try {
             json = JsonParser.parseString(message).getAsJsonObject();
         } catch (Exception e) {
             Terminal.addLogMessage("Received String: " + message);
-            System.out.println("Received String: " + message);
             return;
         }
         String messageType = json.get("serverMessageType").getAsString();
         Terminal.addLogMessage("Received Message: " + messageType);
-        System.out.println("Received Message: " + messageType);
         switch (messageType) {
             case "LOAD_GAME" -> processLoadGameMessage(message);
             case "ERROR" -> processErrorMessage(message);
@@ -66,19 +60,9 @@ public class GamePlay implements WebSocketListener {
     }
 
     void processLoadGameMessage(String message) {
-        System.out.println("  Loading Game");
         LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
-        System.out.println("  Got LoadGameMessage");
         ChessGame game = loadGameMessage.getGame().game();
-        if (game == null) {
-            System.out.println("  Got Null Game");
-        }
         Terminal.setChessGame(game);
-//        if (userType == UserType.PLAYER) {
-//            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.BLACK));
-//        } else {
-//            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.WHITE));
-//        }
     }
 
     void processErrorMessage(String message) {
@@ -94,10 +78,11 @@ public class GamePlay implements WebSocketListener {
 
     public void playGame(UserGameCommand connectRequest, String playerColor) throws Exception {
         this.userType = UserType.PLAYER;
+        this.userAuthToken = connectRequest.getAuthToken();
+        this.currentGameID = connectRequest.getGameID();
         ws.connectClient();
-        ws.sendString("Connection Request");
-        ws.sendCommand(connectRequest);
         Terminal.start(playerColor);
+        ws.sendCommand(connectRequest);
         runGamePlayUI();
         ws.closeClient();
         Terminal.addLogMessage("Stopping Terminal");
@@ -108,8 +93,8 @@ public class GamePlay implements WebSocketListener {
         this.userType = UserType.OBSERVER;
         ws.connectClient();
         ws.sendString("Connection Request");
-        ws.sendCommand(connectRequest);
         Terminal.start("WHITE");
+        ws.sendCommand(connectRequest);
         runGamePlayUI();
         ws.closeClient();
         Terminal.addLogMessage("Stopping Terminal");
@@ -123,12 +108,8 @@ public class GamePlay implements WebSocketListener {
         return "[OBSERVING]";
     }
 
-    public static void addUserInput(String input) {
-        userInputQueue.add(input);
-    }
-
     private void runGamePlayUI() throws Exception {
-        while (!Terminal.isReadyForInput()) {
+        while (Terminal.notReadyForInput()) {
             Thread.onSpinWait();
         }
         for (;;) {
@@ -160,7 +141,6 @@ public class GamePlay implements WebSocketListener {
 
     private void matchArbitraryCommand(String command) {
         Terminal.addLogMessage("Unknown command: " + command);
-//        System.out.println("Unknown command.");
     }
 
     private static void displayGamePlayHelp() {
@@ -179,20 +159,25 @@ public class GamePlay implements WebSocketListener {
 //        System.out.println(helpMessage);
     }
 
-    private void redrawBoard() {
-        throw new RuntimeException("Not implemented");
+    private void redrawBoard() throws Exception {
+        Terminal.refresh();
+        while (Terminal.notReadyForInput()) {
+            Thread.onSpinWait();
+        }
     }
 
-    private void leaveGame() {
-//        throw new RuntimeException("Not implemented");
+    private void leaveGame() throws Exception {
+        var leaveCommand = new UserGameCommand(CommandType.LEAVE, userAuthToken, currentGameID);
+        ws.sendCommand(leaveCommand);
     }
 
     private void gamePlayMakeMove() {
         throw new RuntimeException("Not implemented");
     }
 
-    private void resignGame() {
-        throw new RuntimeException("Not implemented");
+    private void resignGame() throws Exception {
+        var resignCommand = new UserGameCommand(CommandType.RESIGN, userAuthToken, currentGameID);
+        ws.sendCommand(resignCommand);
     }
 
     private void highlightMoves() {

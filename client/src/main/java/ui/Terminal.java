@@ -51,19 +51,40 @@ public class Terminal {
 
     public static void start(String teamColor) {
         setPlayerColor(teamColor);
+        logMessages.clear();
         currentLogMessages.clear();
         notifications.clear();
         currentNotificationMessages[0] = null;
         currentNotificationCounters[0] = 0;
         currentNotificationMessages[1] = null;
         currentNotificationCounters[1] = 0;
+        synchronized (gameStateLock) {
+            currentGameState = null;
+        }
         new Thread(Terminal::waitForGameData, "Pre-Game Thread").start();
     }
 
-    public static void waitForGameData() {
+    public static void refresh() {
+        running = false;
+        readyForInput = false;
+        while (renderThread) {
+            Thread.onSpinWait();
+        }
+        ChessGame game;
+        synchronized (gameStateLock) {
+            game = currentGameState;
+            currentGameState = null;
+        }
+        new Thread(Terminal::waitForGameData, "Pre-Game Thread").start();
+        try {Thread.sleep(500); } catch (InterruptedException ignored) { }
+        setChessGame(game);
+    }
+
+    private static void waitForGameData() {
         int waitTime = 0;
         System.out.print("Waiting for game data... ");
         while(currentGameState == null) {
+//            Thread.onSpinWait();
             try { Thread.sleep(TIMEOUT_CHECK_DELAY_MS); } catch (InterruptedException ignored) {}
             if (++waitTime > TIMEOUT_COUNTER_LIMIT) {
                 System.out.println("Timed out waiting for game data");
@@ -90,7 +111,7 @@ public class Terminal {
             renderThread = false;
         }, "Renderer").start();
 
-        readyForInput = true;
+        readyForInput = true; // Don't prompt the user until starting the interface
     }
 
     public static void stop() {
@@ -104,7 +125,7 @@ public class Terminal {
         while (renderThread) {
             Thread.onSpinWait();
         }
-        System.out.println(sb);
+        System.out.print(sb);
     }
 
     public static void addNotification(String notification) {
@@ -157,8 +178,8 @@ public class Terminal {
         System.out.flush();
     }
 
-    public static boolean isReadyForInput() {
-        return readyForInput;
+    public static boolean notReadyForInput() {
+        return !readyForInput;
     }
 
     public static String getInput() {
@@ -174,7 +195,6 @@ public class Terminal {
 
     private static void returnCursor(StringBuilder sb) {
         addSwitchLine(sb, RETURN_TERMINAL_LINE);
-        sb.append("\n");
     }
 
     private static void addSwitchLine(StringBuilder sb, int line) {
