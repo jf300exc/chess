@@ -162,15 +162,14 @@ public class WSServer {
 
         String notificationMessage;
         boolean isObserving;
-        if (Objects.equals(authData.username(), gameData.blackUsername()) ||
-                    Objects.equals(authData.username(), gameData.whiteUsername())) {
-            System.out.println("Found Username as Game Player: Preparing player joined notification");
-            notificationMessage = authData.username() + " has joined the game";
-            isObserving = false;
-        } else {
+        if (getPlayerColorFromUsername(gameData, authData.username()) == null) {
             System.out.println("Did not find username as Game Player: Preparing observer joined notification");
             notificationMessage = authData.username() + " is observing this game";
             isObserving = true;
+        } else {
+            System.out.println("Found Username as Game Player: Preparing player joined notification");
+            notificationMessage = authData.username() + " has joined the game";
+            isObserving = false;
         }
 
         var notification = new NotificationMessage(ServerMessageType.NOTIFICATION, notificationMessage);
@@ -210,6 +209,9 @@ public class WSServer {
         } else if ((playerColor = getPlayerColorFromUsername(gameData, authData.username())) == null) {
             System.out.println("Move attempted with observer");
             errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Can't make a move as an observer");
+        } else if (gameData.game().isGameOver()) {
+            System.out.println("Move attempted when game over");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Game is over.");
         } else if (gameData.game().getTeamTurn() != playerColor) {
             System.out.println("Move attempted with wrong player");
             errorMessage = new ErrorMessage(ServerMessageType.ERROR, "It's not your turn");
@@ -270,11 +272,46 @@ public class WSServer {
     }
 
     private void processLeaveCommand(Session session, UserGameCommand command) throws IOException {
+
         throw new RuntimeException("Not implemented yet");
     }
 
     private void processResignCommand(Session session, UserGameCommand command) throws IOException {
-        throw new RuntimeException("Not implemented yet");
+        ErrorMessage errorMessage = null;
+        int gameID = command.getGameID();
+        GameData gameData = gameDAO.findGameDataByID(Integer.toString(gameID));
+        AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
+        if (authData == null) {
+            System.out.println("Resignation attempted with invalid authToken");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Invalid authToken");
+        } else if (gameData == null) {
+            System.out.println("Resignation attempted with invalid gameID");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Invalid game ID: " + gameID);
+        } else if (gameData.game().isGameOver()) {
+            System.out.println("Resignation attempted when game over");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Game is already over");
+        } else if (getPlayerColorFromUsername(gameData, authData.username()) == null) {
+            System.out.println("Resignation attempted with observer");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Can't resign as an observer. Try to leave instead.");
+        } else if (!gameData.game().isGameOver()) {
+            gameDAO.removeGameDataByGameID(gameData);
+            gameData.game().setGameOver(true);
+            gameDAO.addGameData(gameData);
+        }
+        // Send error
+        if (errorMessage != null) {
+            sendMessage(session, gson.toJson(errorMessage));
+            return;
+        }
+        // Continue with notifications
+        System.out.println("Resignation of user: " + authData.username());
+        var notificationMessage = new NotificationMessage(ServerMessageType.NOTIFICATION, authData.username() + " has resigned");
+        for (Session playerSession : connectedGamePlayers.get(gameID)) {
+            sendMessage(playerSession, gson.toJson(notificationMessage));
+        }
+        for (Session observerSession : connectedGameObservers.get(gameID)) {
+            sendMessage(observerSession, gson.toJson(notificationMessage));
+        }
     }
 
     private boolean validateAuthData(String authToken) {

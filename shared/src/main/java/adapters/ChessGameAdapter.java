@@ -14,6 +14,8 @@ public class ChessGameAdapter implements JsonSerializer<ChessGame>, JsonDeserial
         jsonObject.add("gameBoard", jsonSerializationContext.serialize(chessGame.getBoard()));
 
         jsonObject.add("teamTurn", jsonSerializationContext.serialize(chessGame.getTeamTurn()));
+
+        jsonObject.add("gameOver", jsonSerializationContext.serialize(chessGame.isGameOver()));
         return jsonObject;
     }
 
@@ -26,9 +28,12 @@ public class ChessGameAdapter implements JsonSerializer<ChessGame>, JsonDeserial
 
         ChessGame.TeamColor teamTurn = jsonDeserializationContext.deserialize(jsonObject.get("teamTurn"), ChessGame.TeamColor.class);
 
+        boolean gameOver = jsonDeserializationContext.deserialize(jsonObject.get("gameOver"), Boolean.class);
+
         ChessGame chessGame = new ChessGame();
         chessGame.setBoard(gameBoard);
         chessGame.setTeamTurn(teamTurn);
+        chessGame.setGameOver(gameOver);
 
         return chessGame;
     }

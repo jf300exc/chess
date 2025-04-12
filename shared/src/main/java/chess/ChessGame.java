@@ -13,6 +13,7 @@ import chess.ChessPiece.PieceType;
 public class ChessGame {
     private ChessBoard gameBoard = new ChessBoard();
     private TeamColor teamTurn = TeamColor.WHITE;
+    private boolean gameOver = false;
 
     public ChessGame() {
         gameBoard.resetBoard();
@@ -43,6 +44,14 @@ public class ChessGame {
         } else {
             teamTurn = TeamColor.WHITE;
         }
+    }
+
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
+    public void setGameOver(boolean gameOver) {
+        this.gameOver = gameOver;
     }
 
     /**
@@ -156,6 +165,9 @@ public class ChessGame {
      * @throws InvalidMoveException if move is invalid
      */
     public void makeMove(ChessMove move) throws InvalidMoveException {
+        if (gameOver) {
+            throw new InvalidMoveException("Game over");
+        }
         ChessPosition startPosition = move.getStartPosition();
         ChessPiece movingPiece = gameBoard.getPiece(startPosition);
         if (movingPiece == null) {
