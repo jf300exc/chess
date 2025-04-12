@@ -31,11 +31,17 @@ public class Terminal {
 
     public static void waitForGameData() {
         int waitTime = 0;
-        System.out.println("Waiting for game data...");
+        System.out.print("Waiting for game data... ");
         while(currentGameState == null) {
             try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-            if (++waitTime > 100) { return; }
+            if (++waitTime > 100) {
+                System.out.println("Timed out waiting for game data");
+                return;
+            } else if (waitTime % 5 == 0) {
+                System.out.print(". ");
+            }
         }
+        System.out.println("Received game data");
         System.out.print(EscapeSequences.ERASE_SCROLL_BACK);
         System.out.print(EscapeSequences.ERASE_SCREEN);
         System.out.println(currentTeamColor);
@@ -85,9 +91,12 @@ public class Terminal {
     }
 
     public static void setChessGame(ChessGame chessGame) {
+        System.out.println("Setting chess game");
+        System.out.println(chessGame);
         synchronized (boardLock) {
             currentGameState = chessGame;
         }
+        System.out.println("Set Game");
     }
 
     public static void setPlayerColor(String playerColor) {

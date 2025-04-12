@@ -55,6 +55,7 @@ public class WebSocketClient extends Endpoint {
         this.session = container.connectToServer(this, uri);
         this.session.addMessageHandler(new MessageHandler.Whole<String>() {
             public void onMessage(String message) {
+//                System.out.println("Message Received: message");
                 listener.onMessage(message);
             }
         });

@@ -43,28 +43,37 @@ public class GamePlay implements WebSocketListener {
 
     @Override
     public void onMessage(String message) {
-//        Terminal.addLogMessage("Received WebSocket message");
+        System.out.println("Received Message");
+        Terminal.addLogMessage("Received WebSocket message");
+//        System.out.println(message);
         JsonObject json;
         try {
             json = JsonParser.parseString(message).getAsJsonObject();
         } catch (Exception e) {
             Terminal.addLogMessage("Received String: " + message);
-//            System.out.println("Received String: " + message);
+            System.out.println("Received String: " + message);
             return;
         }
         String messageType = json.get("serverMessageType").getAsString();
         Terminal.addLogMessage("Received Message: " + messageType);
-//        System.out.println("Received Message: " + messageType);
+        System.out.println("Received Message: " + messageType);
         switch (messageType) {
             case "LOAD_GAME" -> processLoadGameMessage(message);
             case "ERROR" -> processErrorMessage(message);
             case "NOTIFICATION" -> processNotificationMessage(message);
+            default -> Terminal.addLogMessage("Received Message: " + message);
         }
     }
 
     void processLoadGameMessage(String message) {
+        System.out.println("  Loading Game");
         LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
-        Terminal.setChessGame(loadGameMessage.getGame().game());
+        System.out.println("  Got LoadGameMessage");
+        ChessGame game = loadGameMessage.getGame().game();
+        if (game == null) {
+            System.out.println("  Got Null Game");
+        }
+        Terminal.setChessGame(game);
 //        if (userType == UserType.PLAYER) {
 //            System.out.println(BoardDraw.drawBoard(loadGameMessage.getGameData().game(), ChessGame.TeamColor.BLACK));
 //        } else {
