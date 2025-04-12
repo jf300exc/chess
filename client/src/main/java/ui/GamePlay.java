@@ -9,6 +9,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import websocket.commands.*;
 import websocket.commands.UserGameCommand.*;
+import websocket.messages.ErrorMessage;
 import websocket.messages.LoadGameMessage;
 import websocket.messages.NotificationMessage;
 
@@ -66,13 +67,12 @@ public class GamePlay implements WebSocketListener {
     }
 
     void processErrorMessage(String message) {
-        throw new RuntimeException("Not implemented");
+        ErrorMessage errorMessage = gson.fromJson(message, ErrorMessage.class);
+        Terminal.addNotification("Error: " + errorMessage.getErrorMessage());
     }
 
     void processNotificationMessage(String message) {
-        Terminal.addLogMessage("Processing Notification Message");
         var notification = gson.fromJson(message, NotificationMessage.class);
-        Terminal.addLogMessage("  Message: " + notification.getMessage());
         Terminal.addNotification(notification.getMessage());
     }
 

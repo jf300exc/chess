@@ -7,13 +7,18 @@ import java.util.*;
 
 public class Terminal {
     private static final int FIRST_LINE_NUM = 1;
+
+    // Number of lines for each part of display
     private static final int NOTIFICATION_NUM_LINES = 2;
     private static final int GAME_NUM_LINES = 10;
     private static final int LOG_NUM_LINES = 10;
+
+    // Line Spacing
     private static final int LOG_GAME_SPACING_LINES = 1;
     private static final int INPUT_LOG_SPACING_LINES = 1;
     private static final int INPUT_RETURN_TERMINAL_SPACING_LINES = 0;
 
+    // Line number settings
     private static final int NOTIFICATION_START_LINE = FIRST_LINE_NUM;
     private static final int NOTIFICATION_END_LINE = NOTIFICATION_START_LINE + NOTIFICATION_NUM_LINES - 1;
     private static final int GAME_START_LINE = NOTIFICATION_END_LINE + 1;
@@ -23,27 +28,36 @@ public class Terminal {
     private static final int USER_INPUT_LINE = LOG_END_LINE + 1 + INPUT_LOG_SPACING_LINES;
     private static final int RETURN_TERMINAL_LINE = USER_INPUT_LINE + 1 + INPUT_RETURN_TERMINAL_SPACING_LINES;
 
+    // TIMEOUT settings for connecting to a game
     private static final int TIMEOUT_CHECK_DELAY_MS = 200;
     private static final int TIMEOUT_LIMIT_SECONDS = 5;
     private static final int TIMEOUT_COUNTER_LIMIT = (int) (TIMEOUT_LIMIT_SECONDS / ((float) TIMEOUT_CHECK_DELAY_MS / 1000));
     private static final int TIMEOUT_UPDATE_STATUS_MS = 1000;
     private static final int TIMEOUT_UPDATE_STATUS_INTERVAL = TIMEOUT_UPDATE_STATUS_MS / TIMEOUT_CHECK_DELAY_MS;
 
+    // How long to wait before checking for updates
     private static final int RENDER_DELAY_MS = 300;
 
+    // Notifications / Errors
+    private static final int NOTIFICATION_DISPLAY_TIME_SECONDS = 10;
+    private static final int NOTIFICATION_DISPLAY_TIME_INTERVAL = (int) (NOTIFICATION_DISPLAY_TIME_SECONDS / ((float) RENDER_DELAY_MS / 1000));
     private static final ConcurrentLinkedQueue<String> notifications = new ConcurrentLinkedQueue<>();
     private static final String[] currentNotificationMessages = new String[2];
     private static final int[] currentNotificationCounters = {0, 0};
+    private static volatile boolean updateNotificationMessages = false;
 
+    // Log Messages
     private static final ConcurrentLinkedQueue<String> logMessages = new ConcurrentLinkedQueue<>();
     private static final Deque<String> currentLogMessages = new ArrayDeque<>(); // Only accessed by the render thread
+    private static volatile boolean updateLogMessages = false;
 
+    // Game State for Drawing
     private static ChessGame.TeamColor currentTeamColor = null;
     private static volatile ChessGame currentGameState = null;
     private static volatile boolean gameChangedFlag = false;
-
     private static final Object gameStateLock = new Object();
 
+    // IO
     private static final Scanner scanner = new Scanner(System.in);
     private static volatile boolean running = false;
     private static volatile boolean renderThread = false;
@@ -84,14 +98,14 @@ public class Terminal {
         int waitTime = 0;
         System.out.print("Waiting for game data... ");
         while(currentGameState == null) {
-//            Thread.onSpinWait();
-            try { Thread.sleep(TIMEOUT_CHECK_DELAY_MS); } catch (InterruptedException ignored) {}
-            if (++waitTime > TIMEOUT_COUNTER_LIMIT) {
-                System.out.println("Timed out waiting for game data");
-                return;
-            } else if (waitTime % TIMEOUT_UPDATE_STATUS_INTERVAL == 0) {
-                System.out.print(". ");
-            }
+            Thread.onSpinWait();
+//            try { Thread.sleep(TIMEOUT_CHECK_DELAY_MS); } catch (InterruptedException ignored) {}
+//            if (++waitTime > TIMEOUT_COUNTER_LIMIT) {
+//                System.out.println("Timed out waiting for game data");
+//                return;
+//            } else if (waitTime % TIMEOUT_UPDATE_STATUS_INTERVAL == 0) {
+//                System.out.print(". ");
+//            }
         }
         System.out.println("Received game data");
         System.out.print(EscapeSequences.ERASE_SCROLL_BACK);
@@ -105,7 +119,7 @@ public class Terminal {
         new Thread(() -> {
             renderThread = true;
             while (running) {
-                render();
+                    render();
                 try { Thread.sleep(RENDER_DELAY_MS); } catch (InterruptedException ignored) {}
             }
             renderThread = false;
@@ -130,10 +144,12 @@ public class Terminal {
 
     public static void addNotification(String notification) {
         notifications.add(notification);
+        updateNotificationMessages = true;
     }
 
     public static void addLogMessage(String message) {
         logMessages.add(message);
+        updateLogMessages = true;
     }
 
     public static void setChessGame(ChessGame chessGame) {
@@ -156,26 +172,40 @@ public class Terminal {
     }
 
     private static void render() {
+        boolean any = false;
         StringBuilder sb = new StringBuilder();
-
         // Save cursor position
         sb.append(EscapeSequences.SAVE_CURSOR_POSITION);
 
         // Notifications
-        renderNotifications(sb);
+        tickNotificationMessageCounts();
+        if (updateNotificationMessages) {
+            updateNotificationMessages = false;
+            any = true;
+            renderNotifications(sb);
+        }
 
         // Game
-        renderChessGame(sb);
+        if (gameChangedFlag) {
+            gameChangedFlag = false;
+            any = true;
+            renderChessGame(sb);
+        }
 
         // Log Messages
-        renderLog(sb);
+        if (updateLogMessages) {
+            updateLogMessages = false;
+            any = true;
+            renderLog(sb);
+        }
 
         // Restore cursor position
-        sb.append("\n" + EscapeSequences.RETURN_TO_SAVED_CURSOR_POSITION);
-
-        // Output in single call to terminal
-        System.out.print(sb);
-        System.out.flush();
+        if (any) {
+//            sb.append("\n" + EscapeSequences.RETURN_TO_SAVED_CURSOR_POSITION);
+            sb.append(EscapeSequences.RETURN_TO_SAVED_CURSOR_POSITION);
+            System.out.print(sb); // Output in single call to terminal
+            System.out.flush();
+        }
     }
 
     public static boolean notReadyForInput() {
@@ -265,23 +295,16 @@ public class Terminal {
 
         if (currentNotificationMessages[0] != null) {
             sb.append(currentNotificationMessages[0]).append("\n");
-        } else {
-            sb.append("Incr: ").append(currentNotificationCounters[0]).append("\n");
+            if (currentNotificationMessages[1] != null) {
+                sb.append(currentNotificationMessages[1]);
+            }
         }
-        if (currentNotificationMessages[1] != null) {
-            sb.append(currentNotificationMessages[1]).append("\n");
-        } else {
-            sb.append("Incr: ").append(currentNotificationCounters[1]).append("\n");
-        }
-        currentNotificationCounters[0]++;
-        currentNotificationCounters[1]++;
     }
 
     private static void prepareNotifications(String notificationMessage) {
         if (notificationMessage != null) {
             shiftNotifications(notificationMessage);
         }
-        removeOldNotifications();
     }
 
     private static void shiftNotifications(String notification) {
@@ -295,11 +318,22 @@ public class Terminal {
         }
     }
 
+    private static void tickNotificationMessageCounts() {
+        if (currentNotificationMessages[0] != null) {
+            currentNotificationCounters[0]++;
+        }
+        if (currentNotificationMessages[1] != null) {
+            currentNotificationCounters[1]++;
+        }
+        removeOldNotifications();
+    }
+
     private static void removeOldNotifications() {
-        while (currentNotificationCounters[0] >= 25 && currentNotificationMessages[0] != null) {
+        while (currentNotificationCounters[0] >= NOTIFICATION_DISPLAY_TIME_INTERVAL && currentNotificationMessages[0] != null) {
             currentNotificationMessages[0] = currentNotificationMessages[1];
             currentNotificationCounters[0] = currentNotificationCounters[1];
             currentNotificationMessages[1] = null;
+            updateNotificationMessages = true;
         }
     }
 
