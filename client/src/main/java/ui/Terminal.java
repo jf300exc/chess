@@ -119,7 +119,7 @@ public class Terminal {
         new Thread(() -> {
             renderThread = true;
             while (running) {
-                    render();
+                render();
                 try { Thread.sleep(RENDER_DELAY_MS); } catch (InterruptedException ignored) {}
             }
             renderThread = false;
@@ -178,7 +178,6 @@ public class Terminal {
         sb.append(EscapeSequences.SAVE_CURSOR_POSITION);
 
         // Notifications
-        tickNotificationMessageCounts();
         if (updateNotificationMessages) {
             updateNotificationMessages = false;
             any = true;
@@ -199,6 +198,9 @@ public class Terminal {
             renderLog(sb);
         }
 
+        // Tick notifications
+        tickNotificationMessageCounts();
+
         // Restore cursor position
         if (any) {
 //            sb.append("\n" + EscapeSequences.RETURN_TO_SAVED_CURSOR_POSITION);
@@ -212,11 +214,12 @@ public class Terminal {
         return !readyForInput;
     }
 
-    public static String getInput() {
+    public static String getInput(String prompt) {
         StringBuilder sb = new StringBuilder();
         addSwitchToInputLine(sb);
         addEraseCurrentLine(sb);
-        addPrompt(sb);
+        sb.append(prompt);
+//        addPrompt(sb);
         System.out.print(sb);
         String input = scanner.nextLine().trim();
         addLogMessage(input);
@@ -255,21 +258,16 @@ public class Terminal {
     }
 
     private static void renderLog(StringBuilder sb) {
-        // Look for 5 messages at once
-        boolean any = false;
-        for (int i = 0; i < 10; i++) {
-            String logMessage = logMessages.poll();
-            if (logMessage != null) {
-                if (currentLogMessages.size() >= 10) {
-                    currentLogMessages.poll();
-                }
-                currentLogMessages.add(logMessage);
-                any = true;
+        // Look for all messages
+        String logMessage = logMessages.poll();
+        while (logMessage != null) {
+            if (currentLogMessages.size() >= 10) {
+                currentLogMessages.poll();
             }
+            currentLogMessages.add(logMessage);
+            logMessage = logMessages.poll();
         }
-        if (any) {
-            displayLogMessages(sb);
-        }
+        displayLogMessages(sb);
     }
 
     private static void displayLogMessages(StringBuilder sb) {
@@ -288,10 +286,8 @@ public class Terminal {
         addSwitchLine(sb, NOTIFICATION_START_LINE);
 
         // Get next two notifications
-        String notification = notifications.poll();
-        prepareNotifications(notification);
-        notification = notifications.poll();
-        prepareNotifications(notification);
+        prepareNotification(notifications.poll());
+        prepareNotification(notifications.poll());
 
         if (currentNotificationMessages[0] != null) {
             sb.append(currentNotificationMessages[0]).append("\n");
@@ -301,20 +297,23 @@ public class Terminal {
         }
     }
 
-    private static void prepareNotifications(String notificationMessage) {
+    private static void prepareNotification(String notificationMessage) {
         if (notificationMessage != null) {
             shiftNotifications(notificationMessage);
         }
     }
 
     private static void shiftNotifications(String notification) {
-        if (currentNotificationMessages[1] != null) {
-            currentNotificationMessages[0] = currentNotificationMessages[1];
-            currentNotificationMessages[1] = notification;
-            currentNotificationCounters[1] = 0;
-        } else {
+        if (currentNotificationMessages[0] == null) {
             currentNotificationMessages[0] = notification;
             currentNotificationCounters[0] = 0;
+        } else {
+            if (currentNotificationMessages[1] != null) {
+                currentNotificationMessages[0] = currentNotificationMessages[1];
+                currentNotificationCounters[0] = currentNotificationCounters[1];
+            }
+            currentNotificationMessages[1] = notification;
+            currentNotificationCounters[1] = 0;
         }
     }
 
@@ -329,7 +328,7 @@ public class Terminal {
     }
 
     private static void removeOldNotifications() {
-        while (currentNotificationCounters[0] >= NOTIFICATION_DISPLAY_TIME_INTERVAL && currentNotificationMessages[0] != null) {
+        while (currentNotificationMessages[0] != null && currentNotificationCounters[0] >= NOTIFICATION_DISPLAY_TIME_INTERVAL) {
             currentNotificationMessages[0] = currentNotificationMessages[1];
             currentNotificationCounters[0] = currentNotificationCounters[1];
             currentNotificationMessages[1] = null;
@@ -338,11 +337,8 @@ public class Terminal {
     }
 
     private static void renderChessGame(StringBuilder sb) {
-        if (gameChangedFlag) {
-            gameChangedFlag = false;
-            addEraseLines(sb, GAME_START_LINE, GAME_END_LINE);
-            addSwitchLine(sb, GAME_START_LINE);
-            sb.append(BoardDraw.drawBoard(currentGameState, currentTeamColor));
-        }
+        addEraseLines(sb, GAME_START_LINE, GAME_END_LINE);
+        addSwitchLine(sb, GAME_START_LINE);
+        sb.append(BoardDraw.drawBoard(currentGameState, currentTeamColor));
     }
 }

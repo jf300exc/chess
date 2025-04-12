@@ -42,7 +42,7 @@ public class GamePlay implements WebSocketListener {
 
     @Override
     public void onMessage(String message) {
-        Terminal.addLogMessage("Received WebSocket message");
+//        Terminal.addLogMessage("Received WebSocket message");
         JsonObject json;
         try {
             json = JsonParser.parseString(message).getAsJsonObject();
@@ -51,7 +51,7 @@ public class GamePlay implements WebSocketListener {
             return;
         }
         String messageType = json.get("serverMessageType").getAsString();
-        Terminal.addLogMessage("Received Message: " + messageType);
+//        Terminal.addLogMessage("Received Message: " + messageType);
         switch (messageType) {
             case "LOAD_GAME" -> processLoadGameMessage(message);
             case "ERROR" -> processErrorMessage(message);
@@ -113,7 +113,7 @@ public class GamePlay implements WebSocketListener {
             Thread.onSpinWait();
         }
         for (;;) {
-            var userInput = Terminal.getInput();
+            var userInput = Terminal.getInput("[GAMEPLAY] >>> ");
             if (!matchGamePlayCommand(userInput)) {
                 break;
             }
