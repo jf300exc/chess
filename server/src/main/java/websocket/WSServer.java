@@ -272,8 +272,47 @@ public class WSServer {
     }
 
     private void processLeaveCommand(Session session, UserGameCommand command) throws IOException {
+        ErrorMessage errorMessage = null;
+        int gameID = command.getGameID();
+        GameData gameData = gameDAO.findGameDataByID(Integer.toString(gameID));
+        AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
+        if (authData == null) {
+            System.out.println("Leave attempted with invalid authToken");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Invalid authToken");
+        } else if (gameData == null) {
+            System.out.println("Leave attempted with invalid gameID");
+            errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Invalid game ID: " + gameID);
+        }
+        if (errorMessage != null) {
+            sendMessage(session, gson.toJson(errorMessage));
+            return;
+        }
+        // Proceed
+        ChessGame.TeamColor playerColor = null;
+        if ((playerColor = getPlayerColorFromUsername(gameData, authData.username())) != null) {
+            gameDAO.removeGameDataByGameID(gameData);
+            switch (playerColor) {
+                case WHITE -> gameData = GameData.updateGameDataUsers("WHITE", null, gameData);
+                case BLACK -> gameData = GameData.updateGameDataUsers("BLACK", null, gameData);
+            }
+            gameDAO.addGameData(gameData);
+        }
+        System.out.println("Removing player from gameID: " + gameID);
 
-        throw new RuntimeException("Not implemented yet");
+        // Don't store this session for this gameID
+        connectedGamePlayers.get(gameID).remove(session);
+        connectedGameObservers.get(gameID).remove(session);
+
+        // Don't store this gameID for this Session
+        gameIDBySession.get(session).remove(gameID);
+
+        var notificationMessage = new NotificationMessage(ServerMessageType.NOTIFICATION, authData.username() + " left the game.");
+        for (Session playerSession : connectedGamePlayers.get(gameID)) {
+                sendMessage(playerSession, gson.toJson(notificationMessage));
+        }
+        for (Session observerSession : connectedGameObservers.get(gameID)) {
+                sendMessage(observerSession, gson.toJson(notificationMessage));
+        }
     }
 
     private void processResignCommand(Session session, UserGameCommand command) throws IOException {
