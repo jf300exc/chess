@@ -128,11 +128,12 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void runGamePlayUI() throws Exception {
+        while (!Terminal.isReadyForInput()) {
+            Thread.onSpinWait();
+        }
         for (;;) {
-            String userInput = userInputQueue.poll();
-            if (userInput == null) {
-                try { Thread.sleep(200); } catch (InterruptedException ignored) { }
-            } else if (!matchGamePlayCommand(userInput)) {
+            var userInput = Terminal.getInput();
+            if (!matchGamePlayCommand(userInput)) {
                 break;
             }
         }

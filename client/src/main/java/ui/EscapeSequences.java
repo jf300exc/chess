@@ -64,5 +64,8 @@ public class EscapeSequences {
 
     // ♚ , ♛, ♝, ♞, ♜, ♟
 
+    public static final String SAVE_CURSOR_POSITION = UNICODE_ESCAPE + "[0s";
+    public static final String RETURN_TO_SAVED_CURSOR_POSITION = UNICODE_ESCAPE + "[0u";
+
     public static String moveCursorToLocation(int x, int y) { return UNICODE_ESCAPE + "[" + y + ";" + x + "H"; }
 }

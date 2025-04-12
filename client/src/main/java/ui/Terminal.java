@@ -2,30 +2,61 @@ package ui;
 
 import chess.ChessGame;
 
-import java.sql.Array;
 import java.util.concurrent.*;
 import java.util.*;
 
 public class Terminal {
+    private static final int FIRST_LINE_NUM = 1;
+    private static final int NOTIFICATION_NUM_LINES = 2;
+    private static final int GAME_NUM_LINES = 10;
+    private static final int LOG_NUM_LINES = 10;
+    private static final int LOG_GAME_SPACING_LINES = 1;
+    private static final int INPUT_LOG_SPACING_LINES = 1;
+    private static final int INPUT_RETURN_TERMINAL_SPACING_LINES = 0;
+
+    private static final int NOTIFICATION_START_LINE = FIRST_LINE_NUM;
+    private static final int NOTIFICATION_END_LINE = NOTIFICATION_START_LINE + NOTIFICATION_NUM_LINES - 1;
+    private static final int GAME_START_LINE = NOTIFICATION_END_LINE + 1;
+    private static final int GAME_END_LINE = GAME_START_LINE + GAME_NUM_LINES - 1;
+    private static final int LOG_START_LINE = GAME_END_LINE + 1 + LOG_GAME_SPACING_LINES;
+    private static final int LOG_END_LINE = LOG_START_LINE + LOG_NUM_LINES - 1;
+    private static final int USER_INPUT_LINE = LOG_END_LINE + 1 + INPUT_LOG_SPACING_LINES;
+    private static final int RETURN_TERMINAL_LINE = USER_INPUT_LINE + 1 + INPUT_RETURN_TERMINAL_SPACING_LINES;
+
+    private static final int TIMEOUT_CHECK_DELAY_MS = 200;
+    private static final int TIMEOUT_LIMIT_SECONDS = 5;
+    private static final int TIMEOUT_COUNTER_LIMIT = (int) (TIMEOUT_LIMIT_SECONDS / ((float) TIMEOUT_CHECK_DELAY_MS / 1000));
+    private static final int TIMEOUT_UPDATE_STATUS_MS = 1000;
+    private static final int TIMEOUT_UPDATE_STATUS_INTERVAL = TIMEOUT_UPDATE_STATUS_MS / TIMEOUT_CHECK_DELAY_MS;
+
+    private static final int RENDER_DELAY_MS = 300;
+
     private static final ConcurrentLinkedQueue<String> notifications = new ConcurrentLinkedQueue<>();
     private static final String[] currentNotificationMessages = new String[2];
     private static final int[] currentNotificationCounters = {0, 0};
+
     private static final ConcurrentLinkedQueue<String> logMessages = new ConcurrentLinkedQueue<>();
     private static final Deque<String> currentLogMessages = new ArrayDeque<>(); // Only accessed by the render thread
-    private static final int lastLogMessageIndex = 0;
-//    private static final int currentLogLength = 0;
+
     private static ChessGame.TeamColor currentTeamColor = null;
-    private static final Object boardLock = new Object();
-    private static int deleteI = 0;
+    private static volatile ChessGame currentGameState = null;
+    private static volatile boolean gameChangedFlag = false;
+
+    private static final Object gameStateLock = new Object();
 
     private static final Scanner scanner = new Scanner(System.in);
-    private static volatile ChessGame currentGameState = null;
     private static volatile boolean running = false;
     private static volatile boolean renderThread = false;
-    private static volatile boolean inputThread = false;
+    private static volatile boolean readyForInput = false;
 
     public static void start(String teamColor) {
         setPlayerColor(teamColor);
+        currentLogMessages.clear();
+        notifications.clear();
+        currentNotificationMessages[0] = null;
+        currentNotificationCounters[0] = 0;
+        currentNotificationMessages[1] = null;
+        currentNotificationCounters[1] = 0;
         new Thread(Terminal::waitForGameData, "Pre-Game Thread").start();
     }
 
@@ -33,18 +64,17 @@ public class Terminal {
         int waitTime = 0;
         System.out.print("Waiting for game data... ");
         while(currentGameState == null) {
-            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-            if (++waitTime > 100) {
+            try { Thread.sleep(TIMEOUT_CHECK_DELAY_MS); } catch (InterruptedException ignored) {}
+            if (++waitTime > TIMEOUT_COUNTER_LIMIT) {
                 System.out.println("Timed out waiting for game data");
                 return;
-            } else if (waitTime % 5 == 0) {
+            } else if (waitTime % TIMEOUT_UPDATE_STATUS_INTERVAL == 0) {
                 System.out.print(". ");
             }
         }
         System.out.println("Received game data");
         System.out.print(EscapeSequences.ERASE_SCROLL_BACK);
         System.out.print(EscapeSequences.ERASE_SCREEN);
-        System.out.println(currentTeamColor);
         running = true;
         startInterface();
     }
@@ -55,28 +85,23 @@ public class Terminal {
             renderThread = true;
             while (running) {
                 render();
-                try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+                try { Thread.sleep(RENDER_DELAY_MS); } catch (InterruptedException ignored) {}
             }
             renderThread = false;
         }, "Renderer").start();
-        // Thread to get user input
-        new Thread(() -> {
-            inputThread = true;
-            while (running) {
-                getInput();
-            }
-            inputThread = false;
-        }, "Terminal-Input").start();
+
+        readyForInput = true;
     }
 
     public static void stop() {
         running = false;
+        readyForInput = false;
 
         // Return cursor
         StringBuilder sb = new StringBuilder();
         returnCursor(sb);
 
-        while (renderThread || inputThread) {
+        while (renderThread) {
             Thread.onSpinWait();
         }
         System.out.println(sb);
@@ -91,12 +116,10 @@ public class Terminal {
     }
 
     public static void setChessGame(ChessGame chessGame) {
-        System.out.println("Setting chess game");
-        System.out.println(chessGame);
-        synchronized (boardLock) {
+        synchronized (gameStateLock) {
             currentGameState = chessGame;
+            gameChangedFlag = true;
         }
-        System.out.println("Set Game");
     }
 
     public static void setPlayerColor(String playerColor) {
@@ -115,56 +138,42 @@ public class Terminal {
         StringBuilder sb = new StringBuilder();
 
         // Save cursor position
-        sb.append("\033[s");
-
-        // Erase Notification and GameBoard
-        addEraseLines(sb, 0, 11);
-        addSwitchLine(sb, 0);
+        sb.append(EscapeSequences.SAVE_CURSOR_POSITION);
 
         // Notifications
-        for (int i = 0; i < 2; i++) {
-//            sb.append("Line1").append(i).append('\n');
-//            sb.append("Line2").append(i++).append('\n');
-            String notification = notifications.poll();
-            prepareNotifications(notification);
-        }
-        addNotifications(sb);
+        renderNotifications(sb);
 
         // Game
-        sb.append(BoardDraw.drawBoard(currentGameState, currentTeamColor));
+        renderChessGame(sb);
 
-        addLogLines(sb);
+        // Log Messages
+        renderLog(sb);
 
         // Restore cursor position
-        sb.append("\n\033[u");
+        sb.append("\n" + EscapeSequences.RETURN_TO_SAVED_CURSOR_POSITION);
 
         // Output in single call to terminal
         System.out.print(sb);
         System.out.flush();
     }
 
-    private static void getInput() {
+    public static boolean isReadyForInput() {
+        return readyForInput;
+    }
+
+    public static String getInput() {
         StringBuilder sb = new StringBuilder();
         addSwitchToInputLine(sb);
+        addEraseCurrentLine(sb);
         addPrompt(sb);
-        System.out.print(sb.toString());
-        String input = scanner.nextLine().trim();
-        System.out.print("Got input: " + input);
-        GamePlay.addUserInput(input);
-        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-
-        // TODO: Handle input
-
-        sb = new StringBuilder();
-        addEraseLine(sb);
-        addSwitchEraseLine(sb, 15);
-        addSwitchEraseLine(sb, 14);
         System.out.print(sb);
-        System.out.flush();
+        String input = scanner.nextLine().trim();
+        addLogMessage(input);
+        return input;
     }
 
     private static void returnCursor(StringBuilder sb) {
-        addSwitchLine(sb, 26);
+        addSwitchLine(sb, RETURN_TERMINAL_LINE);
         sb.append("\n");
     }
 
@@ -172,13 +181,13 @@ public class Terminal {
         sb.append(EscapeSequences.moveCursorToLocation(0, line));
     }
 
-    private static void addEraseLine(StringBuilder sb) {
+    private static void addEraseCurrentLine(StringBuilder sb) {
         sb.append(EscapeSequences.ERASE_LINE);
     }
 
     private static void addSwitchEraseLine(StringBuilder sb, int line) {
         addSwitchLine(sb, line);
-        addEraseLine(sb);
+        addEraseCurrentLine(sb);
     }
 
     private static void addEraseLines(StringBuilder sb, int startLine, int stopLine) {
@@ -188,14 +197,14 @@ public class Terminal {
     }
 
     private static void addSwitchToInputLine(StringBuilder sb) {
-        addSwitchLine(sb, 14);
+        addSwitchLine(sb, USER_INPUT_LINE);
     }
 
     private static void addPrompt(StringBuilder sb) {
         sb.append(">>> ");
     }
 
-    private static void addLogLines(StringBuilder sb) {
+    private static void renderLog(StringBuilder sb) {
         // Look for 5 messages at once
         boolean any = false;
         for (int i = 0; i < 10; i++) {
@@ -215,17 +224,25 @@ public class Terminal {
 
     private static void displayLogMessages(StringBuilder sb) {
         // Cut off the oldest log messages if needed
-        int startLine = 16;
-        int endLine = 26;
-        addEraseLines(sb, startLine, endLine);
+        addEraseLines(sb, LOG_START_LINE, LOG_END_LINE);
         int lineInc = 0;
         for (String logLine : currentLogMessages) {
-            addSwitchLine(sb, startLine + lineInc++);
+            addSwitchLine(sb, LOG_START_LINE + lineInc++);
             sb.append(logLine);
         }
     }
 
-    private static void addNotifications(StringBuilder sb) {
+    private static void renderNotifications(StringBuilder sb) {
+        // Erase Notifications
+        addEraseLines(sb, NOTIFICATION_START_LINE, NOTIFICATION_END_LINE);
+        addSwitchLine(sb, NOTIFICATION_START_LINE);
+
+        // Get next two notifications
+        String notification = notifications.poll();
+        prepareNotifications(notification);
+        notification = notifications.poll();
+        prepareNotifications(notification);
+
         if (currentNotificationMessages[0] != null) {
             sb.append(currentNotificationMessages[0]).append("\n");
         } else {
@@ -263,6 +280,15 @@ public class Terminal {
             currentNotificationMessages[0] = currentNotificationMessages[1];
             currentNotificationCounters[0] = currentNotificationCounters[1];
             currentNotificationMessages[1] = null;
+        }
+    }
+
+    private static void renderChessGame(StringBuilder sb) {
+        if (gameChangedFlag) {
+            gameChangedFlag = false;
+            addEraseLines(sb, GAME_START_LINE, GAME_END_LINE);
+            addSwitchLine(sb, GAME_START_LINE);
+            sb.append(BoardDraw.drawBoard(currentGameState, currentTeamColor));
         }
     }
 }

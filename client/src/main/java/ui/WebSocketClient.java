@@ -37,12 +37,12 @@ public class WebSocketClient extends Endpoint {
 
     @Override
     public void onOpen(Session session, EndpointConfig endpointConfig) {
-        System.out.println("WebSocket connection opened");
+//        System.out.println("WebSocket connection opened");
     }
 
     @Override
     public void onClose(Session session, CloseReason closeReason) {
-        System.out.println("WebSocket connection closed");
+//        System.out.println("WebSocket connection closed");
     }
 
     public void connectClient() throws Exception {
