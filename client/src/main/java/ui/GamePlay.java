@@ -177,16 +177,18 @@ public class GamePlay implements WebSocketListener {
         String userInput;
         ChessMove move = null;
         while (move == null) {
-            Terminal.addLogMessage("Invalid Move Syntax. Try a move such as 'a2a4'");
             userInput = Terminal.getInput("Enter Move: ");
             move = validateMoveString(userInput);
         }
+        Terminal.addLogMessage("Move Syntax Passed: " + move);
         ChessGame gameCopy = Terminal.getChessGame();
+        System.out.println("Received Chess Game");
         if (gameCopy == null) {
             Terminal.addLogMessage("Invalid Game State. Try Again.");
             return;
         }
         if (moveIsPromotion(move, gameCopy)) {
+            Terminal.addLogMessage("Getting Promotion move");
             move = getPromotionMoveFromUser(move);
         }
         var moveCommand = new MakeMoveCommand(CommandType.MAKE_MOVE, userAuthToken, currentGameID, move);
@@ -194,32 +196,45 @@ public class GamePlay implements WebSocketListener {
     }
 
     private ChessMove validateMoveString(String move) {
+        ChessMove resultMove;
         move = move.trim();
+        Terminal.addLogMessage(Integer.toString(move.length()));
         if (move.length() != 4) {
-            return null;
+            resultMove = null;
+        } else {
+            char startColChar = move.charAt(0);
+            char startRowChar = move.charAt(1);
+            char endColChar = move.charAt(2);
+            char endRowChar = move.charAt(3);
+            Terminal.addLogMessage("Start Col Char: " + startColChar);
+            Terminal.addLogMessage("Start Row Char: " + startRowChar);
+            Terminal.addLogMessage("End Col Char: " + endColChar);
+            Terminal.addLogMessage("End Row Char: " + endRowChar);
+            if (startColChar < 'a' || startColChar > 'h') {
+                resultMove = null;
+            }
+            else if (startRowChar < '1' || startRowChar > '8') {
+                resultMove = null;
+            }
+            else if (endColChar < 'a' || endColChar > 'h') {
+                resultMove = null;
+            }
+            else if (endRowChar < '1' || endRowChar > '8') {
+                resultMove = null;
+            } else {
+                ChessPosition startPosition = new ChessPosition(startRowChar - '0', startColChar - 'a' + 1);
+                ChessPosition endPosition = new ChessPosition(endRowChar - '0', endColChar - 'a' + 1);
+                resultMove = new ChessMove(startPosition, endPosition, null);
+            }
         }
-        char startColChar = move.charAt(0);
-        char startRowChar = move.charAt(1);
-        char endColChar = move.charAt(2);
-        char endRowChar = move.charAt(3);
-        if (startColChar < 'a' || startColChar > 'h') {
-            return null;
+        if (resultMove == null) {
+            Terminal.addLogMessage("Invalid Move Syntax. Try a move such as 'a2a4'");
         }
-        if (startRowChar < '1' || startRowChar > '8') {
-            return null;
-        }
-        if (endColChar < 'a' || endColChar > 'h') {
-            return null;
-        }
-        if (endRowChar < '1' || endRowChar > '8') {
-            return null;
-        }
-        var startPosition = new ChessPosition(startRowChar - '0', startColChar - 'a' + 1);
-        var endPosition = new ChessPosition(endRowChar - '0', endColChar - 'a' + 1);
-        return new ChessMove(startPosition, endPosition, null);
+        return resultMove;
     }
 
     private boolean moveIsPromotion(ChessMove move, ChessGame game) {
+        Terminal.addLogMessage("Checking if move requires promotion");
         try {
             ChessMove promotionAttemptMove = new ChessMove(move.getStartPosition(), move.getEndPosition(), null);
             game.makeMove(promotionAttemptMove);
@@ -231,6 +246,7 @@ public class GamePlay implements WebSocketListener {
 
     private ChessMove getPromotionMoveFromUser(ChessMove move) {
         // Reassign move object
+        System.out.println("Getting Promotion move");
         String userInput = null;
         ChessPiece.PieceType promotionType = null;
         while (userInput == null || userInput.isBlank() || promotionType == null) {

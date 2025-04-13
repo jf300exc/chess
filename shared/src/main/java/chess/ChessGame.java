@@ -4,6 +4,8 @@ import java.util.*;
 
 import chess.ChessPiece.PieceType;
 
+import javax.smartcardio.TerminalFactory;
+
 /**
  * For a class that can manage a chess game, making moves on a board
  * <p>
@@ -493,6 +495,16 @@ public class ChessGame {
     }
 
     public ChessGame copy() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Copying ChessGame board");
+        System.out.println("Copying ChessGame board");
+        System.out.println("Copying ChessGame board");
+        System.out.println("Copying ChessGame board");
+        System.out.println("Copying ChessGame board");
+        System.out.println("Copying ChessGame board");
+        System.out.println("Copying ChessGame board");
+        System.out.println("Copying ChessGame board");
+        System.out.println("Copying ChessGame board");
         ChessBoard gameBoard = this.gameBoard.copy();
         ChessGame.TeamColor teamTurn = this.teamTurn;
         boolean gameOver = this.gameOver;
@@ -501,8 +513,26 @@ public class ChessGame {
         gameCopy.setBoard(gameBoard);
         gameCopy.setTeamTurn(teamTurn);
         gameCopy.setGameOver(gameOver);
+        sb.append("Asserting Equals");
+        System.out.println(sb);
+        assert gameCopy.equals(this);
+        System.out.println("Post Insert Equals.");
         return gameCopy;
     }
+
+//    @Override
+//    public boolean equals(Object o) {
+//        if (o == null || getClass() != o.getClass()) {
+//            return false;
+//        }
+//        ChessGame chessGame = (ChessGame) o;
+//        return Objects.equals(gameBoard, chessGame.gameBoard) && teamTurn == chessGame.teamTurn;
+//    }
+//
+//    @Override
+//    public int hashCode() {
+//        return Objects.hash(gameBoard, teamTurn);
+//    }
 
     @Override
     public boolean equals(Object o) {
@@ -510,11 +540,11 @@ public class ChessGame {
             return false;
         }
         ChessGame chessGame = (ChessGame) o;
-        return Objects.equals(gameBoard, chessGame.gameBoard) && teamTurn == chessGame.teamTurn;
+        return gameOver == chessGame.gameOver && Objects.equals(gameBoard, chessGame.gameBoard) && teamTurn == chessGame.teamTurn;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(gameBoard, teamTurn);
+        return Objects.hash(gameBoard, teamTurn, gameOver);
     }
 }

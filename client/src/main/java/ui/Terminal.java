@@ -37,7 +37,7 @@ public class Terminal {
     private static final int TIMEOUT_UPDATE_STATUS_INTERVAL = TIMEOUT_UPDATE_STATUS_MS / TIMEOUT_CHECK_DELAY_MS;
 
     // How long to wait before checking for updates
-    private static final int RENDER_DELAY_MS = 300;
+    private static final int RENDER_DELAY_MS = 50;
 
     // Notifications / Errors
     private static final int NOTIFICATION_DISPLAY_TIME_SECONDS = 10;
@@ -168,11 +168,15 @@ public class Terminal {
     }
 
     public static ChessGame getChessGame() {
+        addLogMessage("Retrieving Chess Game");
         synchronized (gameStateLock) {
             if (currentGameState == null) {
                 return null;
             } else {
-                return currentGameState.copy();
+                addLogMessage("Making game Copy");
+                ChessGame copy = currentGameState.copy();
+                addLogMessage("Copy Made");
+                return copy;
             }
         }
     }
