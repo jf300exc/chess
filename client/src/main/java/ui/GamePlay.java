@@ -42,7 +42,6 @@ public class GamePlay implements WebSocketListener {
 
     @Override
     public void onMessage(String message) {
-//        Terminal.addLogMessage("Received WebSocket message");
         JsonObject json;
         try {
             json = JsonParser.parseString(message).getAsJsonObject();
@@ -51,7 +50,6 @@ public class GamePlay implements WebSocketListener {
             return;
         }
         String messageType = json.get("serverMessageType").getAsString();
-//        Terminal.addLogMessage("Received Message: " + messageType);
         switch (messageType) {
             case "LOAD_GAME" -> processLoadGameMessage(message);
             case "ERROR" -> processErrorMessage(message);
@@ -171,8 +169,88 @@ public class GamePlay implements WebSocketListener {
         ws.sendCommand(leaveCommand);
     }
 
-    private void gamePlayMakeMove() {
-        throw new RuntimeException("Not implemented");
+    private void gamePlayMakeMove() throws Exception {
+        Terminal.addLogMessage("Enter Move (Ex: a2a4)");
+        String userInput = Terminal.getInput("Enter Move: ");
+        ChessMove move = null;
+        while (move == null) {
+            Terminal.addLogMessage("Invalid Move Syntax. Try a move such as 'a2a4'");
+            userInput = Terminal.getInput("Enter Move: ");
+            move = validateMoveString(userInput);
+        }
+        ChessGame gameCopy = Terminal.getChessGame();
+        if (gameCopy == null) {
+            Terminal.addLogMessage("Invalid Game State. Try Again.");
+            return;
+        }
+        if (moveIsPromotion(move, gameCopy)) {
+            move = getPromotionMoveFromUser(move);
+        }
+        var moveCommand = new MakeMoveCommand(CommandType.MAKE_MOVE, userAuthToken, currentGameID, move);
+        ws.sendCommand(moveCommand);
+    }
+
+    private ChessMove validateMoveString(String move) {
+        boolean isValid = true;
+        move = move.trim();
+        if (move.length() != 4) {
+            return null;
+        }
+        char startColChar = move.charAt(0);
+        char startRowChar = move.charAt(1);
+        char endColChar = move.charAt(2);
+        char endRowChar = move.charAt(3);
+        if (startColChar < 'a' || startColChar > 'h') {
+            return null;
+        }
+        if (startRowChar < '1' || startRowChar > '8') {
+            return null;
+        }
+        if (endColChar < 'a' || endColChar > 'h') {
+            return null;
+        }
+        if (endRowChar < '1' || endRowChar > '8') {
+            return null;
+        }
+        var startPosition = new ChessPosition(startRowChar - '0', startColChar - 'a' + 1);
+        var endPosition = new ChessPosition(endRowChar - '0', endColChar - 'a' + 1);
+        return new ChessMove(startPosition, endPosition, null);
+    }
+
+    private boolean moveIsPromotion(ChessMove move, ChessGame game) {
+        try {
+            ChessMove promotionAttemptMove = new ChessMove(move.getStartPosition(), move.getEndPosition(), null);
+            game.makeMove(promotionAttemptMove);
+        } catch (InvalidMoveException e) {
+            return false;
+        }
+        return true;
+    }
+
+    private ChessMove getPromotionMoveFromUser(ChessMove move) {
+        // Reassign move object
+        String userInput = null;
+        ChessPiece.PieceType promotionType = null;
+        while (userInput == null || userInput.isBlank() || promotionType == null) {
+            Terminal.addLogMessage("Promotion Move Required");
+            Terminal.addLogMessage("1. QUEEN");
+            Terminal.addLogMessage("2. ROOK");
+            Terminal.addLogMessage("3. KNIGHT");
+            Terminal.addLogMessage("4. BISHOP");
+            userInput = Terminal.getInput("Choose Piece Number: ").trim();
+            if (userInput.length() != 1 || userInput.charAt(0) < '1' || userInput.charAt(0) > '4') {
+                userInput = null;
+            } else {
+                promotionType = switch (userInput) {
+                    case "1" -> ChessPiece.PieceType.QUEEN;
+                    case "2" -> ChessPiece.PieceType.ROOK;
+                    case "3" -> ChessPiece.PieceType.KNIGHT;
+                    case "4" -> ChessPiece.PieceType.BISHOP;
+                    default -> null;
+                };
+            }
+        }
+        return new ChessMove(move.getStartPosition(), move.getEndPosition(), promotionType);
     }
 
     private void resignGame() throws Exception {

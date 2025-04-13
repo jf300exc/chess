@@ -404,6 +404,45 @@ public class ChessBoard {
         board.entrySet().removeIf(entry -> entry.getValue() == null);
     }
 
+    public ChessBoard copy() {
+        ChessBoard copy = new ChessBoard();
+        copy.board.putAll(this.board);
+        copy.setCastleRequirements(deepCopyCastleRequirements());
+        copy.setKingPos(whiteKingPos, TeamColor.WHITE);
+        copy.setKingPos(blackKingPos, TeamColor.BLACK);
+        // Reversed colors since enPassant is available for other team...
+        copy.setEnPassant(enPassantWhite, TeamColor.BLACK);
+        copy.setEnPassant(enPassantBlack, TeamColor.WHITE);
+        return copy;
+    }
+
+    private Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> deepCopyCastleRequirements() {
+        Map<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> copy =
+                new EnumMap<>(TeamColor.class);
+
+        for (Map.Entry<TeamColor, Map<CastlePieceTypes, Map<CastleType, Boolean>>> teamEntry : castleRequirements.entrySet()) {
+            Map<CastlePieceTypes, Map<CastleType, Boolean>> middleMapCopy =
+                    new EnumMap<>(CastlePieceTypes.class);
+
+            for (Map.Entry<CastlePieceTypes, Map<CastleType, Boolean>> pieceEntry : teamEntry.getValue().entrySet()) {
+                Map<CastleType, Boolean> innerMapCopy =
+                        new EnumMap<>(CastleType.class);
+
+                innerMapCopy.putAll(pieceEntry.getValue());
+//                for (Map.Entry<CastleType, Boolean> castleEntry : pieceEntry.getValue().entrySet()) {
+//                    innerMapCopy.put(castleEntry.getKey(), castleEntry.getValue());
+//                }
+
+                middleMapCopy.put(pieceEntry.getKey(), innerMapCopy);
+            }
+
+            copy.put(teamEntry.getKey(), middleMapCopy);
+        }
+
+        return copy;
+    }
+
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) {

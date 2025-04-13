@@ -98,14 +98,14 @@ public class Terminal {
         int waitTime = 0;
         System.out.print("Waiting for game data... ");
         while(currentGameState == null) {
-            Thread.onSpinWait();
-//            try { Thread.sleep(TIMEOUT_CHECK_DELAY_MS); } catch (InterruptedException ignored) {}
-//            if (++waitTime > TIMEOUT_COUNTER_LIMIT) {
-//                System.out.println("Timed out waiting for game data");
-//                return;
-//            } else if (waitTime % TIMEOUT_UPDATE_STATUS_INTERVAL == 0) {
-//                System.out.print(". ");
-//            }
+//            Thread.onSpinWait();
+            try { Thread.sleep(TIMEOUT_CHECK_DELAY_MS); } catch (InterruptedException ignored) {}
+            if (++waitTime > TIMEOUT_COUNTER_LIMIT) {
+                System.out.println("Timed out waiting for game data");
+                return;
+            } else if (waitTime % TIMEOUT_UPDATE_STATUS_INTERVAL == 0) {
+                System.out.print(". ");
+            }
         }
         System.out.println("Received game data");
         System.out.print(EscapeSequences.ERASE_SCROLL_BACK);
@@ -156,6 +156,16 @@ public class Terminal {
         synchronized (gameStateLock) {
             currentGameState = chessGame;
             gameChangedFlag = true;
+        }
+    }
+
+    public static ChessGame getChessGame() {
+        synchronized (gameStateLock) {
+            if (currentGameState == null) {
+                return null;
+            } else {
+                return currentGameState.copy();
+            }
         }
     }
 
@@ -219,10 +229,9 @@ public class Terminal {
         addSwitchToInputLine(sb);
         addEraseCurrentLine(sb);
         sb.append(prompt);
-//        addPrompt(sb);
         System.out.print(sb);
         String input = scanner.nextLine().trim();
-        addLogMessage(input);
+        addLogMessage(">>> " + input);
         return input;
     }
 
@@ -253,10 +262,6 @@ public class Terminal {
         addSwitchLine(sb, USER_INPUT_LINE);
     }
 
-    private static void addPrompt(StringBuilder sb) {
-        sb.append(">>> ");
-    }
-
     private static void renderLog(StringBuilder sb) {
         // Look for all messages
         String logMessage = logMessages.poll();
@@ -273,9 +278,10 @@ public class Terminal {
     private static void displayLogMessages(StringBuilder sb) {
         // Cut off the oldest log messages if needed
         addEraseLines(sb, LOG_START_LINE, LOG_END_LINE);
+        int messageLineIndexStart = LOG_END_LINE - (currentLogMessages.size() - 1);
         int lineInc = 0;
         for (String logLine : currentLogMessages) {
-            addSwitchLine(sb, LOG_START_LINE + lineInc++);
+            addSwitchLine(sb, messageLineIndexStart + lineInc++);
             sb.append(logLine);
         }
     }

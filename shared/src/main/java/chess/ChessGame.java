@@ -492,6 +492,18 @@ public class ChessGame {
         return gameBoard;
     }
 
+    public ChessGame copy() {
+        ChessBoard gameBoard = this.gameBoard.copy();
+        ChessGame.TeamColor teamTurn = this.teamTurn;
+        boolean gameOver = this.gameOver;
+
+        ChessGame gameCopy = new ChessGame();
+        gameCopy.setBoard(gameBoard);
+        gameCopy.setTeamTurn(teamTurn);
+        gameCopy.setGameOver(gameOver);
+        return gameCopy;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) {
