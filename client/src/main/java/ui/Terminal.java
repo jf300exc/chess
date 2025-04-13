@@ -1,6 +1,7 @@
 package ui;
 
 import chess.ChessGame;
+import chess.ChessPosition;
 
 import java.util.concurrent.*;
 import java.util.*;
@@ -52,9 +53,14 @@ public class Terminal {
     private static volatile boolean updateLogMessages = false;
 
     // Game State for Drawing
+    private static final int HIGHLIGHT_DISPLAY_TIME_SECONDS = 15;
+    private static final int HIGHLIGHT_DISPLAY_TIME_INTERVAL = (int) (HIGHLIGHT_DISPLAY_TIME_SECONDS / ((float) RENDER_DELAY_MS / 1000));
+    private static String currentGameName;
     private static ChessGame.TeamColor currentTeamColor = null;
     private static volatile ChessGame currentGameState = null;
     private static volatile boolean gameChangedFlag = false;
+    private static volatile ChessPosition highLightStartPosition = null;
+    private static int currentHighLightCounter = 0;
     private static final Object gameStateLock = new Object();
 
     // IO
@@ -91,7 +97,7 @@ public class Terminal {
         }
         new Thread(Terminal::waitForGameData, "Pre-Game Thread").start();
         try {Thread.sleep(500); } catch (InterruptedException ignored) { }
-        setChessGame(game);
+        setChessGame(game, currentGameName);
     }
 
     private static void waitForGameData() {
@@ -118,6 +124,7 @@ public class Terminal {
         // Rendering thread for the terminal
         new Thread(() -> {
             renderThread = true;
+            addLogMessage("Playing Game: " + currentGameName);
             while (running) {
                 render();
                 try { Thread.sleep(RENDER_DELAY_MS); } catch (InterruptedException ignored) {}
@@ -152,9 +159,10 @@ public class Terminal {
         updateLogMessages = true;
     }
 
-    public static void setChessGame(ChessGame chessGame) {
+    public static void setChessGame(ChessGame chessGame, String gameName) {
         synchronized (gameStateLock) {
             currentGameState = chessGame;
+            currentGameName = gameName;
             gameChangedFlag = true;
         }
     }
@@ -167,6 +175,12 @@ public class Terminal {
                 return currentGameState.copy();
             }
         }
+    }
+
+    public static void drawHighlights(ChessPosition position) {
+        highLightStartPosition = position;
+        gameChangedFlag = true;
+        currentHighLightCounter = 0;
     }
 
     public static void setPlayerColor(String playerColor) {
@@ -210,6 +224,7 @@ public class Terminal {
 
         // Tick notifications
         tickNotificationMessageCounts();
+        tickGameHighlightCount();
 
         // Restore cursor position
         if (any) {
@@ -345,6 +360,19 @@ public class Terminal {
     private static void renderChessGame(StringBuilder sb) {
         addEraseLines(sb, GAME_START_LINE, GAME_END_LINE);
         addSwitchLine(sb, GAME_START_LINE);
-        sb.append(BoardDraw.drawBoard(currentGameState, currentTeamColor));
+        if (highLightStartPosition != null) {
+            sb.append(BoardDraw.drawBoardWithValidMoves(currentGameState, currentTeamColor, highLightStartPosition));
+        } else {
+            sb.append(BoardDraw.drawBoard(currentGameState, currentTeamColor));
+        }
+    }
+
+    private static void tickGameHighlightCount() {
+        if (highLightStartPosition != null) {
+            currentHighLightCounter++;
+            if (currentHighLightCounter >= HIGHLIGHT_DISPLAY_TIME_INTERVAL) {
+                highLightStartPosition = null;
+            }
+        }
     }
 }

@@ -7,6 +7,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import model.GameData;
 import websocket.commands.*;
 import websocket.commands.UserGameCommand.*;
 import websocket.messages.ErrorMessage;
@@ -60,8 +61,10 @@ public class GamePlay implements WebSocketListener {
 
     void processLoadGameMessage(String message) {
         LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
-        ChessGame game = loadGameMessage.getGame().game();
-        Terminal.setChessGame(game);
+        GameData gameData = loadGameMessage.getGame();
+        Terminal.setChessGame(gameData.game(), gameData.gameName());
+        String currentTeamTurn = gameData.game().getTeamTurn().toString();
+        Terminal.addLogMessage("It is " + currentTeamTurn + "'s turn");
     }
 
     void processErrorMessage(String message) {
@@ -157,7 +160,7 @@ public class GamePlay implements WebSocketListener {
 //        System.out.println(helpMessage);
     }
 
-    private void redrawBoard() throws Exception {
+    private void redrawBoard() {
         Terminal.refresh();
         while (Terminal.notReadyForInput()) {
             Thread.onSpinWait();
@@ -171,7 +174,7 @@ public class GamePlay implements WebSocketListener {
 
     private void gamePlayMakeMove() throws Exception {
         Terminal.addLogMessage("Enter Move (Ex: a2a4)");
-        String userInput = Terminal.getInput("Enter Move: ");
+        String userInput;
         ChessMove move = null;
         while (move == null) {
             Terminal.addLogMessage("Invalid Move Syntax. Try a move such as 'a2a4'");
@@ -191,7 +194,6 @@ public class GamePlay implements WebSocketListener {
     }
 
     private ChessMove validateMoveString(String move) {
-        boolean isValid = true;
         move = move.trim();
         if (move.length() != 4) {
             return null;
@@ -259,6 +261,30 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void highlightMoves() {
-        throw new RuntimeException("Not implemented");
+
+        String positionString = null;
+        ChessPosition startPosition = null;
+        while (positionString == null || positionString.isBlank() || startPosition == null) {
+            Terminal.addLogMessage("Enter Start Position (Ex: a1)");
+            positionString = Terminal.getInput("Enter Start Position: ");
+            startPosition = validatePositionString(positionString);
+        }
+        Terminal.drawHighlights(startPosition);
+    }
+
+    private ChessPosition validatePositionString(String positionString) {
+        positionString = positionString.trim();
+        if (positionString.length() != 2) {
+            return null;
+        }
+        char startColChar = positionString.charAt(0);
+        char startRowChar = positionString.charAt(1);
+        if (startColChar < 'a' || startColChar > 'h') {
+            return null;
+        }
+        if (startRowChar < '1' || startRowChar > '8') {
+            return null;
+        }
+        return new ChessPosition(startRowChar - '0', startColChar - 'a' + 1);
     }
 }
