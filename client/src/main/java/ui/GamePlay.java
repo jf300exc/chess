@@ -32,7 +32,7 @@ public class GamePlay implements WebSocketListener {
     private String userAuthToken;
     private int currentGameID;
 
-    enum UserType {
+    public enum UserType {
         PLAYER,
         OBSERVER
     }
@@ -92,6 +92,8 @@ public class GamePlay implements WebSocketListener {
 
     public void observeGame(UserGameCommand connectRequest) throws Exception {
         this.userType = UserType.OBSERVER;
+        this.userAuthToken = connectRequest.getAuthToken();
+        this.currentGameID = connectRequest.getGameID();
         ws.connectClient();
         ws.sendString("Connection Request");
         Terminal.start("WHITE");
@@ -114,7 +116,8 @@ public class GamePlay implements WebSocketListener {
             Thread.onSpinWait();
         }
         for (;;) {
-            var userInput = Terminal.getInput("[GAMEPLAY] >>> ");
+            var prompt = userTypePromptString();
+            var userInput = Terminal.getInput(prompt + " >>> ");
             if (!matchGamePlayCommand(userInput)) {
                 break;
             }
@@ -157,7 +160,6 @@ public class GamePlay implements WebSocketListener {
         for (String message : messages) {
             Terminal.addLogMessage(message);
         }
-//        System.out.println(helpMessage);
     }
 
     private void redrawBoard() {
@@ -173,6 +175,10 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void gamePlayMakeMove() throws Exception {
+        if (userType == UserType.OBSERVER) {
+            Terminal.addLogMessage("Cannot Make Move as OBSERVER");
+            return;
+        }
         Terminal.addLogMessage("Enter Move (Ex: a2a4)");
         String userInput;
         ChessMove move = null;
@@ -180,15 +186,12 @@ public class GamePlay implements WebSocketListener {
             userInput = Terminal.getInput("Enter Move: ");
             move = validateMoveString(userInput);
         }
-        Terminal.addLogMessage("Move Syntax Passed: " + move);
         ChessGame gameCopy = Terminal.getChessGame();
-        System.out.println("Received Chess Game");
         if (gameCopy == null) {
             Terminal.addLogMessage("Invalid Game State. Try Again.");
             return;
         }
         if (moveIsPromotion(move, gameCopy)) {
-            Terminal.addLogMessage("Getting Promotion move");
             move = getPromotionMoveFromUser(move);
         }
         var moveCommand = new MakeMoveCommand(CommandType.MAKE_MOVE, userAuthToken, currentGameID, move);
@@ -198,7 +201,6 @@ public class GamePlay implements WebSocketListener {
     private ChessMove validateMoveString(String move) {
         ChessMove resultMove;
         move = move.trim();
-        Terminal.addLogMessage(Integer.toString(move.length()));
         if (move.length() != 4) {
             resultMove = null;
         } else {
@@ -206,10 +208,6 @@ public class GamePlay implements WebSocketListener {
             char startRowChar = move.charAt(1);
             char endColChar = move.charAt(2);
             char endRowChar = move.charAt(3);
-            Terminal.addLogMessage("Start Col Char: " + startColChar);
-            Terminal.addLogMessage("Start Row Char: " + startRowChar);
-            Terminal.addLogMessage("End Col Char: " + endColChar);
-            Terminal.addLogMessage("End Row Char: " + endRowChar);
             if (startColChar < 'a' || startColChar > 'h') {
                 resultMove = null;
             }
@@ -234,9 +232,8 @@ public class GamePlay implements WebSocketListener {
     }
 
     private boolean moveIsPromotion(ChessMove move, ChessGame game) {
-        Terminal.addLogMessage("Checking if move requires promotion");
         try {
-            ChessMove promotionAttemptMove = new ChessMove(move.getStartPosition(), move.getEndPosition(), null);
+            ChessMove promotionAttemptMove = new ChessMove(move.getStartPosition(), move.getEndPosition(), ChessPiece.PieceType.QUEEN);
             game.makeMove(promotionAttemptMove);
         } catch (InvalidMoveException e) {
             return false;
@@ -246,7 +243,6 @@ public class GamePlay implements WebSocketListener {
 
     private ChessMove getPromotionMoveFromUser(ChessMove move) {
         // Reassign move object
-        System.out.println("Getting Promotion move");
         String userInput = null;
         ChessPiece.PieceType promotionType = null;
         while (userInput == null || userInput.isBlank() || promotionType == null) {
@@ -272,6 +268,10 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void resignGame() throws Exception {
+        if (userType == UserType.OBSERVER) {
+            Terminal.addLogMessage("Cannot Resign as OBSERVER");
+            return;
+        }
         var resignCommand = new UserGameCommand(CommandType.RESIGN, userAuthToken, currentGameID);
         ws.sendCommand(resignCommand);
     }

@@ -37,23 +37,26 @@ public class Terminal {
     private static final int TIMEOUT_UPDATE_STATUS_INTERVAL = TIMEOUT_UPDATE_STATUS_MS / TIMEOUT_CHECK_DELAY_MS;
 
     // How long to wait before checking for updates
-    private static final int RENDER_DELAY_MS = 50;
+    private static final int RENDER_DELAY_MS = 300;
+
+    // How long to wait on refresh
+    private static final int REFRESH_DELAY_MS = 500;
 
     // Notifications / Errors
-    private static final int NOTIFICATION_DISPLAY_TIME_SECONDS = 10;
+    private static final int NOTIFICATION_DISPLAY_TIME_SECONDS = 15;
     private static final int NOTIFICATION_DISPLAY_TIME_INTERVAL = (int) (NOTIFICATION_DISPLAY_TIME_SECONDS / ((float) RENDER_DELAY_MS / 1000));
-    private static final ConcurrentLinkedQueue<String> notifications = new ConcurrentLinkedQueue<>();
-    private static final String[] currentNotificationMessages = new String[2];
-    private static final int[] currentNotificationCounters = {0, 0};
+    private static final ConcurrentLinkedQueue<String> NOTIFICATIONS = new ConcurrentLinkedQueue<>();
+    private static final String[] CURRENT_NOTIFICATION_MESSAGES = new String[2];
+    private static final int[] CURRENT_NOTIFICATION_COUNTERS = {0, 0};
     private static volatile boolean updateNotificationMessages = false;
 
     // Log Messages
-    private static final ConcurrentLinkedQueue<String> logMessages = new ConcurrentLinkedQueue<>();
-    private static final Deque<String> currentLogMessages = new ArrayDeque<>(); // Only accessed by the render thread
+    private static final ConcurrentLinkedQueue<String> LOG_MESSAGES = new ConcurrentLinkedQueue<>();
+    private static final Deque<String> CURRENT_LOG_MESSAGES = new ArrayDeque<>(); // Only accessed by the render thread
     private static volatile boolean updateLogMessages = false;
 
     // Game State for Drawing
-    private static final int HIGHLIGHT_DISPLAY_TIME_SECONDS = 15;
+    private static final int HIGHLIGHT_DISPLAY_TIME_SECONDS = 10;
     private static final int HIGHLIGHT_DISPLAY_TIME_INTERVAL = (int) (HIGHLIGHT_DISPLAY_TIME_SECONDS / ((float) RENDER_DELAY_MS / 1000));
     private static String currentGameName;
     private static ChessGame.TeamColor currentTeamColor = null;
@@ -61,24 +64,24 @@ public class Terminal {
     private static volatile boolean gameChangedFlag = false;
     private static volatile ChessPosition highLightStartPosition = null;
     private static int currentHighLightCounter = 0;
-    private static final Object gameStateLock = new Object();
+    private static final Object GAME_STATE_LOCK = new Object();
 
     // IO
-    private static final Scanner scanner = new Scanner(System.in);
+    private static final Scanner SCANNER = new Scanner(System.in);
     private static volatile boolean running = false;
     private static volatile boolean renderThread = false;
     private static volatile boolean readyForInput = false;
 
     public static void start(String teamColor) {
         setPlayerColor(teamColor);
-        logMessages.clear();
-        currentLogMessages.clear();
-        notifications.clear();
-        currentNotificationMessages[0] = null;
-        currentNotificationCounters[0] = 0;
-        currentNotificationMessages[1] = null;
-        currentNotificationCounters[1] = 0;
-        synchronized (gameStateLock) {
+        LOG_MESSAGES.clear();
+        CURRENT_LOG_MESSAGES.clear();
+        NOTIFICATIONS.clear();
+        CURRENT_NOTIFICATION_MESSAGES[0] = null;
+        CURRENT_NOTIFICATION_COUNTERS[0] = 0;
+        CURRENT_NOTIFICATION_MESSAGES[1] = null;
+        CURRENT_NOTIFICATION_COUNTERS[1] = 0;
+        synchronized (GAME_STATE_LOCK) {
             currentGameState = null;
         }
         new Thread(Terminal::waitForGameData, "Pre-Game Thread").start();
@@ -91,12 +94,12 @@ public class Terminal {
             Thread.onSpinWait();
         }
         ChessGame game;
-        synchronized (gameStateLock) {
+        synchronized (GAME_STATE_LOCK) {
             game = currentGameState;
             currentGameState = null;
         }
         new Thread(Terminal::waitForGameData, "Pre-Game Thread").start();
-        try {Thread.sleep(500); } catch (InterruptedException ignored) { }
+        try {Thread.sleep(REFRESH_DELAY_MS); } catch (InterruptedException ignored) { }
         setChessGame(game, currentGameName);
     }
 
@@ -104,7 +107,6 @@ public class Terminal {
         int waitTime = 0;
         System.out.print("Waiting for game data... ");
         while(currentGameState == null) {
-//            Thread.onSpinWait();
             try { Thread.sleep(TIMEOUT_CHECK_DELAY_MS); } catch (InterruptedException ignored) {}
             if (++waitTime > TIMEOUT_COUNTER_LIMIT) {
                 System.out.println("Timed out waiting for game data");
@@ -124,7 +126,7 @@ public class Terminal {
         // Rendering thread for the terminal
         new Thread(() -> {
             renderThread = true;
-            addLogMessage("Playing Game: " + currentGameName);
+            addLogMessage("Joining Game: " + currentGameName);
             while (running) {
                 render();
                 try { Thread.sleep(RENDER_DELAY_MS); } catch (InterruptedException ignored) {}
@@ -150,17 +152,17 @@ public class Terminal {
     }
 
     public static void addNotification(String notification) {
-        notifications.add(notification);
+        NOTIFICATIONS.add(notification);
         updateNotificationMessages = true;
     }
 
     public static void addLogMessage(String message) {
-        logMessages.add(message);
+        LOG_MESSAGES.add(message);
         updateLogMessages = true;
     }
 
     public static void setChessGame(ChessGame chessGame, String gameName) {
-        synchronized (gameStateLock) {
+        synchronized (GAME_STATE_LOCK) {
             currentGameState = chessGame;
             currentGameName = gameName;
             gameChangedFlag = true;
@@ -168,15 +170,11 @@ public class Terminal {
     }
 
     public static ChessGame getChessGame() {
-        addLogMessage("Retrieving Chess Game");
-        synchronized (gameStateLock) {
+        synchronized (GAME_STATE_LOCK) {
             if (currentGameState == null) {
                 return null;
             } else {
-                addLogMessage("Making game Copy");
-                ChessGame copy = currentGameState.copy();
-                addLogMessage("Copy Made");
-                return copy;
+                return currentGameState.copy();
             }
         }
     }
@@ -232,7 +230,6 @@ public class Terminal {
 
         // Restore cursor position
         if (any) {
-//            sb.append("\n" + EscapeSequences.RETURN_TO_SAVED_CURSOR_POSITION);
             sb.append(EscapeSequences.RETURN_TO_SAVED_CURSOR_POSITION);
             System.out.print(sb); // Output in single call to terminal
             System.out.flush();
@@ -249,7 +246,7 @@ public class Terminal {
         addEraseCurrentLine(sb);
         sb.append(prompt);
         System.out.print(sb);
-        String input = scanner.nextLine().trim();
+        String input = SCANNER.nextLine().trim();
         addLogMessage(">>> " + input);
         return input;
     }
@@ -283,13 +280,13 @@ public class Terminal {
 
     private static void renderLog(StringBuilder sb) {
         // Look for all messages
-        String logMessage = logMessages.poll();
+        String logMessage = LOG_MESSAGES.poll();
         while (logMessage != null) {
-            if (currentLogMessages.size() >= 10) {
-                currentLogMessages.poll();
+            if (CURRENT_LOG_MESSAGES.size() >= 10) {
+                CURRENT_LOG_MESSAGES.poll();
             }
-            currentLogMessages.add(logMessage);
-            logMessage = logMessages.poll();
+            CURRENT_LOG_MESSAGES.add(logMessage);
+            logMessage = LOG_MESSAGES.poll();
         }
         displayLogMessages(sb);
     }
@@ -297,9 +294,9 @@ public class Terminal {
     private static void displayLogMessages(StringBuilder sb) {
         // Cut off the oldest log messages if needed
         addEraseLines(sb, LOG_START_LINE, LOG_END_LINE);
-        int messageLineIndexStart = LOG_END_LINE - (currentLogMessages.size() - 1);
+        int messageLineIndexStart = LOG_END_LINE - (CURRENT_LOG_MESSAGES.size() - 1);
         int lineInc = 0;
-        for (String logLine : currentLogMessages) {
+        for (String logLine : CURRENT_LOG_MESSAGES) {
             addSwitchLine(sb, messageLineIndexStart + lineInc++);
             sb.append(logLine);
         }
@@ -311,13 +308,13 @@ public class Terminal {
         addSwitchLine(sb, NOTIFICATION_START_LINE);
 
         // Get next two notifications
-        prepareNotification(notifications.poll());
-        prepareNotification(notifications.poll());
+        prepareNotification(NOTIFICATIONS.poll());
+        prepareNotification(NOTIFICATIONS.poll());
 
-        if (currentNotificationMessages[0] != null) {
-            sb.append(currentNotificationMessages[0]).append("\n");
-            if (currentNotificationMessages[1] != null) {
-                sb.append(currentNotificationMessages[1]);
+        if (CURRENT_NOTIFICATION_MESSAGES[0] != null) {
+            sb.append(CURRENT_NOTIFICATION_MESSAGES[0]).append("\n");
+            if (CURRENT_NOTIFICATION_MESSAGES[1] != null) {
+                sb.append(CURRENT_NOTIFICATION_MESSAGES[1]);
             }
         }
     }
@@ -329,34 +326,34 @@ public class Terminal {
     }
 
     private static void shiftNotifications(String notification) {
-        if (currentNotificationMessages[0] == null) {
-            currentNotificationMessages[0] = notification;
-            currentNotificationCounters[0] = 0;
+        if (CURRENT_NOTIFICATION_MESSAGES[0] == null) {
+            CURRENT_NOTIFICATION_MESSAGES[0] = notification;
+            CURRENT_NOTIFICATION_COUNTERS[0] = 0;
         } else {
-            if (currentNotificationMessages[1] != null) {
-                currentNotificationMessages[0] = currentNotificationMessages[1];
-                currentNotificationCounters[0] = currentNotificationCounters[1];
+            if (CURRENT_NOTIFICATION_MESSAGES[1] != null) {
+                CURRENT_NOTIFICATION_MESSAGES[0] = CURRENT_NOTIFICATION_MESSAGES[1];
+                CURRENT_NOTIFICATION_COUNTERS[0] = CURRENT_NOTIFICATION_COUNTERS[1];
             }
-            currentNotificationMessages[1] = notification;
-            currentNotificationCounters[1] = 0;
+            CURRENT_NOTIFICATION_MESSAGES[1] = notification;
+            CURRENT_NOTIFICATION_COUNTERS[1] = 0;
         }
     }
 
     private static void tickNotificationMessageCounts() {
-        if (currentNotificationMessages[0] != null) {
-            currentNotificationCounters[0]++;
+        if (CURRENT_NOTIFICATION_MESSAGES[0] != null) {
+            CURRENT_NOTIFICATION_COUNTERS[0]++;
         }
-        if (currentNotificationMessages[1] != null) {
-            currentNotificationCounters[1]++;
+        if (CURRENT_NOTIFICATION_MESSAGES[1] != null) {
+            CURRENT_NOTIFICATION_COUNTERS[1]++;
         }
         removeOldNotifications();
     }
 
     private static void removeOldNotifications() {
-        while (currentNotificationMessages[0] != null && currentNotificationCounters[0] >= NOTIFICATION_DISPLAY_TIME_INTERVAL) {
-            currentNotificationMessages[0] = currentNotificationMessages[1];
-            currentNotificationCounters[0] = currentNotificationCounters[1];
-            currentNotificationMessages[1] = null;
+        while (CURRENT_NOTIFICATION_MESSAGES[0] != null && CURRENT_NOTIFICATION_COUNTERS[0] >= NOTIFICATION_DISPLAY_TIME_INTERVAL) {
+            CURRENT_NOTIFICATION_MESSAGES[0] = CURRENT_NOTIFICATION_MESSAGES[1];
+            CURRENT_NOTIFICATION_COUNTERS[0] = CURRENT_NOTIFICATION_COUNTERS[1];
+            CURRENT_NOTIFICATION_MESSAGES[1] = null;
             updateNotificationMessages = true;
         }
     }
@@ -373,10 +370,11 @@ public class Terminal {
 
     private static void tickGameHighlightCount() {
         if (highLightStartPosition != null) {
-            currentHighLightCounter++;
             if (currentHighLightCounter >= HIGHLIGHT_DISPLAY_TIME_INTERVAL) {
                 highLightStartPosition = null;
+                gameChangedFlag = true;
             }
+            currentHighLightCounter++;
         }
     }
 }

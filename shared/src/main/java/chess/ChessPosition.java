@@ -50,7 +50,7 @@ public class ChessPosition {
             case 8 -> colStr = "h";
             default -> colStr = Integer.toString(this.col);
         }
-        return row + colStr;
+        return colStr + row;
     }
 
     @Override

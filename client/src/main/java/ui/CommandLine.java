@@ -1,6 +1,5 @@
 package ui;
 
-import chess.ChessGame;
 import model.GameEntry;
 import websocket.commands.UserGameCommand;
 import websocket.commands.UserGameCommand.CommandType;
@@ -240,13 +239,6 @@ public class CommandLine {
         }
 
         System.out.println("Successfully joined game as " + playerColor);
-        // Draw Game Board from `playerColor` perspective
-//        ChessGame game = new ChessGame();
-//        if (playerColor.equals("WHITE")) {
-//            System.out.println(BoardDraw.drawBoard(game, ChessGame.TeamColor.WHITE));
-//        } else {
-//            System.out.println(BoardDraw.drawBoard(game, ChessGame.TeamColor.BLACK));
-//        }
         var connectRequest = new UserGameCommand(CommandType.CONNECT, authToken, gameEntry.gameID());
         gamePlay.playGame(connectRequest, playerColor);
     }
@@ -256,9 +248,6 @@ public class CommandLine {
         if (gameIDStr == null) {
             return;
         }
-        // Draw Game Board from WHITE perspective
-//        ChessGame chessGame = new ChessGame();
-//        System.out.println(BoardDraw.drawBoard(chessGame, ChessGame.TeamColor.WHITE));
         String authToken = serverFacade.getAuthToken();
         int gameIndex = Integer.parseInt(gameIDStr) - 1;
         GameEntry gameEntry = gamesList.get(gameIndex);

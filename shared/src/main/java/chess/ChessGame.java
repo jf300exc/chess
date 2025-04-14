@@ -4,8 +4,6 @@ import java.util.*;
 
 import chess.ChessPiece.PieceType;
 
-import javax.smartcardio.TerminalFactory;
-
 /**
  * For a class that can manage a chess game, making moves on a board
  * <p>
@@ -495,16 +493,6 @@ public class ChessGame {
     }
 
     public ChessGame copy() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Copying ChessGame board");
-        System.out.println("Copying ChessGame board");
-        System.out.println("Copying ChessGame board");
-        System.out.println("Copying ChessGame board");
-        System.out.println("Copying ChessGame board");
-        System.out.println("Copying ChessGame board");
-        System.out.println("Copying ChessGame board");
-        System.out.println("Copying ChessGame board");
-        System.out.println("Copying ChessGame board");
         ChessBoard gameBoard = this.gameBoard.copy();
         ChessGame.TeamColor teamTurn = this.teamTurn;
         boolean gameOver = this.gameOver;
@@ -513,10 +501,7 @@ public class ChessGame {
         gameCopy.setBoard(gameBoard);
         gameCopy.setTeamTurn(teamTurn);
         gameCopy.setGameOver(gameOver);
-        sb.append("Asserting Equals");
-        System.out.println(sb);
-        assert gameCopy.equals(this);
-        System.out.println("Post Insert Equals.");
+//        assert gameCopy.equals(this);
         return gameCopy;
     }
 

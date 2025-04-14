@@ -42,9 +42,9 @@ public class WSServer {
     private final GameDAO gameDAO = new SQLGameDAO();
     private final AuthDAO authDAO = new SQLAuthDAO();
 
-    private static final Map<Integer, Set<Session>> connectedGamePlayers = new ConcurrentHashMap<>();
-    private static final Map<Integer, Set<Session>> connectedGameObservers = new ConcurrentHashMap<>();
-    private static final Map<Session, Set<Integer>> gameIDBySession = new ConcurrentHashMap<>();
+    private static final Map<Integer, Set<Session>> CONNECTED_GAME_PLAYERS = new ConcurrentHashMap<>();
+    private static final Map<Integer, Set<Session>> CONNECTED_GAME_OBSERVERS = new ConcurrentHashMap<>();
+    private static final Map<Session, Set<Integer>> GAME_ID_BY_SESSION = new ConcurrentHashMap<>();
 
     @OnWebSocketConnect
     public void onConnect(Session session) {
@@ -91,13 +91,13 @@ public class WSServer {
     @OnWebSocketClose
     public void onClose(Session session, int statusCode, String reason) {
         System.out.println("Websocket Closed. Reason: " + reason);
-        if (gameIDBySession.containsKey(session)) {
-            int size = gameIDBySession.get(session).size();
+        if (GAME_ID_BY_SESSION.containsKey(session)) {
+            int size = GAME_ID_BY_SESSION.get(session).size();
             System.out.println("  Connection was in " + size + " games");
-            for (int gameID : gameIDBySession.get(session)) {
+            for (int gameID : GAME_ID_BY_SESSION.get(session)) {
                 System.out.println("  Removing session from gameID: " + gameID);
-                connectedGamePlayers.get(gameID).remove(session);
-                connectedGameObservers.get(gameID).remove(session);
+                CONNECTED_GAME_PLAYERS.get(gameID).remove(session);
+                CONNECTED_GAME_OBSERVERS.get(gameID).remove(session);
             }
         } else {
             System.out.println("  Connection was in no games.");
@@ -139,23 +139,23 @@ public class WSServer {
         System.out.println("Sending Load Game message");
         sendMessage(session, convertToJson(message));
 
-        if (!connectedGamePlayers.containsKey(gameID)) {
+        if (!CONNECTED_GAME_PLAYERS.containsKey(gameID)) {
             System.out.println("Initializing Player Set for gameID: " + gameID);
-            connectedGamePlayers.put(gameID, Collections.synchronizedSet(new HashSet<>()));
+            CONNECTED_GAME_PLAYERS.put(gameID, Collections.synchronizedSet(new HashSet<>()));
         } else {
             System.out.println("Player Set for gameID exists: " + gameID);
         }
-        if (!connectedGameObservers.containsKey(gameID)) {
+        if (!CONNECTED_GAME_OBSERVERS.containsKey(gameID)) {
             System.out.println("Initializing Observer Set for gameID: " + gameID);
-            connectedGameObservers.put(gameID, Collections.synchronizedSet(new HashSet<>()));
+            CONNECTED_GAME_OBSERVERS.put(gameID, Collections.synchronizedSet(new HashSet<>()));
         } else {
             System.out.println("Observer Set for gameID exists: " + gameID);
         }
-        if (!gameIDBySession.containsKey(session)) {
+        if (!GAME_ID_BY_SESSION.containsKey(session)) {
             System.out.println("Initializing gameID Set for session");
             Set<Integer> gameIDSet = Collections.synchronizedSet(new HashSet<>());
             gameIDSet.add(gameID);
-            gameIDBySession.put(session, gameIDSet);
+            GAME_ID_BY_SESSION.put(session, gameIDSet);
         } else {
             System.out.println("gameID Set for session exists: " + gameID);
         }
@@ -174,20 +174,20 @@ public class WSServer {
 
         var notification = new NotificationMessage(ServerMessageType.NOTIFICATION, notificationMessage);
         System.out.println("Sending Notifications to players if any");
-        for (Session playerSession : connectedGamePlayers.get(gameID)) {
+        for (Session playerSession : CONNECTED_GAME_PLAYERS.get(gameID)) {
             sendMessage(playerSession, gson.toJson(notification));
         }
         System.out.println("Sending Notifications to observers if any");
-        for (Session observerSession : connectedGameObservers.get(gameID)) {
+        for (Session observerSession : CONNECTED_GAME_OBSERVERS.get(gameID)) {
             sendMessage(observerSession, gson.toJson(notification));
         }
 
         if (isObserving) {
             System.out.println("Adding Observer to gameID: " + gameID);
-            connectedGameObservers.get(gameID).add(session);
+            CONNECTED_GAME_OBSERVERS.get(gameID).add(session);
         } else {
             System.out.println("Adding Player to gameID: " + gameID);
-            connectedGamePlayers.get(gameID).add(session);
+            CONNECTED_GAME_PLAYERS.get(gameID).add(session);
         }
     }
 
@@ -252,7 +252,7 @@ public class WSServer {
         if (gameData.game().isInStalemate(opponentColor)) {
             secondNotification = new NotificationMessage(ServerMessageType.NOTIFICATION, opponentUsername + " is in stalemate");
         }
-        for (Session playerSession : connectedGamePlayers.get(gameID)) {
+        for (Session playerSession : CONNECTED_GAME_PLAYERS.get(gameID)) {
             sendMessage(playerSession, gson.toJson(loadGameMessage));
             if (!session.equals(playerSession)) {
                 sendMessage(playerSession, gson.toJson(notificationMessage));
@@ -261,7 +261,7 @@ public class WSServer {
                 sendMessage(playerSession, gson.toJson(secondNotification));
             }
         }
-        for (Session observerSession : connectedGameObservers.get(gameID)) {
+        for (Session observerSession : CONNECTED_GAME_OBSERVERS.get(gameID)) {
             sendMessage(observerSession, gson.toJson(loadGameMessage));
             sendMessage(observerSession, gson.toJson(notificationMessage));
             if (secondNotification != null) {
@@ -288,7 +288,7 @@ public class WSServer {
             return;
         }
         // Proceed
-        ChessGame.TeamColor playerColor = null;
+        ChessGame.TeamColor playerColor;
         if ((playerColor = getPlayerColorFromUsername(gameData, authData.username())) != null) {
             gameDAO.removeGameDataByGameID(gameData);
             switch (playerColor) {
@@ -300,17 +300,17 @@ public class WSServer {
         System.out.println("Removing player from gameID: " + gameID);
 
         // Don't store this session for this gameID
-        connectedGamePlayers.get(gameID).remove(session);
-        connectedGameObservers.get(gameID).remove(session);
+        CONNECTED_GAME_PLAYERS.get(gameID).remove(session);
+        CONNECTED_GAME_OBSERVERS.get(gameID).remove(session);
 
         // Don't store this gameID for this Session
-        gameIDBySession.get(session).remove(gameID);
+        GAME_ID_BY_SESSION.get(session).remove(gameID);
 
         var notificationMessage = new NotificationMessage(ServerMessageType.NOTIFICATION, authData.username() + " left the game.");
-        for (Session playerSession : connectedGamePlayers.get(gameID)) {
+        for (Session playerSession : CONNECTED_GAME_PLAYERS.get(gameID)) {
                 sendMessage(playerSession, gson.toJson(notificationMessage));
         }
-        for (Session observerSession : connectedGameObservers.get(gameID)) {
+        for (Session observerSession : CONNECTED_GAME_OBSERVERS.get(gameID)) {
                 sendMessage(observerSession, gson.toJson(notificationMessage));
         }
     }
@@ -345,24 +345,12 @@ public class WSServer {
         // Continue with notifications
         System.out.println("Resignation of user: " + authData.username());
         var notificationMessage = new NotificationMessage(ServerMessageType.NOTIFICATION, authData.username() + " has resigned");
-        for (Session playerSession : connectedGamePlayers.get(gameID)) {
+        for (Session playerSession : CONNECTED_GAME_PLAYERS.get(gameID)) {
             sendMessage(playerSession, gson.toJson(notificationMessage));
         }
-        for (Session observerSession : connectedGameObservers.get(gameID)) {
+        for (Session observerSession : CONNECTED_GAME_OBSERVERS.get(gameID)) {
             sendMessage(observerSession, gson.toJson(notificationMessage));
         }
-    }
-
-    private boolean validateAuthData(String authToken) {
-        return authToken != null && authDAO.findAuthDataByAuthToken(authToken) != null;
-    }
-
-    private boolean validateGameID(int gameID) {
-        return validateGameID(Integer.toString(gameID));
-    }
-
-    private boolean validateGameID(String gameIDStr) {
-        return gameDAO.findGameDataByID(gameIDStr) != null;
     }
 
     private String getMoveString(String username, ChessMove move, ChessPiece.PieceType pieceType) {

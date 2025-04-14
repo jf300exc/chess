@@ -2,7 +2,6 @@ package ui;
 
 import chess.*;
 
-import javax.print.DocFlavor;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,7 +28,7 @@ public class BoardDraw {
 
     // Light Pieces with color sequences
     private static final String LIGHT_ROOK_LIGHT_BACKGROUND =       LIGHT_BACKGROUND_BLUE + BLACK_ROOK + RESET;
-    private static final String LIGHT_ROOK_DARK_BACKGROUND =        DARK_BACKGROUND_BROWN + BLACK_BISHOP + RESET;
+    private static final String LIGHT_ROOK_DARK_BACKGROUND =        DARK_BACKGROUND_BROWN + BLACK_ROOK + RESET;
     private static final String LIGHT_ROOK_HIGHLIGHT_BACKGROUND =   HIGHLIGHT_BACKGROUND_MAGENTA + BLACK_ROOK + RESET;
     private static final String LIGHT_KNIGHT_LIGHT_BACKGROUND =     LIGHT_BACKGROUND_BLUE + BLACK_KNIGHT + RESET;
     private static final String LIGHT_KNIGHT_DARK_BACKGROUND =      DARK_BACKGROUND_BROWN + BLACK_KNIGHT + RESET;
