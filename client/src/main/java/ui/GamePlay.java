@@ -129,15 +129,15 @@ public class GamePlay implements WebSocketListener {
             return true;
         }
         switch (command) {
-            case "Help" -> displayGamePlayHelp();
-            case "Redraw Chess Board" -> redrawBoard();
-            case "Leave" -> {
+            case "help", "Help" -> displayGamePlayHelp();
+            case "redraw", "redraw board", "Redraw Chess Board" -> redrawBoard();
+            case "leave", "Leave" -> {
                 leaveGame();
                 return false;
             }
-            case "Make Move" -> gamePlayMakeMove();
-            case "Resign" -> resignGame();
-            case "Highlight", "Highlight Legal Moves" -> highlightMoves();
+            case "make move", "Make Move" -> gamePlayMakeMove();
+            case "resign", "Resign" -> resignGame();
+            case "highlight", "Highlight", "Highlight Legal Moves" -> highlightMoves();
             default -> matchArbitraryCommand(command);
         }
         return true;
@@ -184,6 +184,10 @@ public class GamePlay implements WebSocketListener {
         ChessMove move = null;
         while (move == null) {
             userInput = Terminal.getInput("Enter Move: ");
+            if (userInput.trim().isEmpty()) {
+                Terminal.addLogMessage("Aborting Move");
+                return;
+            }
             move = validateMoveString(userInput);
         }
         ChessGame gameCopy = Terminal.getChessGame();
@@ -283,6 +287,10 @@ public class GamePlay implements WebSocketListener {
         while (positionString == null || positionString.isBlank() || startPosition == null) {
             Terminal.addLogMessage("Enter Start Position (Ex: a1)");
             positionString = Terminal.getInput("Enter Start Position: ");
+            if (positionString.trim().isEmpty()) {
+                Terminal.addLogMessage("Aborting Highlighting");
+                return;
+            }
             startPosition = validatePositionString(positionString);
         }
         Terminal.drawHighlights(startPosition);
@@ -290,17 +298,23 @@ public class GamePlay implements WebSocketListener {
 
     private ChessPosition validatePositionString(String positionString) {
         positionString = positionString.trim();
+        ChessPosition position;
         if (positionString.length() != 2) {
-            return null;
+            position = null;
+        } else {
+            char startColChar = positionString.charAt(0);
+            char startRowChar = positionString.charAt(1);
+            if (startColChar < 'a' || startColChar > 'h') {
+                position = null;
+            } else if (startRowChar < '1' || startRowChar > '8') {
+                position = null;
+            } else {
+                position = new ChessPosition(startRowChar - '0', startColChar - 'a' + 1);
+            }
         }
-        char startColChar = positionString.charAt(0);
-        char startRowChar = positionString.charAt(1);
-        if (startColChar < 'a' || startColChar > 'h') {
-            return null;
+        if (position == null) {
+            Terminal.addLogMessage("Invalid Position");
         }
-        if (startRowChar < '1' || startRowChar > '8') {
-            return null;
-        }
-        return new ChessPosition(startRowChar - '0', startColChar - 'a' + 1);
+        return position;
     }
 }
