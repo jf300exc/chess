@@ -432,24 +432,12 @@ public class ChessGame {
         return false;
     }
     
-    /**
-     * Determines if the given team is in check
-     *
-     * @param teamColor which team to check for check
-     * @return True if the specified team is in check
-     */
     public boolean isInCheck(TeamColor teamColor) {
         ChessPosition kingPos = gameBoard.getKingPos(teamColor);
         return checkThreatHorizontal(kingPos, teamColor) || checkThreatVertical(kingPos, teamColor)
                             || checkThreatDiagonal(kingPos, teamColor) || checkThreatKnight(kingPos, teamColor);
     }
 
-    /**
-     * Determines if a team has no moves available
-     *
-     * @param teamColor The team to check for moves
-     * @return True if there are no moves available
-     */
     private boolean isNoTurnPossible(TeamColor teamColor) {
         Set<ChessPosition> positions = gameBoard.getAllPositions();
         for (ChessPosition pos : positions) {
@@ -463,26 +451,13 @@ public class ChessGame {
         return true;
     }
     
-    /**
-     * Determines if the given team is in checkmate
-     *
-     * @param teamColor which team to check for checkmate
-     * @return True if the specified team is in checkmate
-     */
     public boolean isInCheckmate(TeamColor teamColor) {
-        return isInCheck(teamColor) && isNoTurnPossible(teamColor);
-    }
+            return isInCheck(teamColor) && isNoTurnPossible(teamColor);
+        }
 
-    /**
-     * Determines if the given team is in stalemate, which here is defined as having
-     * no valid moves
-     *
-     * @param teamColor which team to check for stalemate
-     * @return True if the specified team is in stalemate, otherwise false
-     */
     public boolean isInStalemate(TeamColor teamColor) {
-        return !isInCheck(teamColor) && isNoTurnPossible(teamColor);
-    }
+            return !isInCheck(teamColor) && isNoTurnPossible(teamColor);
+        }
 
     public void setBoard(ChessBoard board) {
         gameBoard = board;
