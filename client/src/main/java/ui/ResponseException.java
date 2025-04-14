@@ -15,9 +15,9 @@ public class ResponseException extends RuntimeException {
         this.statusCode = statusCode;
     }
 
-    public String toJson() {
-        return new Gson().toJson(Map.of("message", getMessage(), "status", statusCode));
-    }
+//    public String toJson() {
+//        return new Gson().toJson(Map.of("message", getMessage(), "status", statusCode));
+//    }
 
     public static ResponseException fromJson(InputStream stream) {
         var map = new Gson().fromJson(new InputStreamReader(stream), HashMap.class);

@@ -55,7 +55,6 @@ public class WebSocketClient extends Endpoint {
         this.session = container.connectToServer(this, uri);
         this.session.addMessageHandler(new MessageHandler.Whole<String>() {
             public void onMessage(String message) {
-//                System.out.println("Message Received: message");
                 listener.onMessage(message);
             }
         });
@@ -65,7 +64,7 @@ public class WebSocketClient extends Endpoint {
         return session != null && session.isOpen();
     }
 
-    public void closeClient() throws IOException {
+    public void closeClient() {
         try {
             if (isSessionOpen()) {
                 session.close();

@@ -1,4 +1,3 @@
-import chess.ChessGame;
 import ui.*;
 
 public class Main {

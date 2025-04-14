@@ -429,9 +429,6 @@ public class ChessBoard {
                         new EnumMap<>(CastleType.class);
 
                 innerMapCopy.putAll(pieceEntry.getValue());
-//                for (Map.Entry<CastleType, Boolean> castleEntry : pieceEntry.getValue().entrySet()) {
-//                    innerMapCopy.put(castleEntry.getKey(), castleEntry.getValue());
-//                }
 
                 middleMapCopy.put(pieceEntry.getKey(), innerMapCopy);
             }

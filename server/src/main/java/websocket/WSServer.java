@@ -36,7 +36,6 @@ public class WSServer {
             .registerTypeAdapter(
                     new TypeToken<Map<ChessGame.TeamColor, Map<ChessBoard.CastlePieceTypes, Map<ChessBoard.CastleType, Boolean>>>>(){}.getType(),
                     new CastleRequirementsAdapter())
-//            .setPrettyPrinting()
             .create();
 
     private final GameDAO gameDAO = new SQLGameDAO();

@@ -501,23 +501,8 @@ public class ChessGame {
         gameCopy.setBoard(gameBoard);
         gameCopy.setTeamTurn(teamTurn);
         gameCopy.setGameOver(gameOver);
-//        assert gameCopy.equals(this);
         return gameCopy;
     }
-
-//    @Override
-//    public boolean equals(Object o) {
-//        if (o == null || getClass() != o.getClass()) {
-//            return false;
-//        }
-//        ChessGame chessGame = (ChessGame) o;
-//        return Objects.equals(gameBoard, chessGame.gameBoard) && teamTurn == chessGame.teamTurn;
-//    }
-//
-//    @Override
-//    public int hashCode() {
-//        return Objects.hash(gameBoard, teamTurn);
-//    }
 
     @Override
     public boolean equals(Object o) {
