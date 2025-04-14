@@ -5,14 +5,13 @@ import com.google.gson.Gson;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.Map;
 
 public class ResponseException extends RuntimeException {
-    final private int statusCode;
+//    final private int statusCode;
 
     public ResponseException(int statusCode, String message) {
         super(message);
-        this.statusCode = statusCode;
+//        this.statusCode = statusCode;
     }
 
 //    public String toJson() {
