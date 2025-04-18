@@ -51,10 +51,10 @@ public class CommandLine {
         }
         boolean noExit = true;
         switch (command) {
-            case "Help" -> displayHelpBeforeLogin();
-            case "Quit" -> noExit = false;
-            case "Register" -> processRegisterRequest();
-            case "Login" -> processLoginRequest();
+            case "h", "help", "Help" -> displayHelpBeforeLogin();
+            case "q", "quit", "Quit" -> noExit = false;
+            case "r", "reg", "register", "Register" -> processRegisterRequest();
+            case "l", "login", "Login" -> processLoginRequest();
             default -> matchArbitraryCommand(command);
         }
         return noExit;
@@ -77,13 +77,13 @@ public class CommandLine {
             return;
         }
         switch (command) {
-            case "Help" -> displayHelpAfterLogin();
-            case "Logout" -> processLogoutRequest();
-            case "Create Game" -> processCreateGameRequest();
-            case "List Games" -> processListGamesRequest();
-            case "Play Game" -> processPlayGameRequest();
-            case "Observe Game" -> processObserveGameRequest();
-            case "Quit" -> System.out.println("Unavailable. Logout first.");
+            case "h", "help", "Help" -> displayHelpAfterLogin();
+            case "logout", "Logout" -> processLogoutRequest();
+            case "c", "create", "create game", "Create Game" -> processCreateGameRequest();
+            case "list", "list games", "List Games" -> processListGamesRequest();
+            case "p", "play", "play game", "Play Game" -> processPlayGameRequest();
+            case "o", "observe", "observe game", "Observe Game" -> processObserveGameRequest();
+            case "q", "quit", "Quit" -> System.out.println("Unavailable. Logout first.");
             default -> matchArbitraryCommand(command);
         }
     }
