@@ -276,8 +276,13 @@ public class GamePlay implements WebSocketListener {
             Terminal.addLogMessage("Cannot Resign as OBSERVER");
             return;
         }
-        var resignCommand = new UserGameCommand(CommandType.RESIGN, userAuthToken, currentGameID);
-        ws.sendCommand(resignCommand);
+        String confirmation = Terminal.getInput("Confirm Resign? y/n: ");
+        if (confirmation.equalsIgnoreCase("y")) {
+            var resignCommand = new UserGameCommand(CommandType.RESIGN, userAuthToken, currentGameID);
+            ws.sendCommand(resignCommand);
+        } else {
+            Terminal.addLogMessage("Aborting Resign");
+        }
     }
 
     private void highlightMoves() {

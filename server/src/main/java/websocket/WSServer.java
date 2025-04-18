@@ -161,13 +161,14 @@ public class WSServer {
 
         String notificationMessage;
         boolean isObserving;
-        if (getPlayerColorFromUsername(gameData, authData.username()) == null) {
+        ChessGame.TeamColor playerColor = getPlayerColorFromUsername(gameData, authData.username());
+        if (playerColor == null) {
             System.out.println("Did not find username as Game Player: Preparing observer joined notification");
             notificationMessage = authData.username() + " is observing this game";
             isObserving = true;
         } else {
             System.out.println("Found Username as Game Player: Preparing player joined notification");
-            notificationMessage = authData.username() + " has joined the game";
+            notificationMessage = authData.username() + " has joined as " + playerColor;
             isObserving = false;
         }
 
