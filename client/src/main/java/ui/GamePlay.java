@@ -131,13 +131,13 @@ public class GamePlay implements WebSocketListener {
         switch (command) {
             case "help", "Help" -> displayGamePlayHelp();
             case "redraw", "redraw board", "Redraw Chess Board" -> redrawBoard();
-            case "leave", "Leave" -> {
+            case "l", "leave", "Leave" -> {
                 leaveGame();
                 return false;
             }
-            case "make move", "Make Move" -> gamePlayMakeMove();
+            case "m", "move", "make move", "Make Move" -> gamePlayMakeMove();
             case "resign", "Resign" -> resignGame();
-            case "highlight", "Highlight", "Highlight Legal Moves" -> highlightMoves();
+            case "highlight", "Highlight", "highlight moves", "Highlight Legal Moves" -> highlightMoves();
             default -> matchArbitraryCommand(command);
         }
         return true;
