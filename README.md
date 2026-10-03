@@ -54,13 +54,22 @@ Coordinate moves can also be written with spaces or a hyphen (`e2 e4` or `e2-e4`
 
 In a terminal with mouse reporting, click one of your pieces to highlight its legal destinations, then click a highlighted square to move. Click the selected piece again, right-click, or press Escape to cancel. Observers can click pieces to inspect moves but cannot submit moves. Promotions prompt for queen, rook, knight, or bishop; entering a blank response cancels the move. Your playing color stays the same when you flip the view.
 
-The board uses high-contrast `wK`/`bK` piece labels (`w` = White, `b` = Black; `N` = knight) and spacious cells, so small chess-font glyphs no longer determine readability. It adapts from a one-line compact board to two- or three-line squares as the window grows, with coordinates and an on-screen legend. A standard 80×24 terminal fits the board without increasing the terminal font size. Selection and legal destinations use gold and cyan backgrounds, and the current turn/check state stays visible.
+The board uses chess-piece symbols (`♔♕♖♗♘♙` / `♚♛♜♝♞♟`) by default, with high-contrast piece colors and spacious cells. Pieces, empty-square dots, legal-move markers, and file coordinates share the same center column. Padding uses terminal display widths, including supplementary-plane Nerd Font icons, rather than Java string lengths. The odd-width cells adapt from a one-line compact board to two- or three-line squares as the window grows. A standard 80×24 terminal fits the board without increasing the terminal font size. Selection and legal destinations use gold and cyan backgrounds, and the current turn/check state stays visible.
 
-JLine detects terminal capabilities. When mouse reporting is unavailable, gameplay uses keyboard commands. Non-interactive input, `TERM=dumb`, or unavailable terminal controls automatically use a plain ASCII board with no mouse or cursor escape sequences. You can also force the mode:
+For Nerd Font chess icons, select **JetBrainsMono Nerd Font Mono** (or another Nerd Font Mono) in your terminal's font settings and launch with `--pieces=nerd`. Use the **Mono** variant for single-column icons; the font is controlled by the terminal, not by the CLI. The icons use the [official Nerd Fonts v3 Material Design chess glyphs](https://github.com/ryanoasis/nerd-fonts/blob/master/glyphnames.json). Font support cannot be detected reliably, so the default stays Unicode; `--pieces=ascii` is an explicit fallback for fonts without chess symbols. ASCII uses uppercase for White and lowercase for Black, still one character per square.
+
+```sh
+make cli CLI_ARGS="--pieces=nerd"     # Chess icons with a Nerd Font Mono terminal font
+make cli CLI_ARGS="--pieces=unicode"  # Standard white/black chess symbols (default)
+make cli CLI_ARGS="--pieces=ascii"    # Single-character KQRBNP / kqrbnp fallback
+```
+
+JLine detects terminal capabilities. When mouse reporting is unavailable, gameplay uses keyboard commands. Non-interactive input, `TERM=dumb`, or unavailable terminal controls automatically use a plain board with no mouse or cursor escape sequences. Text mode retains standard Unicode team symbols (even with `--pieces=nerd`, whose icons otherwise rely on color to distinguish teams). Add `--pieces=ascii` for completely ASCII board output. You can also force the mode:
 
 ```sh
 make cli CLI_ARGS="--no-mouse"  # Keep the interactive board, use keyboard commands
 make cli CLI_ARGS="--text"      # Plain board and line input; suitable for pipes/limited terminals
+make cli CLI_ARGS="--text --pieces=ascii"  # Plain input and ASCII board
 ```
 
 Mouse tracking is enabled only during gameplay. Leaving, Ctrl-C/EOF, and connection errors restore the previous terminal mode and screen. `help` opens a paged help view in interactive mode. The lobby lists both game numbers and server IDs; enter `id 902` to choose an ID explicitly.

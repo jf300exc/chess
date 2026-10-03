@@ -1,12 +1,13 @@
 package ui;
 
 import chess.*;
+import org.jline.utils.AttributedString;
 
 import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** Fixed-width ASCII labels avoid font-dependent chess glyph sizes and cell widths. */
+/** Chess symbols and markers share a centered terminal-column anchor. */
 public final class BoardDraw {
     private static final String RESET = "\u001b[0m";
     private static final String LIGHT = "\u001b[48;5;187m";
@@ -26,13 +27,13 @@ public final class BoardDraw {
         }
 
         public static Layout forSize(int columns, int rows) {
-            if (columns >= 54 && rows >= 34) {
-                return new Layout(6, 3);
+            if (columns >= 62 && rows >= 34) {
+                return new Layout(7, 3);
             }
             if (columns >= 46 && rows >= 24) {
                 return new Layout(5, 2);
             }
-            return new Layout(4, 1);
+            return new Layout(3, 1);
         }
 
         /** Zero-based screen coordinates, relative to the top-left of the board. */
@@ -58,6 +59,12 @@ public final class BoardDraw {
     }
 
     static String draw(ChessGame game, ChessGame.TeamColor perspective, ChessPosition selected, Layout layout, boolean color) {
+        return draw(game, perspective, selected, layout, color, PieceSymbols.UNICODE);
+    }
+
+    static String draw(ChessGame game, ChessGame.TeamColor perspective, ChessPosition selected, Layout layout,
+                       boolean color, PieceSymbols symbols) {
+        symbols = symbols.forRendering(color);
         Collection<ChessMove> moves = selected == null ? null : game.validMoves(selected);
         Set<ChessPosition> destinations = moves == null ? Set.of()
                 : moves.stream().map(ChessMove::getEndPosition).collect(Collectors.toSet());
@@ -80,10 +87,12 @@ public final class BoardDraw {
                     boolean legal = destinations.contains(position);
                     String background = isSelected ? SELECTED : legal ? LEGAL
                             : (position.getRow() + position.getColumn()) % 2 == 1 ? LIGHT : DARK;
-                    String label = labelLine ? piece == null ? legal ? "+" : "." : pieceLabel(piece) : "";
+                    String label = labelLine ? piece == null ? legal ? "+" : "."
+                            : symbols.glyph(piece.getPieceType(), piece.getTeamColor()) : "";
+                    int labelWidth = new AttributedString(label).columnLength();
                     if (color) {
                         board.append(background);
-                        int left = (layout.cellWidth - label.length()) / 2;
+                        int left = (layout.cellWidth - labelWidth) / 2;
                         board.append(" ".repeat(left));
                         if (piece != null && labelLine) {
                             board.append(piece.getTeamColor() == ChessGame.TeamColor.WHITE ? WHITE : BLACK);
@@ -91,7 +100,7 @@ public final class BoardDraw {
                             board.append("\u001b[30m");
                         }
                         board.append(label).append(RESET).append(background)
-                                .append(" ".repeat(layout.cellWidth - left - label.length())).append(RESET);
+                                .append(" ".repeat(layout.cellWidth - left - labelWidth)).append(RESET);
                     } else {
                         board.append(center(label, layout.cellWidth));
                     }
@@ -107,19 +116,9 @@ public final class BoardDraw {
                 ? new ChessPosition(row + 1, 8 - column) : new ChessPosition(8 - row, column + 1);
     }
 
-    private static String pieceLabel(ChessPiece piece) {
-        return (piece.getTeamColor() == ChessGame.TeamColor.WHITE ? "w" : "b") + switch (piece.getPieceType()) {
-            case KING -> "K";
-            case QUEEN -> "Q";
-            case ROOK -> "R";
-            case BISHOP -> "B";
-            case KNIGHT -> "N";
-            case PAWN -> "P";
-        };
-    }
-
     private static String center(String label, int width) {
-        int left = (width - label.length()) / 2;
-        return " ".repeat(left) + label + " ".repeat(width - left - label.length());
+        int columns = new AttributedString(label).columnLength();
+        int left = (width - columns) / 2;
+        return " ".repeat(left) + label + " ".repeat(width - left - columns);
     }
 }

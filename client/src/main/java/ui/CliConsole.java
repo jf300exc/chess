@@ -19,17 +19,23 @@ public final class CliConsole implements AutoCloseable {
     private final LineReader lineReader;
     private final BufferedReader plainReader;
     private final boolean allowMouse;
+    private final PieceSymbols pieceSymbols;
     private boolean ended;
 
-    private CliConsole(org.jline.terminal.Terminal terminal, boolean allowMouse) {
+    private CliConsole(org.jline.terminal.Terminal terminal, boolean allowMouse, PieceSymbols pieceSymbols) {
         this.terminal = terminal;
         this.allowMouse = allowMouse;
+        this.pieceSymbols = pieceSymbols;
         lineReader = terminal == null ? null : LineReaderBuilder.builder().terminal(terminal).build();
         plainReader = terminal == null
                 ? new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)) : null;
     }
 
     public static CliConsole open(boolean textOnly, boolean noMouse) {
+        return open(textOnly, noMouse, PieceSymbols.UNICODE);
+    }
+
+    public static CliConsole open(boolean textOnly, boolean noMouse, PieceSymbols pieceSymbols) {
         String term = System.getenv("TERM");
         if (!textOnly && System.console() != null && !"dumb".equals(term)) {
             org.jline.terminal.Terminal candidate = null;
@@ -37,7 +43,7 @@ public final class CliConsole implements AutoCloseable {
                 candidate = TerminalBuilder.builder().system(true).dumb(false).build();
                 if (candidate.getStringCapability(Capability.cursor_address) != null
                         && candidate.getStringCapability(Capability.enter_ca_mode) != null) {
-                    return new CliConsole(candidate, !noMouse);
+                    return new CliConsole(candidate, !noMouse, pieceSymbols);
                 }
             } catch (IOException | RuntimeException | LinkageError e) {
                 System.err.println("Terminal controls unavailable; using text commands.");
@@ -50,7 +56,7 @@ public final class CliConsole implements AutoCloseable {
                 }
             }
         }
-        return new CliConsole(null, false);
+        return new CliConsole(null, false, pieceSymbols);
     }
 
     org.jline.terminal.Terminal terminal() {
@@ -59,6 +65,10 @@ public final class CliConsole implements AutoCloseable {
 
     boolean allowMouse() {
         return allowMouse;
+    }
+
+    PieceSymbols pieceSymbols() {
+        return pieceSymbols;
     }
 
     /** null denotes EOF or Ctrl-C, including during a follow-up prompt. */

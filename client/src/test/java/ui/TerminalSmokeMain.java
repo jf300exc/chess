@@ -15,7 +15,8 @@ import java.util.List;
 public final class TerminalSmokeMain {
     public static void main(String[] args) throws Exception {
         List<String> options = Arrays.asList(args);
-        try (CliConsole console = CliConsole.open(options.contains("--text"), options.contains("--no-mouse"))) {
+        try (CliConsole console = CliConsole.open(options.contains("--text"), options.contains("--no-mouse"),
+                PieceSymbols.fromArgs(args))) {
             var tty = console.terminal();
             var attributes = tty == null ? null : tty.getAttributes();
             System.out.println("SMOKE mode=" + (tty == null ? "text" : "screen")

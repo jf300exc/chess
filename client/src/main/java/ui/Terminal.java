@@ -363,11 +363,12 @@ public final class Terminal {
             lines.add(game == null ? "Waiting for game data..." : statusLine(game) + "  |  View: " + perspective);
             boardVisible = game != null && width >= layout.width() && height >= layout.height() + 6;
             if (boardVisible) {
-                lines.addAll(Arrays.asList(BoardDraw.draw(game.copy(), perspective, selected, layout, true).split("\n")));
+                lines.addAll(Arrays.asList(BoardDraw.draw(game.copy(), perspective, selected, layout, true,
+                        console.pieceSymbols()).split("\n")));
             } else {
-                lines.add("Board needs 38 columns x 16 rows. Resize or use text commands.");
+                lines.add("Board needs 30 columns x 16 rows. Resize or use text commands.");
             }
-            lines.add("w White / b Black | K king Q queen R rook B bishop N knight P pawn");
+            lines.add(console.pieceSymbols().legend());
             lines.add(mouseEnabled ? "Click piece -> destination | right-click/Esc cancels | help"
                     : "Text controls | move e2e4 | highlight e2 | flip | help");
             int logSpace = Math.max(0, height - lines.size() - 1);
@@ -411,8 +412,9 @@ public final class Terminal {
 
     private static void printPlainBoard() {
         System.out.println(gameName + " | " + statusLine(game.copy()));
-        System.out.println(BoardDraw.draw(game.copy(), perspective, selected, new BoardDraw.Layout(4, 1), false));
-        System.out.println("w = White, b = Black | K king Q queen R rook B bishop N knight P pawn | + legal");
+        PieceSymbols symbols = console.pieceSymbols().forRendering(false);
+        System.out.println(BoardDraw.draw(game.copy(), perspective, selected, new BoardDraw.Layout(3, 1), false, symbols));
+        System.out.println(symbols.legend());
     }
 
     private static String safeText(String text) {

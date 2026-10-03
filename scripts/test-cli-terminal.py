@@ -71,6 +71,12 @@ def run_session(name, actions, args=(), term="xterm-256color", expected="e2e4"):
         assert all(restored_attributes[i] == original_attributes[i] for i in (0, 1, 3, 6)), (
             f"Terminal attributes were not restored\nbefore={original_attributes}\nafter={restored_attributes}")
         assert process.returncode == 0, result
+        if "--pieces=ascii" in args:
+            assert "White: KQRBNP" in result, "ASCII glyph option was not applied"
+        elif "--pieces=nerd" in args and "--text" not in args and term != "dumb":
+            assert chr(0xF0857) in result, "Nerd Font king was not rendered"
+        else:
+            assert "♔" in result and "♚" in result, "Distinct Unicode team symbols were not rendered"
         if "--text" in args or term == "dumb":
             assert "\x1b[?1000h" not in result, "Fallback unexpectedly enabled mouse tracking"
         elif "--no-mouse" in args:
@@ -97,15 +103,21 @@ run_session("legacy mouse reports", [
     b"\x1b[M" + bytes((32, 26 + 32, 16 + 32)),
     b"\x1b[M" + bytes((32, 26 + 32, 12 + 32)), b"leave\n"])
 run_session("flipped board and compact resize", [
-    b"flip\n", (18, 44), click(17, 5), click(17, 7), b"leave\n"])
+    b"flip\n", (18, 44), click(14, 5), click(14, 7), b"leave\n"])
 run_session("large board resize", [
-    (36, 90), click(30, 22), click(30, 16), b"leave\n"])
+    (36, 90), click(35, 22), click(35, 16), b"leave\n"])
 run_session("observer inspection cannot send moves", [
     click(26, 16), click(26, 12), b"move e2e4\n", b"leave\n"], ["--observer"], expected="none")
 run_session("keyboard fallback with mouse disabled", [
     b"highlight e2\n", b"move e2e4\n", b"leave\n"], ["--no-mouse"])
 run_session("dumb terminal fallback", [b"move e2e4\n", b"leave\n"], term="dumb")
 run_session("explicit text mode", [b"move e2e4\n", b"leave\n"], ["--text"])
+run_session("Nerd Font symbols preserve mouse alignment", [
+    click(26, 16), click(26, 12), b"leave\n"], ["--pieces=nerd"])
+run_session("ASCII single-character text fallback", [
+    b"move e2e4\n", b"leave\n"], ["--text", "--pieces=ascii"])
+run_session("Nerd Font text mode keeps teams distinct", [
+    b"move e2e4\n", b"leave\n"], ["--text", "--pieces=nerd"])
 run_session("Ctrl-C cleanup", [b"\x03"], expected="none")
 run_session("Ctrl-D cleanup", [b"\x04"], expected="none")
 run_session("mouse promotion chooses knight", [click(6, 6), click(6, 4), b"n\n", b"leave\n"],

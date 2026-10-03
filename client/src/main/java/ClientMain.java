@@ -1,5 +1,6 @@
 import ui.CommandLine;
 import ui.CliConsole;
+import ui.PieceSymbols;
 import ui.ServerFacade;
 import ui.Terminal;
 import ui.WebSocketClient;
@@ -15,7 +16,7 @@ public class ClientMain {
 
         boolean textOnly = java.util.Arrays.asList(args).contains("--text");
         boolean noMouse = java.util.Arrays.asList(args).contains("--no-mouse");
-        try (CliConsole console = CliConsole.open(textOnly, noMouse)) {
+        try (CliConsole console = CliConsole.open(textOnly, noMouse, PieceSymbols.fromArgs(args))) {
             CommandLine commandLine = new CommandLine(httpFacade, console);
             WebSocketClient webSocketClient = new WebSocketClient(host, port, commandLine.gamePlay);
             commandLine.gamePlay.setWebSocket(webSocketClient);
