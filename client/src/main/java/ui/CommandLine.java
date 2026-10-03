@@ -38,24 +38,27 @@ public class CommandLine {
     private static void displayHelpBeforeLogin() {
         String helpMessage = """
                 Available commands for PreLogin UI:
-                    Help        Displays this help message.
-                    Quit        Exits the program.
-                    Login       Prompts for user credentials and attempts to login.
-                    Register    Prompts for new user credentials and logs in.""";
+                    Help                 Displays this help message.
+                    Quit                 Exits the program.
+                    Login                Prompts for user credentials and attempts to login.
+                    Register             Prompts for new user credentials and logs in.
+
+                Commands are case-insensitive. Shortcuts: h, q, l, r.""";
         System.out.println(helpMessage);
     }
 
     private boolean matchPreLoginCommand(String command) {
-        if (command.isBlank()) {
+        String normalizedCommand = CliInputParser.normalizeCommand(command);
+        if (normalizedCommand.isBlank()) {
             return true;
         }
         boolean noExit = true;
-        switch (command) {
-            case "h", "help", "Help" -> displayHelpBeforeLogin();
-            case "q", "quit", "Quit" -> noExit = false;
-            case "r", "reg", "register", "Register" -> processRegisterRequest();
-            case "l", "login", "Login" -> processLoginRequest();
-            default -> matchArbitraryCommand(command);
+        switch (normalizedCommand) {
+            case "h", "help" -> displayHelpBeforeLogin();
+            case "q", "quit" -> noExit = false;
+            case "r", "reg", "register" -> processRegisterRequest();
+            case "l", "login" -> processLoginRequest();
+            default -> matchArbitraryCommand(normalizedCommand);
         }
         return noExit;
     }
@@ -63,36 +66,41 @@ public class CommandLine {
     private static void displayHelpAfterLogin() {
         String helpMessage = """
                 Available commands for PostLogin UI:
-                    Help            Displays this help message.
-                    Logout          Logs out and returns to preLogin UI.
-                    Create Game     Prompts for new game information and attempts to create a new game.
-                    List Games      Lists all the games that exist on the server.
-                    Play Game       Prompts the user for player information and attempts to join a game.
-                    Observe Game    Prompts the user for a game ID to view a game. Used after List Games.""";
+                    Help                 Displays this help message.
+                    Logout               Logs out and returns to preLogin UI.
+                    Create Game          Prompts for new game information and attempts to create a new game.
+                    List Games           Lists all the games that exist on the server.
+                    Play Game            Prompts for player information and joins a game.
+                    Observe Game         Prompts for a game to view. Used after List Games.
+                    Clear                Clears the terminal screen.
+
+                Commands are case-insensitive. Shortcuts: h, c, l, p, o, q.""";
         System.out.println(helpMessage);
     }
 
     private void matchPostLoginCommand(String command) throws Exception {
-        if (command.isBlank()) {
+        String normalizedCommand = CliInputParser.normalizeCommand(command);
+        if (normalizedCommand.isBlank()) {
             return;
         }
-        switch (command) {
-            case "h", "help", "Help" -> displayHelpAfterLogin();
-            case "logout", "Logout" -> processLogoutRequest();
-            case "c", "create", "create game", "Create Game" -> processCreateGameRequest();
-            case "list", "list games", "List Games" -> processListGamesRequest();
-            case "p", "play", "play game", "Play Game" -> processPlayGameRequest();
-            case "o", "observe", "observe game", "Observe Game" -> processObserveGameRequest();
-            case "q", "quit", "Quit" -> System.out.println("Unavailable. Logout first.");
-            default -> matchArbitraryCommand(command);
+        switch (normalizedCommand) {
+            case "h", "help" -> displayHelpAfterLogin();
+            case "logout" -> processLogoutRequest();
+            case "c", "create", "create game" -> processCreateGameRequest();
+            case "list", "list games" -> processListGamesRequest();
+            case "p", "play", "play game" -> processPlayGameRequest();
+            case "o", "observe", "observe game" -> processObserveGameRequest();
+            case "clear" -> matchArbitraryCommand(normalizedCommand);
+            case "q", "quit" -> System.out.println("Unavailable. Logout first.");
+            default -> matchArbitraryCommand(normalizedCommand);
         }
     }
 
     private void matchArbitraryCommand(String command) {
-        if (command.equals("clear")) {
+        if (CliInputParser.normalizeCommand(command).equals("clear")) {
             System.out.print(EscapeSequences.ERASE_SCREEN);
         } else {
-            System.out.println("Unknown command");
+            System.out.println("Unknown command. Type 'help' for available commands.");
         }
     }
 
@@ -264,11 +272,16 @@ public class CommandLine {
         } catch (NumberFormatException e) {
             gameNum = -1;
         }
-        if (gameNum <= 0 || gameNum > gamesList.size()) {
-            System.out.println("Invalid game number. Try again.");
-            return null;
+        if (gameNum >= 1 && gameNum <= gamesList.size()) {
+            return gamesList.get(gameNum - 1);
         }
-        return gamesList.get(gameNum - 1);
+        for (GameEntry game : gamesList) {
+            if (game.gameID() == gameNum) {
+                return game;
+            }
+        }
+        System.out.println("Invalid game number or ID. Try again.");
+        return null;
     }
 
     private String getPlayerColorFromUserInput() {

@@ -37,6 +37,21 @@ make cli HOST=192.168.1.20 PORT=9090
 
 The CLI and GUI can be used at the same time and can join the same match.
 
+### Terminal gameplay commands
+
+The terminal client accepts commands without regard to capitalization or extra spacing. While playing or observing, use:
+
+```text
+status                  Show the current turn, role, and check state
+moves e2                List legal moves for the piece on e2
+move e2e4               Submit a move directly from the command prompt
+move e7e8=Q             Submit a promotion without a follow-up prompt
+highlight e2            Highlight legal destinations on the board
+flip                    View the board from the opposite perspective
+```
+
+Coordinate moves can also be written with spaces or a hyphen (`e2 e4` or `e2-e4`). `help` lists the available commands in each client state.
+
 ## Database setup
 
 The server intentionally does not commit credentials. Copy the example and edit it for your MySQL installation:

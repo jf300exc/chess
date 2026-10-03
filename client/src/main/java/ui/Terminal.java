@@ -206,6 +206,17 @@ public class Terminal {
         currentTeamColor = color;
     }
 
+    public static ChessGame.TeamColor getPlayerColor() {
+        return currentTeamColor;
+    }
+
+    public static void flipBoard() {
+        currentTeamColor = currentTeamColor == ChessGame.TeamColor.WHITE
+                ? ChessGame.TeamColor.BLACK : ChessGame.TeamColor.WHITE;
+        gameChangedFlag = true;
+        addLogMessage("Board flipped to " + currentTeamColor + " perspective");
+    }
+
     private static void render() {
         boolean any = false;
         StringBuilder sb = new StringBuilder();
