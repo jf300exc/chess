@@ -5,6 +5,7 @@ import model.GameData;
 import org.junit.jupiter.api.*;
 
 import javax.swing.*;
+import java.awt.CardLayout;
 import java.awt.GraphicsEnvironment;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,6 +71,78 @@ class ChessGuiLifecycleTests {
             }
         });
         SwingUtilities.invokeAndWait(() -> assertTrue(((DefaultListModel<?>) field("activityModel")).isEmpty()));
+    }
+
+    @Test
+    void activityFollowsNewMessagesWhenAlreadyAtTheBottom() throws Exception {
+        showActivity(30);
+        SwingUtilities.invokeAndWait(() -> {
+            JScrollBar scrollbar = activityScroll().getVerticalScrollBar();
+            assertTrue(scrollbar.getMaximum() > scrollbar.getVisibleAmount());
+            scrollbar.setValue(scrollbar.getMaximum());
+        });
+
+        receiveActivity("Newest message");
+
+        SwingUtilities.invokeAndWait(() -> {
+            JScrollBar scrollbar = activityScroll().getVerticalScrollBar();
+            assertEquals(scrollbar.getMaximum(), scrollbar.getValue() + scrollbar.getVisibleAmount());
+            JList<?> list = (JList<?>) field("activityList");
+            assertEquals(list.getModel().getSize() - 1, list.getLastVisibleIndex());
+        });
+    }
+
+    @Test
+    void activityPreservesTheScrollPositionWhenReadingOlderMessages() throws Exception {
+        showActivity(30);
+        final int[] previous = new int[1];
+        SwingUtilities.invokeAndWait(() -> {
+            activityScroll().getVerticalScrollBar().setValue(100);
+            previous[0] = activityScroll().getViewport().getViewPosition().y;
+        });
+
+        receiveActivity("Newest message");
+
+        SwingUtilities.invokeAndWait(() ->
+                assertEquals(previous[0], activityScroll().getViewport().getViewPosition().y));
+    }
+
+    @Test
+    void activityKeepsTheSameOlderMessageVisibleWhenHistoryIsTrimmed() throws Exception {
+        showActivity(100);
+        final String[] previous = new String[1];
+        SwingUtilities.invokeAndWait(() -> {
+            JList<?> list = (JList<?>) field("activityList");
+            activityScroll().getVerticalScrollBar().setValue(list.getCellBounds(20, 20).y + 3);
+            previous[0] = (String) list.getModel().getElementAt(list.getFirstVisibleIndex());
+        });
+
+        receiveActivity("Newest message");
+
+        SwingUtilities.invokeAndWait(() -> {
+            JList<?> list = (JList<?>) field("activityList");
+            assertEquals(100, list.getModel().getSize());
+            assertEquals(previous[0], list.getModel().getElementAt(list.getFirstVisibleIndex()));
+        });
+    }
+
+    private JScrollPane activityScroll() {
+        return (JScrollPane) field("activityScroll");
+    }
+
+    private void showActivity(int messages) throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            ((CardLayout) field("cardLayout")).show((JPanel) field("cards"), "game");
+            gui.setVisible(true);
+        });
+        for (int i = 0; i < messages; i++) {
+            receiveActivity("Message " + i);
+        }
+    }
+
+    private void receiveActivity(String message) throws Exception {
+        gui.onMessage("{\"serverMessageType\":\"NOTIFICATION\",\"message\":\"" + message + "\"}");
+        SwingUtilities.invokeAndWait(() -> { });
     }
 
     private Object field(String name) {

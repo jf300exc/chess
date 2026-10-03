@@ -98,6 +98,8 @@ public class ChessGui extends JFrame implements WebSocketListener {
     private final JLabel roleLabel = label("", MUTED, 13, Font.BOLD);
     private final JLabel turnLabel = label("Waiting for position", ACCENT, 18, Font.BOLD);
     private final DefaultListModel<String> activityModel = new DefaultListModel<>();
+    private final JList<String> activityList = new JList<>(activityModel);
+    private final JScrollPane activityScroll = scroll(activityList);
 
     private volatile WebSocketClient webSocket;
     private volatile long navigationVersion;
@@ -319,12 +321,10 @@ public class ChessGui extends JFrame implements WebSocketListener {
         activityTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         side.add(activityTitle);
         side.add(Box.createVerticalStrut(8));
-        JList<String> activity = new JList<>(activityModel);
-        activity.setBackground(SURFACE_2);
-        activity.setForeground(TEXT);
-        activity.setFixedCellHeight(31);
-        activity.setBorder(new EmptyBorder(5, 8, 5, 8));
-        JScrollPane activityScroll = scroll(activity);
+        activityList.setBackground(SURFACE_2);
+        activityList.setForeground(TEXT);
+        activityList.setFixedCellHeight(31);
+        activityList.setBorder(new EmptyBorder(5, 8, 5, 8));
         activityScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
         activityScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         side.add(activityScroll);
@@ -685,9 +685,23 @@ public class ChessGui extends JFrame implements WebSocketListener {
         if (message == null || message.isBlank()) {
             return;
         }
+        JScrollBar scrollbar = activityScroll.getVerticalScrollBar();
+        boolean atBottom = scrollbar.getValue() + scrollbar.getVisibleAmount() >= scrollbar.getMaximum();
+        Point previousPosition = activityScroll.getViewport().getViewPosition();
         activityModel.addElement(message);
+        int removed = 0;
         while (activityModel.size() > 100) {
             activityModel.remove(0);
+            removed++;
+        }
+        // Update the scroll range before following the newly appended message.
+        activityList.revalidate();
+        activityScroll.validate();
+        if (atBottom) {
+            scrollbar.setValue(scrollbar.getMaximum());
+        } else if (removed > 0) {
+            activityScroll.getViewport().setViewPosition(new Point(previousPosition.x,
+                    Math.max(0, previousPosition.y - removed * activityList.getFixedCellHeight())));
         }
     }
 
