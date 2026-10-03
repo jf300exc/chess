@@ -406,7 +406,12 @@ public class ChessBoard {
 
     public ChessBoard copy() {
         ChessBoard copy = new ChessBoard();
-        copy.board.putAll(this.board);
+        // Pieces are mutable during promotion; snapshots must not share them.
+        this.board.forEach((position, piece) -> {
+            if (piece != null) {
+                copy.board.put(position, new ChessPiece(piece.getTeamColor(), piece.getPieceType()));
+            }
+        });
         copy.setCastleRequirements(deepCopyCastleRequirements());
         copy.setKingPos(whiteKingPos, TeamColor.WHITE);
         copy.setKingPos(blackKingPos, TeamColor.BLACK);

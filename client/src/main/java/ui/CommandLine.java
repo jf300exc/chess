@@ -8,16 +8,22 @@ import requests.*;
 import java.util.*;
 
 public class CommandLine {
-    private final Scanner scanner = new Scanner(System.in);
+    private final CliConsole console;
     private final List<GameEntry> gamesList = new ArrayList<>();
     private final ServerFacade serverFacade;
 
-    public final GamePlay gamePlay = new GamePlay();
+    public final GamePlay gamePlay;
 
     private LoginState loginState;
 
     public CommandLine(ServerFacade serverFacade) {
+        this(serverFacade, CliConsole.open(true, true));
+    }
+
+    public CommandLine(ServerFacade serverFacade, CliConsole console) {
         this.serverFacade = serverFacade;
+        this.console = console;
+        this.gamePlay = new GamePlay(console);
         loginState = LoginState.LOGGED_OUT;
     }
 
@@ -31,8 +37,11 @@ public class CommandLine {
     }
 
     private String getUserInput(String prompt) {
-        System.out.print(Objects.requireNonNullElseGet(prompt, () -> loginStatePromptString() + " >>> "));
-        return scanner.nextLine().trim();
+        String input = console.readLine(Objects.requireNonNullElseGet(prompt, () -> loginStatePromptString() + " >>> "));
+        if (input == null) {
+            throw new org.jline.reader.EndOfFileException();
+        }
+        return input.trim();
     }
 
     private static void displayHelpBeforeLogin() {
@@ -87,7 +96,7 @@ public class CommandLine {
             case "h", "help" -> displayHelpAfterLogin();
             case "logout" -> processLogoutRequest();
             case "c", "create", "create game" -> processCreateGameRequest();
-            case "list", "list games" -> processListGamesRequest();
+            case "l", "list", "list games" -> processListGamesRequest();
             case "p", "play", "play game" -> processPlayGameRequest();
             case "o", "observe", "observe game" -> processObserveGameRequest();
             case "clear" -> matchArbitraryCommand(normalizedCommand);
@@ -105,15 +114,19 @@ public class CommandLine {
     }
 
     public void run() throws Exception {
-        for (;;) {
-            String userInput = getUserInput(null);
-            if (loginState == LoginState.LOGGED_OUT) {
-               if (!matchPreLoginCommand(userInput)) {
-                   break;
-               }
-            } else {
-                matchPostLoginCommand(userInput);
+        try {
+            for (;;) {
+                String userInput = getUserInput(null);
+                if (loginState == LoginState.LOGGED_OUT) {
+                    if (!matchPreLoginCommand(userInput)) {
+                        break;
+                    }
+                } else {
+                    matchPostLoginCommand(userInput);
+                }
             }
+        } catch (org.jline.reader.EndOfFileException e) {
+            // EOF/Ctrl-C from either the main prompt or a credentials prompt exits cleanly.
         }
     }
 
@@ -192,7 +205,7 @@ public class CommandLine {
     }
 
     private void printGameInfo(GameEntry gameEntry, int gameNumber) {
-        System.out.println(gameNumber + ": " + gameEntry.gameName());
+        System.out.println(gameNumber + ": " + gameEntry.gameName() + " (id " + gameEntry.gameID() + ")");
         if (gameEntry.whiteUsername() != null) {
             System.out.println("  WHITE username: " + gameEntry.whiteUsername());
         }
@@ -265,14 +278,18 @@ public class CommandLine {
             return null;
         }
 
-        String gameNumStr = getUserInput("Game Number: ");
+        String gameNumStr = getUserInput("Game Number (or id <ID>): ");
+        boolean explicitId = CliInputParser.normalizeCommand(gameNumStr).startsWith("id ");
+        if (explicitId) {
+            gameNumStr = gameNumStr.substring(gameNumStr.indexOf(' ') + 1).trim();
+        }
         int gameNum;
         try {
             gameNum = Integer.parseInt(gameNumStr);
         } catch (NumberFormatException e) {
             gameNum = -1;
         }
-        if (gameNum >= 1 && gameNum <= gamesList.size()) {
+        if (!explicitId && gameNum >= 1 && gameNum <= gamesList.size()) {
             return gamesList.get(gameNum - 1);
         }
         for (GameEntry game : gamesList) {

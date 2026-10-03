@@ -31,12 +31,23 @@ public class GamePlay implements WebSocketListener {
 
     private WebSocketClient ws;
     private UserType userType;
+    private final CliConsole console;
+    private final BoardInteraction interaction = new BoardInteraction();
+    private ChessGame.TeamColor playerTeam;
     private String userAuthToken;
     private int currentGameID;
 
     public enum UserType {
         PLAYER,
         OBSERVER
+    }
+
+    public GamePlay() {
+        this(CliConsole.open(true, true));
+    }
+
+    public GamePlay(CliConsole console) {
+        this.console = console;
     }
 
     public void setWebSocket(WebSocketClient ws) {
@@ -52,18 +63,23 @@ public class GamePlay implements WebSocketListener {
             Terminal.addLogMessage("Received String: " + message);
             return;
         }
-        String messageType = json.get("serverMessageType").getAsString();
-        switch (messageType) {
-            case "LOAD_GAME" -> processLoadGameMessage(message);
-            case "ERROR" -> processErrorMessage(message);
-            case "NOTIFICATION" -> processNotificationMessage(message);
-            default -> Terminal.addLogMessage("Received Message: " + message);
+        try {
+            String messageType = json.get("serverMessageType").getAsString();
+            switch (messageType) {
+                case "LOAD_GAME" -> processLoadGameMessage(message);
+                case "ERROR" -> processErrorMessage(message);
+                case "NOTIFICATION" -> processNotificationMessage(message);
+                default -> Terminal.addLogMessage("Received Message: " + message);
+            }
+        } catch (RuntimeException e) {
+            Terminal.addNotification("Received an invalid server message.");
         }
     }
 
     void processLoadGameMessage(String message) {
         LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
         GameData gameData = loadGameMessage.getGame();
+        interaction.clear();
         Terminal.setChessGame(gameData.game(), gameData.gameName());
         String status = gameData.game().isGameOver() ? "Game over"
                 : "It is " + gameData.game().getTeamTurn() + "'s turn";
@@ -72,6 +88,8 @@ public class GamePlay implements WebSocketListener {
 
     void processErrorMessage(String message) {
         ErrorMessage errorMessage = gson.fromJson(message, ErrorMessage.class);
+        interaction.clear();
+        Terminal.drawHighlights(null);
         Terminal.addNotification("Error: " + errorMessage.getErrorMessage());
     }
 
@@ -81,6 +99,7 @@ public class GamePlay implements WebSocketListener {
         if (notification.getMessage().endsWith(" has resigned")) {
             ChessGame game = Terminal.getChessGame();
             if (game != null) {
+                interaction.clear();
                 game.setGameOver(true);
                 Terminal.setChessGame(game, null);
                 Terminal.addLogMessage("Game over");
@@ -90,28 +109,33 @@ public class GamePlay implements WebSocketListener {
 
     public void playGame(UserGameCommand connectRequest, String playerColor) throws Exception {
         this.userType = UserType.PLAYER;
-        this.userAuthToken = connectRequest.getAuthToken();
-        this.currentGameID = connectRequest.getGameID();
-        ws.connectClient();
-        Terminal.start(playerColor);
-        ws.sendCommand(connectRequest);
-        runGamePlayUI();
-        ws.closeClient();
-        Terminal.addLogMessage("Stopping Terminal");
-        Terminal.stop();
+        this.playerTeam = ChessGame.TeamColor.valueOf(playerColor);
+        runSession(connectRequest, playerColor);
     }
 
     public void observeGame(UserGameCommand connectRequest) throws Exception {
         this.userType = UserType.OBSERVER;
+        this.playerTeam = null;
+        runSession(connectRequest, "WHITE");
+    }
+
+    private void runSession(UserGameCommand connectRequest, String perspective) throws Exception {
         this.userAuthToken = connectRequest.getAuthToken();
         this.currentGameID = connectRequest.getGameID();
-        ws.connectClient();
-        Terminal.start("WHITE");
-        ws.sendCommand(connectRequest);
-        runGamePlayUI();
-        ws.closeClient();
-        Terminal.addLogMessage("Stopping Terminal");
-        Terminal.stop();
+        interaction.clear();
+        try {
+            Terminal.start(console, perspective);
+            ws.connectClient();
+            ws.sendCommand(connectRequest);
+            waitForTerminal();
+            runGamePlayUI();
+        } catch (org.jline.reader.EndOfFileException e) {
+            leaveGame();
+        } finally {
+            ws.closeClient();
+            Terminal.stop();
+            interaction.clear();
+        }
     }
 
     private String userTypePromptString() {
@@ -122,13 +146,42 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void runGamePlayUI() throws Exception {
-        waitForTerminal();
         for (;;) {
             var prompt = userTypePromptString();
-            var userInput = Terminal.getInput(prompt + " >>> ");
-            if (!matchGamePlayCommand(userInput)) {
-                break;
+            var userInput = Terminal.getGameInput(prompt + " >>> ", ws::isSessionOpen);
+            try {
+                if (userInput.cancel()) {
+                    interaction.clear();
+                    Terminal.drawHighlights(null);
+                } else if (userInput.square() != null) {
+                    handleBoardClick(userInput.square());
+                } else if (userInput.text() == null) {
+                    leaveGame();
+                    break;
+                } else if (!matchGamePlayCommand(userInput.text())) {
+                    break;
+                }
+            } catch (org.jline.reader.EndOfFileException e) {
+                throw e;
+            } catch (Exception e) {
+                interaction.clear();
+                Terminal.drawHighlights(null);
+                if (!ws.isSessionOpen()) {
+                    throw e;
+                }
+                Terminal.addNotification("Command failed: " + e.getMessage());
             }
+        }
+    }
+
+    private void handleBoardClick(ChessPosition square) throws Exception {
+        BoardInteraction.Result result = interaction.click(Terminal.getChessGame(), square, playerTeam);
+        Terminal.drawHighlights(result.selected());
+        if (result.message() != null) {
+            Terminal.addLogMessage(result.message());
+        }
+        if (result.move() != null) {
+            gamePlayMakeMove(CliInputParser.formatMove(result.move()));
         }
     }
 
@@ -138,10 +191,13 @@ public class GamePlay implements WebSocketListener {
             return true;
         }
         switch (normalizedCommand) {
-            case "help" -> displayGamePlayHelp();
-            case "redraw", "redraw board" -> redrawBoard();
+            case "h", "help" -> displayGamePlayHelp();
+            case "redraw", "redraw board", "redraw chess board" -> redrawBoard();
             case "status" -> displayGameStatus();
-            case "flip" -> Terminal.flipBoard();
+            case "flip" -> {
+                interaction.clear();
+                Terminal.flipBoard();
+            }
             case "l", "leave" -> {
                 leaveGame();
                 return false;
@@ -157,7 +213,7 @@ public class GamePlay implements WebSocketListener {
                         moveInput = normalizedCommand.substring("make move ".length());
                     }
                     gamePlayMakeMove(moveInput);
-                } else if (normalizedCommand.equals("highlight") || normalizedCommand.startsWith("highlight ")) {
+                } else if (normalizedCommand.startsWith("highlight ")) {
                     String position = normalizedCommand.length() > "highlight".length()
                             ? normalizedCommand.substring("highlight".length()).trim() : null;
                     highlightMoves(position);
@@ -185,7 +241,7 @@ public class GamePlay implements WebSocketListener {
         String helpMessage = """
                 Available commands for GamePlay UI:
                     Help                    Displays this help message.
-                    Status                  Shows turn, player color, and check state.
+                    Status                  Shows turn, role, and check state.
                     Redraw                  Redraws the chess board.
                     Flip                    Flip the board to the opposite perspective.
                     Moves <square>          Lists legal moves from a square (Ex. moves e2).
@@ -194,26 +250,24 @@ public class GamePlay implements WebSocketListener {
                     Leave                   Leave the game.
                     Resign                  Forfeit the game.
 
-                Commands are case-insensitive. Press Enter at a move prompt to cancel.""";
-        String[] messages = helpMessage.split("\n");
-        for (String message : messages) {
-            Terminal.addLogMessage(message);
-        }
+                Mouse: click your piece, then its highlighted destination. Right-click/Esc cancels.
+                Observers can click pieces to inspect moves. Promotion prompts for Q/R/N/B.
+                Labels: w=White b=Black; K king Q queen R rook B bishop N knight P pawn.
+                Commands ignore case. Press Enter at a follow-up prompt to cancel.""";
+        Terminal.showHelp(helpMessage);
     }
 
     private void redrawBoard() {
         Terminal.refresh();
-        waitForTerminal();
     }
 
-    private void waitForTerminal() {
+    private void waitForTerminal() throws Exception {
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
         while (Terminal.notReadyForInput()) {
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
+            if (!ws.isSessionOpen() || System.nanoTime() >= deadline) {
+                throw new java.io.IOException("No game data received. Check the connection and try joining again.");
             }
+            Thread.sleep(10);
         }
     }
 
@@ -248,8 +302,24 @@ public class GamePlay implements WebSocketListener {
             Terminal.addLogMessage("Invalid Game State. Try Again.");
             return;
         }
+        if (gameCopy.isGameOver() || gameCopy.getTeamTurn() != playerTeam) {
+            interaction.clear();
+            Terminal.addLogMessage(gameCopy.isGameOver() ? "Game over." : "It is " + gameCopy.getTeamTurn() + "'s turn.");
+            return;
+        }
         if (move.getPromotionPiece() == null && moveIsPromotion(move, gameCopy)) {
             move = getPromotionMoveFromUser(move);
+            if (move == null) {
+                interaction.clear();
+                return;
+            }
+        }
+        try {
+            gameCopy.makeMove(move);
+        } catch (InvalidMoveException e) {
+            interaction.clear();
+            Terminal.addLogMessage("Illegal move: " + e.getMessage());
+            return;
         }
         var moveCommand = new MakeMoveCommand(CommandType.MAKE_MOVE, userAuthToken, currentGameID, move);
         ws.sendCommand(moveCommand);
@@ -266,7 +336,7 @@ public class GamePlay implements WebSocketListener {
     private boolean moveIsPromotion(ChessMove move, ChessGame game) {
         try {
             ChessMove promotionAttemptMove = new ChessMove(move.getStartPosition(), move.getEndPosition(), ChessPiece.PieceType.QUEEN);
-            game.makeMove(promotionAttemptMove);
+            game.copy().makeMove(promotionAttemptMove);
         } catch (InvalidMoveException e) {
             return false;
         }
@@ -283,18 +353,18 @@ public class GamePlay implements WebSocketListener {
             Terminal.addLogMessage("2. ROOK");
             Terminal.addLogMessage("3. KNIGHT");
             Terminal.addLogMessage("4. BISHOP");
-            userInput = Terminal.getInput("Choose Piece Number: ").trim();
-            if (userInput.length() != 1 || userInput.charAt(0) < '1' || userInput.charAt(0) > '4') {
-                userInput = null;
-            } else {
-                promotionType = switch (userInput) {
-                    case "1" -> ChessPiece.PieceType.QUEEN;
-                    case "2" -> ChessPiece.PieceType.ROOK;
-                    case "3" -> ChessPiece.PieceType.KNIGHT;
-                    case "4" -> ChessPiece.PieceType.BISHOP;
-                    default -> null;
-                };
+            userInput = CliInputParser.normalizeCommand(Terminal.getInput("Promote [Q/R/N/B, Enter cancels]: "));
+            if (userInput.isBlank()) {
+                Terminal.addLogMessage("Promotion cancelled.");
+                return null;
             }
+            promotionType = switch (userInput) {
+                case "1", "q", "queen" -> ChessPiece.PieceType.QUEEN;
+                case "2", "r", "rook" -> ChessPiece.PieceType.ROOK;
+                case "3", "n", "knight" -> ChessPiece.PieceType.KNIGHT;
+                case "4", "b", "bishop" -> ChessPiece.PieceType.BISHOP;
+                default -> null;
+            };
         }
         return new ChessMove(move.getStartPosition(), move.getEndPosition(), promotionType);
     }
@@ -318,17 +388,22 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void highlightMoves(String inlinePosition) {
-
-        String positionString = inlinePosition;
         ChessPosition startPosition = null;
-        while (positionString == null || positionString.isBlank() || startPosition == null) {
-            Terminal.addLogMessage("Enter Start Position (Ex: a1)");
-            positionString = Terminal.getInput("Enter Start Position: ");
-            if (positionString.trim().isEmpty()) {
+        while (startPosition == null) {
+            String positionString = inlinePosition == null ? Terminal.getInput("Enter Start Position (Ex: a1): ") : inlinePosition;
+            if (positionString.isBlank()) {
                 Terminal.addLogMessage("Aborting Highlighting");
                 return;
             }
             startPosition = validatePositionString(positionString);
+            if (inlinePosition != null && startPosition == null) {
+                return;
+            }
+        }
+        ChessGame game = Terminal.getChessGame();
+        if (game == null || game.getBoard().getPiece(startPosition) == null) {
+            Terminal.addLogMessage("No piece at " + startPosition + ".");
+            return;
         }
         Terminal.drawHighlights(startPosition);
     }
@@ -382,20 +457,7 @@ public class GamePlay implements WebSocketListener {
             Terminal.addLogMessage("Game state is not ready. Try again.");
             return;
         }
-        ChessGame.TeamColor turn = game.getTeamTurn();
-        String state;
-        if (game.isGameOver()) {
-            state = "game over";
-        } else if (game.isInCheckmate(turn)) {
-            state = turn + " is in checkmate";
-        } else if (game.isInStalemate(turn)) {
-            state = "stalemate";
-        } else if (game.isInCheck(turn)) {
-            state = turn + " is in check";
-        } else {
-            state = "in progress";
-        }
-        Terminal.addLogMessage("Role: " + userType + " | Perspective: " + Terminal.getPlayerColor()
-                + " | Turn: " + turn + " | Status: " + state);
+        Terminal.addLogMessage("Role: " + userType + (playerTeam == null ? "" : " as " + playerTeam)
+                + " | View: " + Terminal.getPlayerColor() + " | " + Terminal.statusLine(game));
     }
 }
