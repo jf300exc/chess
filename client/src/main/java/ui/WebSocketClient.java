@@ -16,12 +16,18 @@ import java.util.Map;
 
 public class WebSocketClient extends Endpoint {
     private final WebSocketListener listener;
+    private final String host;
     private final int port;
     private final Gson gson;
     private Session session;
 
 
     public WebSocketClient(int port, WebSocketListener listener) {
+        this("localhost", port, listener);
+    }
+
+    public WebSocketClient(String host, int port, WebSocketListener listener) {
+        this.host = host;
         this.port = port;
         this.listener = listener;
         gson = new GsonBuilder()
@@ -50,7 +56,7 @@ public class WebSocketClient extends Endpoint {
             System.err.println("Can't connect to WebSocket: Already Connected");
             return;
         }
-        URI uri = new URI("ws://localhost:" + port + "/ws");
+        URI uri = new URI("ws://" + host + ":" + port + "/ws");
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
         this.session = container.connectToServer(this, uri);
         this.session.addMessageHandler(new MessageHandler.Whole<String>() {

@@ -90,9 +90,7 @@ public class Terminal {
     public static void refresh() {
         running = false;
         readyForInput = false;
-        while (renderThread) {
-            Thread.onSpinWait();
-        }
+        waitForRendererToStop();
         ChessGame game;
         synchronized (GAME_STATE_LOCK) {
             game = currentGameState;
@@ -145,10 +143,19 @@ public class Terminal {
         StringBuilder sb = new StringBuilder();
         returnCursor(sb);
 
-        while (renderThread) {
-            Thread.onSpinWait();
-        }
+        waitForRendererToStop();
         System.out.print(sb);
+    }
+
+    private static void waitForRendererToStop() {
+        while (renderThread) {
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
     }
 
     public static void addNotification(String notification) {

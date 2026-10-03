@@ -112,9 +112,7 @@ public class GamePlay implements WebSocketListener {
     }
 
     private void runGamePlayUI() throws Exception {
-        while (Terminal.notReadyForInput()) {
-            Thread.onSpinWait();
-        }
+        waitForTerminal();
         for (;;) {
             var prompt = userTypePromptString();
             var userInput = Terminal.getInput(prompt + " >>> ");
@@ -164,8 +162,17 @@ public class GamePlay implements WebSocketListener {
 
     private void redrawBoard() {
         Terminal.refresh();
+        waitForTerminal();
+    }
+
+    private void waitForTerminal() {
         while (Terminal.notReadyForInput()) {
-            Thread.onSpinWait();
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
         }
     }
 
