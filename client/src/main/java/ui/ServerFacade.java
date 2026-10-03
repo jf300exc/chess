@@ -1,22 +1,44 @@
 package ui;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import requests.*;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
+/**
+ * HTTP API client shared by the command-line and desktop clients.
+ *
+ * <p>A single {@link HttpClient} is retained for the life of the facade so TCP
+ * connections can be reused. Public methods retain the original null-on-error
+ * contract; callers that want a user-facing explanation can read
+ * {@link #getLastError()}.</p>
+ */
 public class ServerFacade {
-    private final String serverUrl;
-    private String authToken = null;
+    private static final Gson GSON = new Gson();
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+
+    private final URI serverUri;
+    private final HttpClient httpClient;
+    private volatile String authToken;
+    private volatile String lastError;
 
     public ServerFacade(int port) {
-        this.serverUrl = "http://localhost:" + port;
+        this("localhost", port);
+    }
+
+    public ServerFacade(String host, int port) {
+        this.serverUri = URI.create("http://" + host + ":" + port);
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
     }
 
     public void setAuthToken(String authToken) {
@@ -27,124 +49,89 @@ public class ServerFacade {
         return authToken;
     }
 
-    public RegisterResult registerClient(RegisterRequest registerRequest) {
-        var path = "/user";
-        try {
-            return makeRequest("POST", path, registerRequest, RegisterResult.class);
-        } catch (ResponseException e) {
-            return null;
-        }
+    public String getLastError() {
+        return lastError;
     }
 
-    public LoginResult loginClient(LoginRequest loginRequest) {
-        var path = "/session";
-        try {
-            return makeRequest("POST", path, loginRequest, LoginResult.class);
-        } catch (ResponseException e) {
-            return null;
-        }
+    public RegisterResult registerClient(RegisterRequest request) {
+        return request("POST", "/user", request, RegisterResult.class);
     }
 
-    public LogoutResult logoutClient(LogoutRequest logoutRequest) {
-        var path = "/session";
-        try {
-            return makeRequest("DELETE", path, logoutRequest, LogoutResult.class);
-        } catch (ResponseException e) {
-            return null;
-        }
+    public LoginResult loginClient(LoginRequest request) {
+        return request("POST", "/session", request, LoginResult.class);
     }
 
-    public CreateGameResult createGameClient(CreateGameRequest createGameRequest) {
-        var path = "/game";
-        try {
-            return makeRequest("POST", path, createGameRequest, CreateGameResult.class);
-        } catch (ResponseException e) {
-            return null;
-        }
+    public LogoutResult logoutClient(LogoutRequest request) {
+        return request("DELETE", "/session", request, LogoutResult.class);
     }
 
-    public ListGamesResult listGamesClient(ListGamesRequest listGamesRequest) {
-        var path = "/game";
-        try {
-            return makeRequest("GET", path, listGamesRequest, ListGamesResult.class);
-        } catch (ResponseException e) {
-            return null;
-        }
+    public CreateGameResult createGameClient(CreateGameRequest request) {
+        return request("POST", "/game", request, CreateGameResult.class);
     }
 
-    public JoinGameResult joinGameClient(JoinGameRequest joinGameRequest) {
-        var path = "/game";
-        try {
-            return makeRequest("PUT", path, joinGameRequest, JoinGameResult.class);
-        } catch (ResponseException e) {
-            return null;
-        }
+    public ListGamesResult listGamesClient(ListGamesRequest request) {
+        return request("GET", "/game", null, ListGamesResult.class);
     }
 
-    private <T> T makeRequest(String method, String path, Object request, Class<T> responseClass) throws ResponseException {
-        try {
-            URL url = (new URI(serverUrl + path)).toURL();
-            HttpURLConnection http = (HttpURLConnection) url.openConnection();
-            http.setRequestMethod(method);
+    public JoinGameResult joinGameClient(JoinGameRequest request) {
+        return request("PUT", "/game", request, JoinGameResult.class);
+    }
 
-            if (!method.equals("GET")) {
-                http.setDoOutput(true);
+    private <T> T request(String method, String path, Object body, Class<T> responseClass) {
+        lastError = null;
+        try {
+            HttpRequest.BodyPublisher publisher = body == null
+                    ? HttpRequest.BodyPublishers.noBody()
+                    : HttpRequest.BodyPublishers.ofString(GSON.toJson(body), StandardCharsets.UTF_8);
+            HttpRequest.Builder builder = HttpRequest.newBuilder(serverUri.resolve(path))
+                    .timeout(REQUEST_TIMEOUT)
+                    .header("Accept", "application/json")
+                    .method(method, publisher);
+            if (body != null) {
+                builder.header("Content-Type", "application/json; charset=utf-8");
+            }
+            String token = authToken;
+            if (token != null && !token.isBlank()) {
+                builder.header("Authorization", token);
             }
 
-            if (authToken != null && !authToken.isEmpty()) {
-                http.setRequestProperty("Authorization", authToken);
+            HttpResponse<String> response = httpClient.send(
+                    builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                lastError = readError(response.body(), response.statusCode());
+                return null;
             }
-
-            if (request != null && !method.equals("GET")) {
-                writeBody(request, http);
+            if (responseClass == null || response.body() == null || response.body().isBlank()) {
+                return null;
             }
-
-            http.connect();
-            throwIfNotSuccessful(http);
-            return readBody(http, responseClass);
-        } catch (ResponseException e) {
-            throw e;
+            return GSON.fromJson(response.body(), responseClass);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            lastError = "Request interrupted";
+            return null;
         } catch (Exception e) {
-            throw new ResponseException(500, e.getMessage());
+            lastError = connectionMessage(e);
+            return null;
         }
     }
 
-    private void writeBody(Object request, HttpURLConnection http) throws IOException {
-        if (request != null) {
-            http.addRequestProperty("Content-Type", "application/json");
-            String reqData = new Gson().toJson(request);
-            try (OutputStream reqBody = http.getOutputStream()) {
-                reqBody.write(reqData.getBytes());
+    private String readError(String body, int status) {
+        try {
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+            if (json.has("message")) {
+                return json.get("message").getAsString().replaceFirst("^Error:\\s*", "");
             }
+        } catch (Exception ignored) {
+            // Fall through to a concise HTTP error when the server returns non-JSON.
         }
+        return "Server returned HTTP " + status;
     }
 
-    private void throwIfNotSuccessful(HttpURLConnection http) throws IOException {
-        var status = http.getResponseCode();
-        if (!isSuccessful(status)) {
-            try(InputStream respError = http.getErrorStream()) {
-                if (respError != null) {
-                    throw ResponseException.fromJson(respError);
-                }
-            }
-            throw new ResponseException(status, "other failure: " + status);
+    private String connectionMessage(Exception error) {
+        String detail = error.getMessage();
+        if (detail == null || detail.isBlank()) {
+            detail = error.getClass().getSimpleName();
         }
-    }
-
-    private static <T> T readBody(HttpURLConnection http, Class<T> responseClass) throws IOException {
-        T response = null;
-        if (http.getContentLength() < 0) {
-            try (InputStream respBody = http.getInputStream()) {
-                InputStreamReader reader = new InputStreamReader(respBody);
-                if (responseClass != null) {
-                    response = new Gson().fromJson(reader, responseClass);
-                }
-            }
-        }
-        return response;
-    }
-
-    private boolean isSuccessful(int status) {
-        return status == 200;
+        return "Cannot reach " + serverUri + ": " + detail;
     }
 }

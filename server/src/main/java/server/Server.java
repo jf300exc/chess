@@ -16,7 +16,9 @@ import static spark.Spark.*;
 public class Server {
     private final Handler handler = new Handler();
     private final Gson errorMessage = new Gson();
-    private final Map<String, String> errorValues = new HashMap<>();
+    // Spark handles requests concurrently. Keeping each error response isolated
+    // prevents one client's message from leaking into another client's response.
+    private final ThreadLocal<Map<String, String>> errorValues = ThreadLocal.withInitial(HashMap::new);
 
     public int run(int desiredPort) {
         Spark.port(desiredPort);
@@ -60,13 +62,13 @@ public class Server {
         } catch (DataAccessException e) {
             String message = e.getMessage();
             if (message.equals("Error: bad request")) {
-                errorValues.put("message", message);
+                errorValues.get().put("message", message);
                 response.status(400);
             } else if (message.equals("Error: already taken")) {
-                errorValues.put("message", message);
+                errorValues.get().put("message", message);
                 response.status(403);
             } else {
-                errorValues.put("message", "Error: unknown error occurred " + message);
+                errorValues.get().put("message", "Error: unknown error occurred " + message);
                 response.status(500);
             }
             result = dumpMapToJson();
@@ -134,19 +136,19 @@ public class Server {
             String message = e.getMessage();
             switch (message) {
                 case "Error: bad request", "Error: game does not exist" -> {
-                    errorValues.put("message", message);
+                    errorValues.get().put("message", message);
                     response.status(400);
                 }
                 case "Error: unauthorized" -> {
-                    errorValues.put("message", message);
+                    errorValues.get().put("message", message);
                     response.status(401);
                 }
                 case "Error: already taken" -> {
-                    errorValues.put("message", message);
+                    errorValues.get().put("message", message);
                     response.status(403);
                 }
                 default -> {
-                    errorValues.put("message", "Error: unknown error occurred " + message);
+                    errorValues.get().put("message", "Error: unknown error occurred " + message);
                     response.status(500);
                 }
             }
@@ -167,22 +169,23 @@ public class Server {
     }
 
     private String dumpMapToJson() {
-        JsonElement element = errorMessage.toJsonTree(errorValues);
+        Map<String, String> values = errorValues.get();
+        JsonElement element = errorMessage.toJsonTree(values);
         JsonObject jsonObject = element.getAsJsonObject();
-        errorValues.clear();
+        values.clear();
         return jsonObject.toString();
     }
 
     private String handleLoginLogoutException(DataAccessException e, Response response) {
         String message = e.getMessage();
         if (message.equals("Error: bad request")) {
-            errorValues.put("message", message);
+            errorValues.get().put("message", message);
             response.status(400);
         } else if (message.equals("Error: unauthorized")) {
-            errorValues.put("message", message);
+            errorValues.get().put("message", message);
             response.status(401);
         } else {
-            errorValues.put("message", "Error: unknown error occurred " + message);
+            errorValues.get().put("message", "Error: unknown error occurred " + message);
             response.status(500);
         }
         return dumpMapToJson();

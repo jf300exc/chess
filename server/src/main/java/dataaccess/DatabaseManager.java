@@ -96,9 +96,8 @@ public class DatabaseManager {
      * Creates the database if it does not already exist.
      */
     static void createDatabase() throws DataAccessException {
-        try {
-            var statement = "CREATE DATABASE IF NOT EXISTS " + DATABASE_NAME;
-            var conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD);
+        try (var conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            var statement = "CREATE DATABASE IF NOT EXISTS `" + DATABASE_NAME.replace("`", "``") + "`";
             try (var preparedStatement = conn.prepareStatement(statement)) {
                 preparedStatement.executeUpdate();
             }

@@ -1,0 +1,7 @@
+# Copy this file to db.properties and update the values for your MySQL server.
+# db.properties is intentionally ignored so credentials are never committed.
+db.host=localhost
+db.port=3306
+db.name=chess
+db.user=chess
+db.password=change-me

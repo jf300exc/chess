@@ -52,12 +52,11 @@ public class WSServer {
 
     @OnWebSocketMessage
     public void onMessage(Session session, String message) throws Exception {
-        System.out.println("Websocket message received: " + message);
         JsonObject json;
         try {
             json = JsonParser.parseString(message).getAsJsonObject();
         } catch (Exception e) {
-            System.out.println("Received String: " + message);
+            System.out.println("Received malformed WebSocket message");
             return;
         }
 
@@ -70,7 +69,6 @@ public class WSServer {
             }
             case "MAKE_MOVE" -> {
                 System.out.println("Received MakeMoveCommand");
-                System.out.println("Command:\n" + json);
                 MakeMoveCommand command = gson.fromJson(json, MakeMoveCommand.class);
                 processMakeMoveCommand(session, command);
             }
@@ -90,21 +88,34 @@ public class WSServer {
     @OnWebSocketClose
     public void onClose(Session session, int statusCode, String reason) {
         System.out.println("Websocket Closed. Reason: " + reason);
-        if (GAME_ID_BY_SESSION.containsKey(session)) {
-            int size = GAME_ID_BY_SESSION.get(session).size();
-            System.out.println("  Connection was in " + size + " games");
-            for (int gameID : GAME_ID_BY_SESSION.get(session)) {
-                System.out.println("  Removing session from gameID: " + gameID);
-                CONNECTED_GAME_PLAYERS.get(gameID).remove(session);
-                CONNECTED_GAME_OBSERVERS.get(gameID).remove(session);
-            }
-        } else {
-            System.out.println("  Connection was in no games.");
+        Set<Integer> gameIDs = GAME_ID_BY_SESSION.remove(session);
+        if (gameIDs == null) {
+            return;
+        }
+        for (int gameID : gameIDs) {
+            removeSession(CONNECTED_GAME_PLAYERS, gameID, session);
+            removeSession(CONNECTED_GAME_OBSERVERS, gameID, session);
         }
     }
 
+    private static void addSession(Map<Integer, Set<Session>> connections, int gameID, Session session) {
+        connections.compute(gameID, (ignored, sessions) -> {
+            if (sessions == null) {
+                sessions = ConcurrentHashMap.newKeySet();
+            }
+            sessions.add(session);
+            return sessions;
+        });
+    }
+
+    private static void removeSession(Map<Integer, Set<Session>> connections, int gameID, Session session) {
+        connections.computeIfPresent(gameID, (ignored, sessions) -> {
+            sessions.remove(session);
+            return sessions.isEmpty() ? null : sessions;
+        });
+    }
+
     public void sendMessage(Session session, String message) throws IOException {
-        System.out.println("Sending Message: " + message);
         session.getRemote().sendString(message);
     }
 
@@ -115,10 +126,9 @@ public class WSServer {
 
 
         // Validate Connect Command
-        System.out.println("Retrieving AuthData of session with authToken: " + command.getAuthToken());
         AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
         if (authData == null) {
-            System.out.println("Received invalid authToken: " + command.getAuthToken());
+            System.out.println("Received invalid WebSocket auth token");
             ErrorMessage error = new ErrorMessage(ServerMessageType.ERROR, "Invalid authToken");
             sendMessage(session, gson.toJson(error));
             return;
@@ -138,26 +148,7 @@ public class WSServer {
         System.out.println("Sending Load Game message");
         sendMessage(session, convertToJson(message));
 
-        if (!CONNECTED_GAME_PLAYERS.containsKey(gameID)) {
-            System.out.println("Initializing Player Set for gameID: " + gameID);
-            CONNECTED_GAME_PLAYERS.put(gameID, Collections.synchronizedSet(new HashSet<>()));
-        } else {
-            System.out.println("Player Set for gameID exists: " + gameID);
-        }
-        if (!CONNECTED_GAME_OBSERVERS.containsKey(gameID)) {
-            System.out.println("Initializing Observer Set for gameID: " + gameID);
-            CONNECTED_GAME_OBSERVERS.put(gameID, Collections.synchronizedSet(new HashSet<>()));
-        } else {
-            System.out.println("Observer Set for gameID exists: " + gameID);
-        }
-        if (!GAME_ID_BY_SESSION.containsKey(session)) {
-            System.out.println("Initializing gameID Set for session");
-            Set<Integer> gameIDSet = Collections.synchronizedSet(new HashSet<>());
-            gameIDSet.add(gameID);
-            GAME_ID_BY_SESSION.put(session, gameIDSet);
-        } else {
-            System.out.println("gameID Set for session exists: " + gameID);
-        }
+        GAME_ID_BY_SESSION.computeIfAbsent(session, ignored -> ConcurrentHashMap.newKeySet()).add(gameID);
 
         String notificationMessage;
         boolean isObserving;
@@ -174,20 +165,20 @@ public class WSServer {
 
         var notification = new NotificationMessage(ServerMessageType.NOTIFICATION, notificationMessage);
         System.out.println("Sending Notifications to players if any");
-        for (Session playerSession : CONNECTED_GAME_PLAYERS.get(gameID)) {
+        for (Session playerSession : CONNECTED_GAME_PLAYERS.getOrDefault(gameID, Set.of())) {
             sendMessage(playerSession, gson.toJson(notification));
         }
         System.out.println("Sending Notifications to observers if any");
-        for (Session observerSession : CONNECTED_GAME_OBSERVERS.get(gameID)) {
+        for (Session observerSession : CONNECTED_GAME_OBSERVERS.getOrDefault(gameID, Set.of())) {
             sendMessage(observerSession, gson.toJson(notification));
         }
 
         if (isObserving) {
             System.out.println("Adding Observer to gameID: " + gameID);
-            CONNECTED_GAME_OBSERVERS.get(gameID).add(session);
+            addSession(CONNECTED_GAME_OBSERVERS, gameID, session);
         } else {
             System.out.println("Adding Player to gameID: " + gameID);
-            CONNECTED_GAME_PLAYERS.get(gameID).add(session);
+            addSession(CONNECTED_GAME_PLAYERS, gameID, session);
         }
     }
 
@@ -201,7 +192,7 @@ public class WSServer {
         // Validate
         AuthData authData = authDAO.findAuthDataByAuthToken(command.getAuthToken());
         if (authData == null) {
-            System.out.println("Received invalid authToken: " + command.getAuthToken());
+            System.out.println("Received invalid WebSocket auth token");
             errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Invalid authToken");
         } else if (gameData == null) {
             System.out.println("Received invalid gameID: " + gameID);
@@ -252,7 +243,7 @@ public class WSServer {
         if (gameData.game().isInStalemate(opponentColor)) {
             secondNotification = new NotificationMessage(ServerMessageType.NOTIFICATION, opponentUsername + " is in stalemate");
         }
-        for (Session playerSession : CONNECTED_GAME_PLAYERS.get(gameID)) {
+        for (Session playerSession : CONNECTED_GAME_PLAYERS.getOrDefault(gameID, Set.of())) {
             sendMessage(playerSession, gson.toJson(loadGameMessage));
             if (!session.equals(playerSession)) {
                 sendMessage(playerSession, gson.toJson(notificationMessage));
@@ -261,7 +252,7 @@ public class WSServer {
                 sendMessage(playerSession, gson.toJson(secondNotification));
             }
         }
-        for (Session observerSession : CONNECTED_GAME_OBSERVERS.get(gameID)) {
+        for (Session observerSession : CONNECTED_GAME_OBSERVERS.getOrDefault(gameID, Set.of())) {
             sendMessage(observerSession, gson.toJson(loadGameMessage));
             sendMessage(observerSession, gson.toJson(notificationMessage));
             if (secondNotification != null) {
@@ -300,17 +291,20 @@ public class WSServer {
         System.out.println("Removing player from gameID: " + gameID);
 
         // Don't store this session for this gameID
-        CONNECTED_GAME_PLAYERS.get(gameID).remove(session);
-        CONNECTED_GAME_OBSERVERS.get(gameID).remove(session);
+        removeSession(CONNECTED_GAME_PLAYERS, gameID, session);
+        removeSession(CONNECTED_GAME_OBSERVERS, gameID, session);
 
         // Don't store this gameID for this Session
-        GAME_ID_BY_SESSION.get(session).remove(gameID);
+        GAME_ID_BY_SESSION.computeIfPresent(session, (ignored, gameIDs) -> {
+            gameIDs.remove(gameID);
+            return gameIDs.isEmpty() ? null : gameIDs;
+        });
 
         var notificationMessage = new NotificationMessage(ServerMessageType.NOTIFICATION, authData.username() + " left the game.");
-        for (Session playerSession : CONNECTED_GAME_PLAYERS.get(gameID)) {
+        for (Session playerSession : CONNECTED_GAME_PLAYERS.getOrDefault(gameID, Set.of())) {
                 sendMessage(playerSession, gson.toJson(notificationMessage));
         }
-        for (Session observerSession : CONNECTED_GAME_OBSERVERS.get(gameID)) {
+        for (Session observerSession : CONNECTED_GAME_OBSERVERS.getOrDefault(gameID, Set.of())) {
                 sendMessage(observerSession, gson.toJson(notificationMessage));
         }
     }
@@ -345,10 +339,10 @@ public class WSServer {
         // Continue with notifications
         System.out.println("Resignation of user: " + authData.username());
         var notificationMessage = new NotificationMessage(ServerMessageType.NOTIFICATION, authData.username() + " has resigned");
-        for (Session playerSession : CONNECTED_GAME_PLAYERS.get(gameID)) {
+        for (Session playerSession : CONNECTED_GAME_PLAYERS.getOrDefault(gameID, Set.of())) {
             sendMessage(playerSession, gson.toJson(notificationMessage));
         }
-        for (Session observerSession : CONNECTED_GAME_OBSERVERS.get(gameID)) {
+        for (Session observerSession : CONNECTED_GAME_OBSERVERS.getOrDefault(gameID, Set.of())) {
             sendMessage(observerSession, gson.toJson(notificationMessage));
         }
     }

@@ -16,12 +16,18 @@ import java.util.Map;
 
 public class WebSocketClient extends Endpoint {
     private final WebSocketListener listener;
+    private final String host;
     private final int port;
     private final Gson gson;
-    private Session session;
+    private volatile Session session;
 
 
     public WebSocketClient(int port, WebSocketListener listener) {
+        this("localhost", port, listener);
+    }
+
+    public WebSocketClient(String host, int port, WebSocketListener listener) {
+        this.host = host;
         this.port = port;
         this.listener = listener;
         gson = new GsonBuilder()
@@ -37,12 +43,7 @@ public class WebSocketClient extends Endpoint {
 
     @Override
     public void onOpen(Session session, EndpointConfig endpointConfig) {
-//        System.out.println("WebSocket connection opened");
-    }
-
-    @Override
-    public void onClose(Session session, CloseReason closeReason) {
-//        System.out.println("WebSocket connection closed");
+        this.session = session;
     }
 
     public void connectClient() throws Exception {
@@ -50,7 +51,7 @@ public class WebSocketClient extends Endpoint {
             System.err.println("Can't connect to WebSocket: Already Connected");
             return;
         }
-        URI uri = new URI("ws://localhost:" + port + "/ws");
+        URI uri = new URI("ws://" + host + ":" + port + "/ws");
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
         this.session = container.connectToServer(this, uri);
         this.session.addMessageHandler(new MessageHandler.Whole<String>() {
@@ -71,7 +72,6 @@ public class WebSocketClient extends Endpoint {
             }
         } catch (IOException e) {
             System.out.println("Error closing WebSocket");
-            Terminal.stop();
         }
     }
 
@@ -79,7 +79,7 @@ public class WebSocketClient extends Endpoint {
         if (isSessionOpen()) {
             this.session.getBasicRemote().sendText(message);
         } else {
-            System.err.println("Can't send message: No WebSocket Session");
+            throw new IOException("The live game connection is closed.");
         }
     }
 
