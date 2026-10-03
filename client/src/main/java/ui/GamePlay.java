@@ -63,8 +63,9 @@ public class GamePlay implements WebSocketListener {
         LoadGameMessage loadGameMessage = gson.fromJson(message, LoadGameMessage.class);
         GameData gameData = loadGameMessage.getGame();
         Terminal.setChessGame(gameData.game(), gameData.gameName());
-        String currentTeamTurn = gameData.game().getTeamTurn().toString();
-        Terminal.addLogMessage("It is " + currentTeamTurn + "'s turn");
+        String status = gameData.game().isGameOver() ? "Game over"
+                : "It is " + gameData.game().getTeamTurn() + "'s turn";
+        Terminal.addLogMessage(status);
     }
 
     void processErrorMessage(String message) {
@@ -75,6 +76,14 @@ public class GamePlay implements WebSocketListener {
     void processNotificationMessage(String message) {
         var notification = gson.fromJson(message, NotificationMessage.class);
         Terminal.addNotification(notification.getMessage());
+        if (notification.getMessage().endsWith(" has resigned")) {
+            ChessGame game = Terminal.getChessGame();
+            if (game != null) {
+                game.setGameOver(true);
+                Terminal.setChessGame(game, null);
+                Terminal.addLogMessage("Game over");
+            }
+        }
     }
 
     public void playGame(UserGameCommand connectRequest, String playerColor) throws Exception {
@@ -95,7 +104,6 @@ public class GamePlay implements WebSocketListener {
         this.userAuthToken = connectRequest.getAuthToken();
         this.currentGameID = connectRequest.getGameID();
         ws.connectClient();
-        ws.sendString("Connection Request");
         Terminal.start("WHITE");
         ws.sendCommand(connectRequest);
         runGamePlayUI();

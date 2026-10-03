@@ -171,7 +171,9 @@ public class Terminal {
     public static void setChessGame(ChessGame chessGame, String gameName) {
         synchronized (GAME_STATE_LOCK) {
             currentGameState = chessGame;
-            currentGameName = gameName;
+            if (gameName != null) {
+                currentGameName = gameName;
+            }
             gameChangedFlag = true;
         }
     }

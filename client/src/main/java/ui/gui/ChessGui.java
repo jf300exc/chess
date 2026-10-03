@@ -65,7 +65,7 @@ public class ChessGui extends JFrame implements WebSocketListener {
     private final String host;
     private final int port;
     private final ServerFacade facade;
-    private final ExecutorService networkExecutor = Executors.newFixedThreadPool(3, runnable -> {
+    private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "chess-network");
         thread.setDaemon(true);
         return thread;
@@ -100,6 +100,7 @@ public class ChessGui extends JFrame implements WebSocketListener {
     private final DefaultListModel<String> activityModel = new DefaultListModel<>();
 
     private volatile WebSocketClient webSocket;
+    private volatile long navigationVersion;
     private GameEntry selectedGame;
     private GameData currentGame;
     private ChessGame.TeamColor playerColor;
@@ -387,6 +388,11 @@ public class ChessGui extends JFrame implements WebSocketListener {
         String token = facade.getAuthToken();
         setConnection("Signing out…", ACCENT);
         task(() -> facade.logoutClient(new LogoutRequest(token)), result -> {
+            if (result == null) {
+                showError(error("Could not sign out. Try again."));
+                return;
+            }
+            navigationVersion++;
             facade.setAuthToken(null);
             gamesModel.clear();
             setConnection("Signed out", MUTED);
@@ -473,6 +479,8 @@ public class ChessGui extends JFrame implements WebSocketListener {
     }
 
     private void enterGame(GameEntry game, ChessGame.TeamColor color) {
+        long version = ++navigationVersion;
+        String token = facade.getAuthToken();
         currentGame = null;
         playerColor = color;
         gameTitleLabel.setText(game.gameName());
@@ -485,11 +493,20 @@ public class ChessGui extends JFrame implements WebSocketListener {
         cardLayout.show(cards, GAME_CARD);
 
         task(() -> {
-            WebSocketClient client = new WebSocketClient(host, port, this);
-            client.connectClient();
-            webSocket = client;
-            client.sendCommand(new UserGameCommand(UserGameCommand.CommandType.CONNECT,
-                    facade.getAuthToken(), game.gameID()));
+            WebSocketClient client = new WebSocketClient(host, port, message -> handleMessage(message, version));
+            try {
+                client.connectClient();
+                webSocket = client;
+                client.sendCommand(new UserGameCommand(UserGameCommand.CommandType.CONNECT, token, game.gameID()));
+                if (version != navigationVersion) {
+                    client.sendCommand(new UserGameCommand(UserGameCommand.CommandType.LEAVE, token, game.gameID()));
+                    client.closeClient();
+                    return false;
+                }
+            } catch (Exception e) {
+                client.closeClient();
+                throw e;
+            }
             return true;
         }, connected -> setConnection("Live connection", SUCCESS));
     }
@@ -515,13 +532,15 @@ public class ChessGui extends JFrame implements WebSocketListener {
         }
 
         WebSocketClient client = webSocket;
+        int gameId = currentGame.gameID();
+        String token = facade.getAuthToken();
         ChessMove finalMove = commandMove;
         task(() -> {
             if (client == null || !client.isSessionOpen()) {
                 throw new IllegalStateException("The live game connection is closed.");
             }
             client.sendCommand(new MakeMoveCommand(UserGameCommand.CommandType.MAKE_MOVE,
-                    facade.getAuthToken(), currentGame.gameID(), finalMove));
+                    token, gameId, finalMove));
             return true;
         }, sent -> addActivity("Move sent: " + notation(finalMove)));
     }
@@ -540,15 +559,17 @@ public class ChessGui extends JFrame implements WebSocketListener {
     }
 
     private void leaveGame() {
-        WebSocketClient client = webSocket;
-        webSocket = null;
+        navigationVersion++;
         int gameId = currentGame != null ? currentGame.gameID() : selectedGame == null ? 0 : selectedGame.gameID();
+        String token = facade.getAuthToken();
         task(() -> {
+            WebSocketClient client = webSocket;
+            webSocket = null;
             if (client != null) {
                 try {
                     if (client.isSessionOpen() && gameId != 0) {
                         client.sendCommand(new UserGameCommand(UserGameCommand.CommandType.LEAVE,
-                                facade.getAuthToken(), gameId));
+                                token, gameId));
                     }
                 } finally {
                     client.closeClient();
@@ -570,25 +591,31 @@ public class ChessGui extends JFrame implements WebSocketListener {
             showError("The live game connection is not available.");
             return;
         }
+        int gameId = currentGame.gameID();
+        String token = facade.getAuthToken();
         task(() -> {
-            client.sendCommand(new UserGameCommand(type, facade.getAuthToken(), currentGame.gameID()));
+            client.sendCommand(new UserGameCommand(type, token, gameId));
             return true;
         }, ignored -> addActivity(type == UserGameCommand.CommandType.RESIGN ? "Resignation sent" : "Command sent"));
     }
 
     @Override
     public void onMessage(String message) {
+        handleMessage(message, navigationVersion);
+    }
+
+    private void handleMessage(String message, long version) {
         try {
             JsonObject json = JsonParser.parseString(message).getAsJsonObject();
             String type = json.get("serverMessageType").getAsString();
             switch (type) {
                 case "LOAD_GAME" -> {
                     LoadGameMessage load = gson.fromJson(message, LoadGameMessage.class);
-                    SwingUtilities.invokeLater(() -> loadGame(load.getGame()));
+                    updateIfCurrent(version, () -> loadGame(load.getGame()));
                 }
                 case "ERROR" -> {
                     ErrorMessage error = gson.fromJson(message, ErrorMessage.class);
-                    SwingUtilities.invokeLater(() -> {
+                    updateIfCurrent(version, () -> {
                         boardPanel.acknowledgeMove();
                         showError(error.getErrorMessage());
                         addActivity("Error: " + error.getErrorMessage());
@@ -596,12 +623,18 @@ public class ChessGui extends JFrame implements WebSocketListener {
                 }
                 case "NOTIFICATION" -> {
                     NotificationMessage notification = gson.fromJson(message, NotificationMessage.class);
-                    SwingUtilities.invokeLater(() -> addActivity(notification.getMessage()));
+                    updateIfCurrent(version, () -> {
+                        addActivity(notification.getMessage());
+                        if (currentGame != null && notification.getMessage().endsWith(" has resigned")) {
+                            currentGame.game().setGameOver(true);
+                            loadGame(currentGame);
+                        }
+                    });
                 }
-                default -> SwingUtilities.invokeLater(() -> addActivity("Server: " + message));
+                default -> updateIfCurrent(version, () -> addActivity("Server: " + message));
             }
         } catch (Exception e) {
-            SwingUtilities.invokeLater(() -> addActivity("Unreadable server message"));
+            updateIfCurrent(version, () -> addActivity("Unreadable server message"));
         }
     }
 
@@ -616,15 +649,24 @@ public class ChessGui extends JFrame implements WebSocketListener {
     }
 
     private <T> void task(Callable<T> action, Consumer<T> success) {
+        long version = navigationVersion;
         networkExecutor.submit(() -> {
             try {
                 T result = action.call();
-                SwingUtilities.invokeLater(() -> success.accept(result));
+                updateIfCurrent(version, () -> success.accept(result));
             } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> {
+                updateIfCurrent(version, () -> {
                     boardPanel.acknowledgeMove();
                     showError(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
                 });
+            }
+        });
+    }
+
+    private void updateIfCurrent(long version, Runnable update) {
+        SwingUtilities.invokeLater(() -> {
+            if (version == navigationVersion) {
+                update.run();
             }
         });
     }
@@ -655,6 +697,7 @@ public class ChessGui extends JFrame implements WebSocketListener {
     }
 
     private void closeResources() {
+        navigationVersion++;
         WebSocketClient client = webSocket;
         if (client != null) {
             client.closeClient();

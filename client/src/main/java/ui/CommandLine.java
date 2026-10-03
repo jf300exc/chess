@@ -194,14 +194,12 @@ public class CommandLine {
     }
 
     private void processPlayGameRequest() throws Exception {
-        String gameIDStr = getGameIDFromUserInput();
-        if (gameIDStr == null) {
+        GameEntry gameEntry = getGameFromUserInput();
+        if (gameEntry == null) {
             return;
         }
 
         String playerColor = null;
-        int gameIndex = Integer.parseInt(gameIDStr) - 1;
-        GameEntry gameEntry = gamesList.get(gameIndex);
         if (gameEntry.whiteUsername() != null && gameEntry.blackUsername() == null) {
             System.out.println("White username is already in use.");
             String confirmation = getUserInput("Join as BLACK? y/n: ");
@@ -230,7 +228,7 @@ public class CommandLine {
         }
 
         String authToken = serverFacade.getAuthToken();
-        JoinGameRequest joinGameRequest = new JoinGameRequest(authToken, playerColor, gameIDStr);
+        JoinGameRequest joinGameRequest = new JoinGameRequest(authToken, playerColor, Integer.toString(gameEntry.gameID()));
         JoinGameResult result = serverFacade.joinGameClient(joinGameRequest);
 
         if (result == null) {
@@ -244,18 +242,16 @@ public class CommandLine {
     }
 
     private void processObserveGameRequest() throws Exception {
-        String gameIDStr = getGameIDFromUserInput();
-        if (gameIDStr == null) {
+        GameEntry gameEntry = getGameFromUserInput();
+        if (gameEntry == null) {
             return;
         }
         String authToken = serverFacade.getAuthToken();
-        int gameIndex = Integer.parseInt(gameIDStr) - 1;
-        GameEntry gameEntry = gamesList.get(gameIndex);
         var connectRequest = new UserGameCommand(CommandType.CONNECT, authToken, gameEntry.gameID());
         gamePlay.observeGame(connectRequest);
     }
 
-    private String getGameIDFromUserInput() {
+    private GameEntry getGameFromUserInput() {
         if (gamesList.isEmpty()) {
             System.out.println("No games loaded. Run 'List Games' to choose a game.");
             return null;
@@ -272,8 +268,7 @@ public class CommandLine {
             System.out.println("Invalid game number. Try again.");
             return null;
         }
-        int gameID = gamesList.get(gameNum - 1).gameID();
-        return Integer.toString(gameID);
+        return gamesList.get(gameNum - 1);
     }
 
     private String getPlayerColorFromUserInput() {

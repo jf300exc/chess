@@ -19,7 +19,7 @@ public class WebSocketClient extends Endpoint {
     private final String host;
     private final int port;
     private final Gson gson;
-    private Session session;
+    private volatile Session session;
 
 
     public WebSocketClient(int port, WebSocketListener listener) {
@@ -43,12 +43,7 @@ public class WebSocketClient extends Endpoint {
 
     @Override
     public void onOpen(Session session, EndpointConfig endpointConfig) {
-//        System.out.println("WebSocket connection opened");
-    }
-
-    @Override
-    public void onClose(Session session, CloseReason closeReason) {
-//        System.out.println("WebSocket connection closed");
+        this.session = session;
     }
 
     public void connectClient() throws Exception {
@@ -77,7 +72,6 @@ public class WebSocketClient extends Endpoint {
             }
         } catch (IOException e) {
             System.out.println("Error closing WebSocket");
-            Terminal.stop();
         }
     }
 
@@ -85,7 +79,7 @@ public class WebSocketClient extends Endpoint {
         if (isSessionOpen()) {
             this.session.getBasicRemote().sendText(message);
         } else {
-            System.err.println("Can't send message: No WebSocket Session");
+            throw new IOException("The live game connection is closed.");
         }
     }
 

@@ -4,7 +4,7 @@ A Java 21 client/server chess application with interchangeable desktop and termi
 
 ## What is included
 
-- A polished, resizable desktop client with login and registration, game lobby, seat selection, observation mode, legal-move highlighting, board flipping, promotion selection, live activity, resignation, and reconnect-safe navigation.
+- A polished, resizable desktop client with login and registration, game lobby, seat selection, observation mode, legal-move highlighting, board flipping, promotion selection, live activity, resignation, and navigation between matches.
 - The original terminal client, kept protocol-compatible for mixed CLI/GUI matches.
 - Complete chess rules, including castling, en passant, promotion, check, checkmate, and stalemate.
 - A multiplayer server with REST endpoints for accounts and games plus WebSocket gameplay updates.
@@ -45,7 +45,15 @@ The server intentionally does not commit credentials. Copy the example and edit 
 cp server/src/main/resources/db.properties.example server/src/main/resources/db.properties
 ```
 
-Set `db.host`, `db.port`, `db.name`, `db.user`, and `db.password`. The configured MySQL account needs permission to create the named database and its tables. `make server`, `make test`, and `make verify` stop with an actionable message when this file is missing.
+Set `db.host`, `db.port`, `db.name`, `db.user`, and `db.password`. Use a dedicated MySQL account with privileges on the configured database only. For example, run the following as a MySQL administrator, choosing your own password locally:
+
+```sql
+CREATE DATABASE IF NOT EXISTS chess;
+CREATE USER 'chess'@'localhost' IDENTIFIED BY '<your password>';
+GRANT ALL PRIVILEGES ON chess.* TO 'chess'@'localhost';
+```
+
+The server creates the configured database and tables if needed; schema-level privileges are sufficient and global privileges are unnecessary. `make server`, `make test`, and `make verify` stop with an actionable message when the configuration file is missing. Full integration tests clear the configured database, so use a separate database for testing rather than one containing games you want to keep.
 
 ## Build and verification
 
@@ -55,6 +63,8 @@ make test-engine  # chess rules only; no database needed
 make test         # complete unit and integration suite; MySQL required
 make verify       # package everything, then run the complete suite
 ```
+
+Swing lifecycle tests require a display. On a Linux build machine, install Xvfb and run `xvfb-run -a make verify` to include them; without a display they are reported as skipped.
 
 You can still invoke Maven directly (`mvn test`, `mvn package`, or individual module goals). The Makefile is the supported operator interface because it checks Java, Maven, desktop, and database prerequisites before launching.
 
