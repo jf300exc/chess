@@ -23,6 +23,9 @@ public class DatabaseManager {
         createUserDataTable();
         createAuthDataTable();
         createGameDataTable();
+        addColumnIfMissing("user_data", "elo", "INT NOT NULL DEFAULT 1500");
+        addColumnIfMissing("game_data", "stockfish", "TEXT NULL");
+        addColumnIfMissing("game_data", "rated", "BOOLEAN NOT NULL DEFAULT FALSE");
     }
 
     private static void createUserDataTable() throws DataAccessException {
@@ -57,6 +60,23 @@ public class DatabaseManager {
                 );
                 """;
         tryUpdateDatabase(createSQLTable);
+    }
+
+    private static synchronized void addColumnIfMissing(String table, String column, String definition) throws DataAccessException {
+        try (var conn = getConnection();
+             var query = conn.prepareStatement("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?")) {
+            query.setString(1, DATABASE_NAME);
+            query.setString(2, table);
+            query.setString(3, column);
+            try (var result = query.executeQuery()) {
+                result.next();
+                if (result.getInt(1) == 0) {
+                    try (var alter = conn.createStatement()) {
+                        alter.executeUpdate("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
+                    }
+                }
+            }
+        } catch (SQLException e) { throw new DataAccessException(e.getMessage()); }
     }
 
     private static void tryUpdateDatabase(String statement) throws DataAccessException {

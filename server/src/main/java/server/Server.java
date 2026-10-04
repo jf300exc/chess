@@ -44,6 +44,14 @@ public class Server {
 
         // Lambda function to join game
         put("/game", this::handleJoinGame);
+        put("/game/stockfish", (request, response) -> {
+            try { return handler.addStockfish(request.headers("Authorization"), request.body()); }
+            catch (DataAccessException e) { return handleGameException(e, response); }
+        });
+        get("/user", (request, response) -> {
+            try { return handler.profile(request.headers("Authorization")); }
+            catch (DataAccessException e) { return handleLoginLogoutException(e, response); }
+        });
 
         // Lambda function to clear Database
         delete("/db", this::handleClearDatabase);
@@ -120,7 +128,7 @@ public class Server {
             result = handler.createGame(authToken, jsonBody);
             response.status(200);
         } catch (DataAccessException e) {
-            result = handleLoginLogoutException(e, response);
+            result = handleGameException(e, response);
         }
         return result;
     }
@@ -155,6 +163,18 @@ public class Server {
             result = dumpMapToJson();
         }
         return result;
+    }
+
+    private String handleGameException(DataAccessException error, Response response) {
+        String message = error.getMessage();
+        response.status(message.startsWith("Error: Stockfish unavailable") ? 503 : switch (message) {
+            case "Error: unauthorized" -> 401;
+            case "Error: already taken" -> 403;
+            case "Error: bad request", "Error: game does not exist" -> 400;
+            default -> 500;
+        });
+        errorValues.get().put("message", message);
+        return dumpMapToJson();
     }
 
     private Object handleClearDatabase(Request request, Response response) {

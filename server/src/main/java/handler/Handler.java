@@ -64,15 +64,13 @@ public class Handler {
     }
 
     public String createGame(String authToken, String json) throws DataAccessException {
-        JsonObject jsonObject = GSON.fromJson(json, JsonObject.class);
-        String gameName = "";
-        if (jsonObject.has("gameName")) {
-            gameName = jsonObject.get("gameName").getAsString();
-        }
-        if (isStringBlank(gameName) || isStringBlank(authToken)) {
-            throw new DataAccessException("Error: bad request");
-        }
-        CreateGameRequest request = new CreateGameRequest(authToken, gameName);
+        CreateGameRequest request;
+        try {
+            JsonObject body = GSON.fromJson(json, JsonObject.class);
+            String gameName = body.get("gameName").getAsString();
+            if (isStringBlank(gameName) || isStringBlank(authToken)) { throw new IllegalArgumentException(); }
+            request = new CreateGameRequest(authToken, gameName, stockfishOptions(body.get("stockfish")));
+        } catch (RuntimeException e) { throw new DataAccessException("Error: bad request"); }
         CreateGameResult result = gameService.createGame(request);
         if (!result.message().isEmpty()) {
             throw new DataAccessException(result.message());
@@ -98,6 +96,39 @@ public class Handler {
             throw new DataAccessException(result.message());
         }
         return filterEmptyFields(result);
+    }
+
+    public String profile(String authToken) throws DataAccessException {
+        var profile = gameService.profile(authToken);
+        if (profile == null) { throw new DataAccessException("Error: unauthorized"); }
+        return GSON.toJson(profile);
+    }
+
+    public String addStockfish(String authToken, String json) throws DataAccessException {
+        AddStockfishRequest request;
+        try {
+            var body = GSON.fromJson(json, JsonObject.class);
+            request = new AddStockfishRequest(authToken, body.get("gameID").getAsString(), stockfishOptions(body.get("stockfish")));
+        } catch (RuntimeException e) { throw new DataAccessException("Error: bad request"); }
+        JoinGameResult result = gameService.addStockfish(request);
+        if (!result.message().isEmpty()) { throw new DataAccessException(result.message()); }
+        websocket.WSServer.refreshStockfishGame(Integer.parseInt(request.gameID()));
+        return filterEmptyFields(result);
+    }
+
+    private model.StockfishOptions stockfishOptions(JsonElement element) {
+        if (element == null || element.isJsonNull()) { return null; }
+        JsonObject json = element.getAsJsonObject();
+        for (String field : new String[]{"elo", "skillLevel"}) {
+            JsonElement value = json.get(field);
+            if (value != null && !value.isJsonNull()) {
+                if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) { throw new IllegalArgumentException(); }
+                value.getAsBigDecimal().intValueExact(); // Reject fractional values instead of Gson's integer truncation.
+            }
+        }
+        var options = GSON.fromJson(json, model.StockfishOptions.class);
+        options.validate();
+        return options;
     }
 
     public void clearDatabase() {

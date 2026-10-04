@@ -21,6 +21,10 @@ function show(view) {
 function alertMessage(message = '') {
   $('alert').textContent = message;
   $('alert').hidden = !message;
+  if ($('add-ai-dialog').open) {
+    $('add-ai-alert').textContent = message;
+    $('add-ai-alert').hidden = !message;
+  }
 }
 async function action(task, button) {
   if (button) button.disabled = true;
@@ -49,6 +53,7 @@ function stopSocket() {
   pending = false; ready = false;
 }
 function resetSession() {
+  $('add-ai-dialog').close();
   stopSocket(); session = null; gameID = null; snapshot = null;
   storage.set('chess-session', null); storage.set('chess-match', null);
   lobbyRequest++; setAuthMode(false); show('auth');
@@ -89,11 +94,14 @@ function node(tag, className, text) {
 }
 async function refreshGames() {
   const current = ++lobbyRequest;
-  const result = await request('/game');
+  const [result, profile] = await Promise.all([request('/game'), request('/user')]);
   if (!session || gameID || current !== lobbyRequest) return;
+  $('username-label').textContent = profile.username;
+  $('player-rating').textContent = `Your rating: ${profile.elo} Elo`;
   const cards = (result.games || []).map((game) => {
     const card = node('article', 'card game-card');
     card.append(node('p', 'eyebrow', `GAME ${game.gameID}`), node('h2', '', game.gameName));
+    if (game.stockfish) card.append(node('p', 'muted', game.stockfish.mode === 'ELO' ? `Stockfish · ${game.stockfish.elo} Elo` : `Stockfish · level ${game.stockfish.skillLevel} · unrated`));
     const seats = node('div', 'seats');
     for (const color of ['WHITE', 'BLACK']) {
       const seat = node('div', 'seat');
@@ -114,6 +122,11 @@ async function refreshGames() {
       add('Play Black', 'BLACK', !!game.blackUsername);
       add('Watch', null);
     }
+    if (!game.stockfish && (!game.whiteUsername || !game.blackUsername)) {
+      const addAI = node('button', 'secondary', 'Add Stockfish');
+      addAI.onclick = () => openAddAI(game);
+      buttons.append(addAI);
+    }
     card.append(seats, buttons);
     return card;
   });
@@ -127,9 +140,55 @@ $('create-form').onsubmit = (event) => {
   action(async () => {
     const name = $('game-name').value.trim();
     if (!name) throw new Error('Please enter a game name.');
-    await request('/game', 'POST', { gameName: name });
-    $('game-name').value = ''; await refreshGames();
+    const stockfish = $('opponent').value === 'stockfish' ? aiOptions('ai') : null;
+    const result = await request('/game', 'POST', { gameName: name, ...(stockfish ? { stockfish } : {}) });
+    $('game-name').value = '';
+    if (stockfish) await joinGame({ gameID: Number(result.gameID), gameName: name }, $('ai-color').value, true);
+    else await refreshGames();
   }, button);
+};
+$('opponent').onchange = () => {
+  $('ai-options').hidden = $('opponent').value !== 'stockfish';
+  updateAIControls('ai');
+};
+function updateAIControls(prefix) {
+  const manual = $(`${prefix}-mode`).value === 'SKILL';
+  $(`${prefix}-level-label`).hidden = !manual;
+  $(`${prefix}-level`).disabled = !manual || (prefix === 'ai' && $('opponent').value !== 'stockfish');
+}
+for (const prefix of ['ai', 'add-ai']) $(`${prefix}-mode`).onchange = () => updateAIControls(prefix);
+function aiOptions(prefix) {
+  const mode = $(`${prefix}-mode`).value;
+  const options = { color: $(`${prefix}-color`).value === 'WHITE' ? 'BLACK' : 'WHITE', mode };
+  if (mode === 'SKILL') {
+    const level = Number($(`${prefix}-level`).value);
+    if (!Number.isInteger(level) || level < 0 || level > 20) throw new Error('Choose a whole skill level from 0 to 20.');
+    options.skillLevel = level;
+  }
+  return options;
+}
+let addAIGame = null;
+function openAddAI(game) {
+  addAIGame = game;
+  $('add-ai-alert').hidden = true;
+  const own = game.whiteUsername === session.username ? 'WHITE' : game.blackUsername === session.username ? 'BLACK' : null;
+  $('add-ai-color').value = own || (!game.whiteUsername ? 'WHITE' : 'BLACK');
+  $('add-ai-dialog').showModal();
+}
+$('add-ai-cancel').onclick = () => $('add-ai-dialog').close();
+$('add-ai-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const game = addAIGame;
+    const color = $('add-ai-color').value;
+    const stockfish = aiOptions('add-ai');
+    const seat = game[`${color.toLowerCase()}Username`];
+    if (seat && seat !== session.username) throw new Error('Choose your own seat or an empty seat.');
+    if (!seat) await request('/game', 'PUT', { gameID: game.gameID, playerColor: color });
+    await request('/game/stockfish', 'PUT', { gameID: game.gameID, stockfish });
+    $('add-ai-dialog').close();
+    await joinGame(game, color, true);
+  }, event.submitter);
 };
 async function joinGame(game, color, resume) {
   if (color && !resume) await request('/game', 'PUT', { gameID: game.gameID, playerColor: color });
@@ -328,7 +387,7 @@ $('resign').onclick = () => action(async () => {
   }
 });
 $('leave').onclick = () => action(async () => {
-  if (role && !ended() && !(await confirmAction('Leave your seat?', isConnected() ? 'Your seat will be open for another player. The game will continue.' : 'You are disconnected. Your seat stays reserved; you can resume it from the lobby.'))) return;
+  if (role && !ended() && !snapshot?.game.stockfish && !(await confirmAction('Leave your seat?', isConnected() ? 'Your seat will be open for another player. The game will continue.' : 'You are disconnected. Your seat stays reserved; you can resume it from the lobby.'))) return;
   if (socket?.readyState === WebSocket.OPEN) send('LEAVE');
   stopSocket(); gameID = null; snapshot = null; role = null;
   storage.set('chess-match', null); clearSelection(); show('lobby'); await refreshGames();

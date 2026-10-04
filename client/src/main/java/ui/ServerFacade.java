@@ -77,6 +77,14 @@ public class ServerFacade {
         return request("PUT", "/game", request, JoinGameResult.class);
     }
 
+    public model.PlayerProfile profileClient() {
+        return request("GET", "/user", null, model.PlayerProfile.class);
+    }
+
+    public JoinGameResult addStockfishClient(AddStockfishRequest request) {
+        return request("PUT", "/game/stockfish", request, JoinGameResult.class);
+    }
+
     private <T> T request(String method, String path, Object body, Class<T> responseClass) {
         lastError = null;
         try {
