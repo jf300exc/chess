@@ -11,6 +11,10 @@ final class TerminalEventDecoder {
 
     private final StringBuilder escape = new StringBuilder();
 
+    boolean sequencePending() {
+        return !escape.isEmpty();
+    }
+
     Event feed(int character) {
         if (!escape.isEmpty()) {
             escape.append((char) character);

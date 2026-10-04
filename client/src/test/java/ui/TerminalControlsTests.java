@@ -77,7 +77,7 @@ class TerminalControlsTests {
                                 String expected = piece != null
                                         ? style.forRendering(color).glyph(piece.getPieceType(), piece.getTeamColor())
                                         : square.equals(new ChessPosition(3, 5)) || square.equals(new ChessPosition(4, 5))
-                                        ? "+" : ".";
+                                        ? "+" : color ? " " : ".";
                                 assertEquals(expected, label, style + " " + perspective + " " + square);
                                 assertEquals(" ".repeat(layout.cellWidth() / 2),
                                         line.columnSubSequence(left, center).toString());

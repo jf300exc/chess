@@ -10,13 +10,16 @@ public class ClientMain {
     private static final int PORT = 8080;
 
     public static void main(String[] args) {
+        // Board images use fonts and raster drawing, never a desktop window.
+        System.setProperty("java.awt.headless", "true");
         String host = readOption(args, "--host", System.getenv().getOrDefault("CHESS_HOST", "localhost"));
         int port = readPort(args, System.getenv().getOrDefault("CHESS_PORT", Integer.toString(PORT)));
         ServerFacade httpFacade = new ServerFacade(host, port);
 
         boolean textOnly = java.util.Arrays.asList(args).contains("--text");
         boolean noMouse = java.util.Arrays.asList(args).contains("--no-mouse");
-        try (CliConsole console = CliConsole.open(textOnly, noMouse, PieceSymbols.fromArgs(args))) {
+        boolean noGraphics = java.util.Arrays.asList(args).contains("--no-graphics");
+        try (CliConsole console = CliConsole.open(textOnly, noMouse, noGraphics, PieceSymbols.fromArgs(args))) {
             CommandLine commandLine = new CommandLine(httpFacade, console);
             WebSocketClient webSocketClient = new WebSocketClient(host, port, commandLine.gamePlay);
             commandLine.gamePlay.setWebSocket(webSocketClient);

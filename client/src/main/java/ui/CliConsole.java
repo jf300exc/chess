@@ -19,12 +19,14 @@ public final class CliConsole implements AutoCloseable {
     private final LineReader lineReader;
     private final BufferedReader plainReader;
     private final boolean allowMouse;
+    private final boolean allowGraphics;
     private final PieceSymbols pieceSymbols;
     private boolean ended;
 
-    private CliConsole(org.jline.terminal.Terminal terminal, boolean allowMouse, PieceSymbols pieceSymbols) {
+    private CliConsole(org.jline.terminal.Terminal terminal, boolean allowMouse, boolean allowGraphics, PieceSymbols pieceSymbols) {
         this.terminal = terminal;
         this.allowMouse = allowMouse;
+        this.allowGraphics = allowGraphics && pieceSymbols != PieceSymbols.ASCII;
         this.pieceSymbols = pieceSymbols;
         lineReader = terminal == null ? null : LineReaderBuilder.builder().terminal(terminal).build();
         plainReader = terminal == null
@@ -36,6 +38,10 @@ public final class CliConsole implements AutoCloseable {
     }
 
     public static CliConsole open(boolean textOnly, boolean noMouse, PieceSymbols pieceSymbols) {
+        return open(textOnly, noMouse, false, pieceSymbols);
+    }
+
+    public static CliConsole open(boolean textOnly, boolean noMouse, boolean noGraphics, PieceSymbols pieceSymbols) {
         String term = System.getenv("TERM");
         if (!textOnly && System.console() != null && !"dumb".equals(term)) {
             org.jline.terminal.Terminal candidate = null;
@@ -43,7 +49,7 @@ public final class CliConsole implements AutoCloseable {
                 candidate = TerminalBuilder.builder().system(true).dumb(false).build();
                 if (candidate.getStringCapability(Capability.cursor_address) != null
                         && candidate.getStringCapability(Capability.enter_ca_mode) != null) {
-                    return new CliConsole(candidate, !noMouse, pieceSymbols);
+                    return new CliConsole(candidate, !noMouse, !noGraphics, pieceSymbols);
                 }
             } catch (IOException | RuntimeException | LinkageError e) {
                 System.err.println("Terminal controls unavailable; using text commands.");
@@ -56,7 +62,7 @@ public final class CliConsole implements AutoCloseable {
                 }
             }
         }
-        return new CliConsole(null, false, pieceSymbols);
+        return new CliConsole(null, false, false, pieceSymbols);
     }
 
     org.jline.terminal.Terminal terminal() {
@@ -69,6 +75,10 @@ public final class CliConsole implements AutoCloseable {
 
     PieceSymbols pieceSymbols() {
         return pieceSymbols;
+    }
+
+    boolean allowGraphics() {
+        return allowGraphics;
     }
 
     /** null denotes EOF or Ctrl-C, including during a follow-up prompt. */

@@ -70,7 +70,7 @@ test-engine: check ## Run chess rule tests without server/database dependencies
 	$(MVN) --no-transfer-progress -pl shared test
 
 test-cli: check ## Run terminal parsing, board interaction, and text gameplay tests
-	$(MVN) --no-transfer-progress -pl client -am -Dtest=CliInputParserTests,CommandLineSelectionTests,TerminalControlsTests,GamePlayCliTests -Dsurefire.failIfNoSpecifiedTests=false test
+	$(MVN) --no-transfer-progress -pl client -am -Dtest=CliInputParserTests,CommandLineSelectionTests,TerminalControlsTests,BoardGraphicsTests,GamePlayCliTests -Dsurefire.failIfNoSpecifiedTests=false -DargLine=-Djava.awt.headless=true test
 
 verify: build test ## Build and run all tests
 

@@ -14,8 +14,8 @@ public final class BoardDraw {
     private static final String DARK = "\u001b[48;5;65m";
     private static final String SELECTED = "\u001b[48;5;179m";
     private static final String LEGAL = "\u001b[48;5;80m";
-    private static final String WHITE = "\u001b[1;97;48;5;238m";
-    private static final String BLACK = "\u001b[1;30;48;5;252m";
+    private static final String WHITE = "\u001b[97m";
+    private static final String BLACK = "\u001b[30m";
 
     public record Layout(int cellWidth, int cellHeight) {
         public int width() {
@@ -51,11 +51,11 @@ public final class BoardDraw {
     }
 
     public static String drawBoard(ChessGame game, ChessGame.TeamColor perspective) {
-        return draw(game, perspective, null, new Layout(5, 2), true);
+        return draw(game, perspective, null, new Layout(3, 1), true);
     }
 
     public static String drawBoardWithValidMoves(ChessGame game, ChessGame.TeamColor perspective, ChessPosition start) {
-        return draw(game, perspective, start, new Layout(5, 2), true);
+        return draw(game, perspective, start, new Layout(3, 1), true);
     }
 
     static String draw(ChessGame game, ChessGame.TeamColor perspective, ChessPosition selected, Layout layout, boolean color) {
@@ -87,7 +87,7 @@ public final class BoardDraw {
                     boolean legal = destinations.contains(position);
                     String background = isSelected ? SELECTED : legal ? LEGAL
                             : (position.getRow() + position.getColumn()) % 2 == 1 ? LIGHT : DARK;
-                    String label = labelLine ? piece == null ? legal ? "+" : "."
+                    String label = labelLine ? piece == null ? legal ? "+" : color ? "" : "."
                             : symbols.glyph(piece.getPieceType(), piece.getTeamColor()) : "";
                     int labelWidth = new AttributedString(label).columnLength();
                     if (color) {
@@ -95,7 +95,9 @@ public final class BoardDraw {
                         int left = (layout.cellWidth - labelWidth) / 2;
                         board.append(" ".repeat(left));
                         if (piece != null && labelLine) {
-                            board.append(piece.getTeamColor() == ChessGame.TeamColor.WHITE ? WHITE : BLACK);
+                            // Hollow/filled Unicode shapes distinguish teams without pale white-on-light text.
+                            board.append(symbols == PieceSymbols.UNICODE ? BLACK
+                                    : piece.getTeamColor() == ChessGame.TeamColor.WHITE ? WHITE : BLACK);
                         } else {
                             board.append("\u001b[30m");
                         }

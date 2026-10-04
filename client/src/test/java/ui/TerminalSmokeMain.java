@@ -14,8 +14,10 @@ import java.util.List;
 /** No-network fixture used by scripts/test-cli-terminal.py in a real pseudo-terminal. */
 public final class TerminalSmokeMain {
     public static void main(String[] args) throws Exception {
+        System.setProperty("java.awt.headless", "true");
         List<String> options = Arrays.asList(args);
         try (CliConsole console = CliConsole.open(options.contains("--text"), options.contains("--no-mouse"),
+                options.contains("--no-graphics"),
                 PieceSymbols.fromArgs(args))) {
             var tty = console.terminal();
             var attributes = tty == null ? null : tty.getAttributes();
@@ -31,10 +33,13 @@ public final class TerminalSmokeMain {
                 position.setBoard(board);
             }
             List<String> moves = new ArrayList<>();
+            long previewDeadline = System.nanoTime() + 12_000_000_000L;
             WebSocketClient socket = new WebSocketClient(8080, message -> { }) {
                 boolean open;
                 @Override public void connectClient() { open = true; }
-                @Override public boolean isSessionOpen() { return open; }
+                @Override public boolean isSessionOpen() {
+                    return open && (!options.contains("--preview") || System.nanoTime() < previewDeadline);
+                }
                 @Override public void closeClient() { open = false; }
                 @Override public void sendCommand(Object command) throws Exception {
                     if (command instanceof MakeMoveCommand move) {
@@ -42,6 +47,9 @@ public final class TerminalSmokeMain {
                         Terminal.addLogMessage("Confirmed move: " + moves.getLast());
                     } else if (((UserGameCommand) command).getCommandType() == UserGameCommand.CommandType.CONNECT) {
                         Terminal.setChessGame(position, "Terminal smoke match");
+                        if (options.contains("--preview")) {
+                            Terminal.drawHighlights(new ChessPosition(2, 5));
+                        }
                     }
                 }
             };
