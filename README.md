@@ -159,3 +159,29 @@ The Maven reactor contains three modules:
 [![Architecture sequence diagram](10k-architecture.png)](10k-architecture.png)
 
 Performance-sensitive client requests reuse a single Java HTTP connection pool, UI network work stays off the Swing event thread, terminal input polls without busy-spinning, and server connection/error state is safe for concurrent clients. Lobby and gameplay share one input reader. Gameplay paints synchronized snapshots on the input thread; server callbacks update state without writing over typed commands in interactive mode.
+
+## Stockfish opponents and ratings
+
+Choose **Stockfish AI** when creating a browser game. Pick your color and either **Match my Elo** (the default) or a manual **0–20** skill level. The game reserves your seat and opens the board immediately. Stockfish can play White or Black, and observers can watch as usual. In the desktop client, **New game** offers the same choices. The CLI's **Create Game** prompts for opponent, color, and difficulty.
+
+Use **Add Stockfish** on a lobby game to fill its opposite empty seat before the first move. The browser and desktop clients claim your chosen human seat if it is empty; the CLI provides a `stockfish` command after `List Games`. Existing games with two human players remain supported. AI matches retain their human seat when leaving so **Resume** (or CLI `Play Game`) can reopen the same match.
+
+Install the native Stockfish engine **on the server** (clients need no engine):
+
+```sh
+sudo apt install stockfish             # Ubuntu/Debian
+# Or download a native executable from https://stockfishchess.org/download/
+STOCKFISH_PATH=/absolute/path/to/stockfish make server
+```
+
+The server uses `STOCKFISH_PATH`, `/usr/games/stockfish`, or `stockfish` on PATH, in that order. Missing or incompatible engines return an actionable HTTP 503 when creating/adding AI; human matches still work. Searches use one engine thread, 16 MiB hash, and 250 ms thinking time. At most two searches run at once, with a bounded waiting queue. Failed searches preserve the board; reconnect to retry or resign. Disconnecting a client does not stop the engine. Resignation cancels any pending move's effect.
+
+New accounts start at **1500 Elo**; existing accounts receive the same initial rating during the additive database migration. The lobby shows your current rating. A completed Elo-mode AI match or a game against another human updates ratings using standard Elo expected scores with K=32 (minimum account rating 100). Checkmate and resignation count as wins/losses; stalemate is a draw. An atomic transaction saves the terminal board and applies the result only once. Manual skill games are unrated. Leaving or disconnecting does not count as a result.
+
+Adaptive mode selects your current rating at game creation; that opponent strength stays fixed during the match. Your next game uses your updated rating. Stockfish's supported Elo range varies by version: the server reads the engine's advertised range and clamps the target to it. The actual target appears in game listings. Skill 0 is the weakest Stockfish setting, while 20 is full strength; these levels are not a linear Elo scale. See the [official Stockfish difficulty documentation](https://official-stockfish.github.io/docs/stockfish-wiki/Stockfish-FAQ.html#how-do-skill-level-and-uci_elo-work).
+
+API clients can continue sending `{ "gameName": "Friends" }` to `POST /game` for a human game. To create an adaptive AI match, add `"stockfish": { "color": "BLACK", "mode": "ELO" }`; `color` is **the engine's color**. An optional integer `elo` sets a fixed target instead of using the player's rating. For manual strength, use `{ "color": "BLACK", "mode": "SKILL", "skillLevel": 5 }`. The modes are mutually exclusive. `PUT /game/stockfish` accepts `{ "gameID": 42, "stockfish": { ... } }` from the authenticated player seated opposite the empty engine seat, before any move. `GET /user` returns only the authenticated player's username and Elo. All these endpoints use the existing Authorization header.
+
+Run `make test-stockfish` for deterministic UCI, difficulty, and async gameplay tests without MySQL (the scripted UCI peer uses Python 3 on POSIX). Set `STOCKFISH_PATH` to include the optional real-engine smoke test. The full `make test` suite also checks database migration, setting persistence, API validation, and exactly-once rating settlement against the configured test database.
+
+With a disposable server running, `CHESS_WEB_URL=http://localhost:8095 node scripts/test-stockfish-client.cjs` checks the browser AI flows, ratings, observers, reconnect/resume, and mobile layouts. It requires Playwright and Chrome. The existing `scripts/test-web-client.cjs` continues to verify human multiplayer.

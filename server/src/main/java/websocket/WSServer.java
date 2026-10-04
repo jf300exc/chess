@@ -13,6 +13,11 @@ import dataaccess.SQLAuthDAO;
 import dataaccess.SQLGameDAO;
 import model.AuthData;
 import model.GameData;
+import model.StockfishPlayer;
+import engine.StockfishEngine;
+import engine.ChessUci;
+import service.GameLocks;
+import java.util.concurrent.*;
 import org.eclipse.jetty.websocket.api.annotations.*;
 import org.eclipse.jetty.websocket.api.*;
 import websocket.commands.MakeMoveCommand;
@@ -38,8 +43,40 @@ public class WSServer {
                     new CastleRequirementsAdapter())
             .create();
 
-    private final GameDAO gameDAO = new SQLGameDAO();
-    private final AuthDAO authDAO = new SQLAuthDAO();
+    private final GameDAO gameDAO;
+    private final AuthDAO authDAO;
+    private final MoveEngine engine;
+    private static final Map<Integer, Object> THINKING = new ConcurrentHashMap<>();
+    private static final ExecutorService ENGINE_WORKERS = new ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(64), runnable -> {
+                Thread thread = new Thread(runnable, "stockfish-search");
+                thread.setDaemon(true);
+                return thread;
+            });
+
+    @FunctionalInterface
+    public interface MoveEngine { ChessMove choose(ChessGame game, StockfishPlayer player) throws IOException; }
+
+    public WSServer() {
+        this(new SQLGameDAO(), new SQLAuthDAO(), (game, player) -> {
+            try (var stockfish = new StockfishEngine()) { return stockfish.bestMove(game, player); }
+        });
+    }
+
+    public WSServer(GameDAO games, AuthDAO auth, MoveEngine engine) {
+        this.gameDAO = games; this.authDAO = auth; this.engine = engine;
+    }
+
+    public static void refreshStockfishGame(int gameID) {
+        var server = new WSServer();
+        synchronized (GameLocks.forGame(gameID)) {
+            GameData data = server.gameDAO.findGameDataByID(Integer.toString(gameID));
+            if (data != null) {
+                server.broadcast(gameID, server.convertToJson(new LoadGameMessage(ServerMessageType.LOAD_GAME, data)));
+                server.scheduleEngine(data);
+            }
+        }
+    }
 
     private static final Map<Integer, Set<Session>> CONNECTED_GAME_PLAYERS = new ConcurrentHashMap<>();
     private static final Map<Integer, Set<Session>> CONNECTED_GAME_OBSERVERS = new ConcurrentHashMap<>();
@@ -61,26 +98,29 @@ public class WSServer {
         }
 
         String commandType = json.get("commandType").getAsString();
-        switch (commandType) {
-            case "CONNECT" -> {
-                System.out.println("Connected to " + session);
-                UserGameCommand command = gson.fromJson(json, UserGameCommand.class);
-                processConnectCommand(session, command);
-            }
-            case "MAKE_MOVE" -> {
-                System.out.println("Received MakeMoveCommand");
-                MakeMoveCommand command = gson.fromJson(json, MakeMoveCommand.class);
-                processMakeMoveCommand(session, command);
-            }
-            case "LEAVE" -> {
-                System.out.println("Received LeaveCommand");
-                UserGameCommand command = gson.fromJson(message, UserGameCommand.class);
-                processLeaveCommand(session, command);
-            }
-            case "RESIGN" -> {
-                System.out.println("Received ResignCommand");
-                UserGameCommand command = gson.fromJson(message, UserGameCommand.class);
-                processResignCommand(session, command);
+        if (!json.has("gameID")) { return; }
+        synchronized (GameLocks.forGame(json.get("gameID").getAsInt())) {
+            switch (commandType) {
+                case "CONNECT" -> {
+                    System.out.println("Connected to " + session);
+                    UserGameCommand command = gson.fromJson(json, UserGameCommand.class);
+                    processConnectCommand(session, command);
+                }
+                case "MAKE_MOVE" -> {
+                    System.out.println("Received MakeMoveCommand");
+                    MakeMoveCommand command = gson.fromJson(json, MakeMoveCommand.class);
+                    processMakeMoveCommand(session, command);
+                }
+                case "LEAVE" -> {
+                    System.out.println("Received LeaveCommand");
+                    UserGameCommand command = gson.fromJson(message, UserGameCommand.class);
+                    processLeaveCommand(session, command);
+                }
+                case "RESIGN" -> {
+                    System.out.println("Received ResignCommand");
+                    UserGameCommand command = gson.fromJson(message, UserGameCommand.class);
+                    processResignCommand(session, command);
+                }
             }
         }
     }
@@ -116,7 +156,7 @@ public class WSServer {
     }
 
     public void sendMessage(Session session, String message) throws IOException {
-        session.getRemote().sendString(message);
+        synchronized (session) { session.getRemote().sendString(message); }
     }
 
     private void processConnectCommand(Session session, UserGameCommand command) throws IOException {
@@ -180,6 +220,7 @@ public class WSServer {
             System.out.println("Adding Player to gameID: " + gameID);
             addSession(CONNECTED_GAME_PLAYERS, gameID, session);
         }
+        scheduleEngine(gameData);
     }
 
     private void processMakeMoveCommand(Session session, MakeMoveCommand command) throws IOException {
@@ -219,9 +260,8 @@ public class WSServer {
             return;
         }
 
-        // Move successful
-        gameDAO.removeGameDataByGameID(gameData);
-        gameDAO.addGameData(gameData);
+        // Move successful; completion and ratings are committed together.
+        persistMove(gameData);
 
         // Send LOAD_GAME Message to all Clients
         var loadGameMessage = new LoadGameMessage(ServerMessageType.LOAD_GAME, gameData);
@@ -259,7 +299,7 @@ public class WSServer {
                 sendMessage(observerSession, gson.toJson(secondNotification));
             }
         }
-
+        scheduleEngine(gameData);
     }
 
     private void processLeaveCommand(Session session, UserGameCommand command) throws IOException {
@@ -280,13 +320,12 @@ public class WSServer {
         }
         // Proceed
         ChessGame.TeamColor playerColor;
-        if ((playerColor = getPlayerColorFromUsername(gameData, authData.username())) != null) {
-            gameDAO.removeGameDataByGameID(gameData);
+        if (gameData.stockfish() == null && (playerColor = getPlayerColorFromUsername(gameData, authData.username())) != null) {
             switch (playerColor) {
                 case WHITE -> gameData = GameData.updateGameDataUsers("WHITE", null, gameData);
                 case BLACK -> gameData = GameData.updateGameDataUsers("BLACK", null, gameData);
             }
-            gameDAO.addGameData(gameData);
+            gameDAO.saveGame(gameData);
         }
         System.out.println("Removing player from gameID: " + gameID);
 
@@ -327,9 +366,8 @@ public class WSServer {
             System.out.println("Resignation attempted with observer");
             errorMessage = new ErrorMessage(ServerMessageType.ERROR, "Can't resign as an observer. Try to leave instead.");
         } else if (!gameData.game().isGameOver()) {
-            gameDAO.removeGameDataByGameID(gameData);
             gameData.game().setGameOver(true);
-            gameDAO.addGameData(gameData);
+            gameDAO.finishGame(gameData, getOtherTeamColor(getPlayerColorFromUsername(gameData, authData.username())));
         }
         // Send error
         if (errorMessage != null) {
@@ -344,6 +382,70 @@ public class WSServer {
         }
         for (Session observerSession : CONNECTED_GAME_OBSERVERS.getOrDefault(gameID, Set.of())) {
             sendMessage(observerSession, gson.toJson(notificationMessage));
+        }
+    }
+
+    private void persistMove(GameData data) {
+        ChessGame game = data.game();
+        ChessGame.TeamColor turn = game.getTeamTurn();
+        boolean mate = game.isInCheckmate(turn);
+        boolean draw = !mate && game.isInStalemate(turn);
+        if (mate || draw) {
+            game.setGameOver(true);
+            gameDAO.finishGame(data, mate ? getOtherTeamColor(turn) : null);
+        } else { gameDAO.saveGame(data); }
+    }
+
+    private void broadcast(int gameID, String message) {
+        var sessions = new HashSet<>(CONNECTED_GAME_PLAYERS.getOrDefault(gameID, Set.of()));
+        sessions.addAll(CONNECTED_GAME_OBSERVERS.getOrDefault(gameID, Set.of()));
+        for (Session session : sessions) {
+            try { sendMessage(session, message); }
+            catch (IOException e) { onClose(session, 1006, "Could not send game update"); }
+        }
+    }
+
+    private void scheduleEngine(GameData data) {
+        if (data.stockfish() == null || data.game().isGameOver()
+                || data.game().getTeamTurn() != data.stockfish().color()) { return; }
+        int id = data.gameID();
+        Object search = new Object();
+        if (THINKING.putIfAbsent(id, search) != null) { return; }
+        ChessGame position = data.game().copy();
+        String expected = ChessUci.fen(data.game());
+        try {
+            ENGINE_WORKERS.execute(() -> {
+                try {
+                    ChessMove move = engine.choose(position, data.stockfish());
+                    synchronized (GameLocks.forGame(id)) {
+                        GameData current = gameDAO.findGameDataByID(Integer.toString(id));
+                        // A resignation, changed seat, cleared game, or newer board cancels this search.
+                        if (current == null || current.game().isGameOver() || !data.stockfish().equals(current.stockfish())
+                                || !Objects.equals(current.whiteUsername(), data.whiteUsername())
+                                || !Objects.equals(current.blackUsername(), data.blackUsername())
+                                || !expected.equals(ChessUci.fen(current.game()))) { return; }
+                        current.game().makeMove(move); // Server rules validate every engine move too.
+                        persistMove(current);
+                        THINKING.remove(id, search);
+                        broadcast(id, convertToJson(new LoadGameMessage(ServerMessageType.LOAD_GAME, current)));
+                        String message = current.stockfish().description() + " moved " + ChessUci.square(move.getStartPosition())
+                                + " → " + ChessUci.square(move.getEndPosition());
+                        if (current.game().isGameOver()) {
+                            message += current.game().isInCheckmate(current.game().getTeamTurn()) ? ". Checkmate." : ". Stalemate.";
+                        } else if (current.game().isInCheck(current.game().getTeamTurn())) { message += ". Check."; }
+                        broadcast(id, convertToJson(new NotificationMessage(ServerMessageType.NOTIFICATION, message)));
+                    }
+                } catch (IOException | InvalidMoveException | RuntimeException e) {
+                    synchronized (GameLocks.forGame(id)) { THINKING.remove(id, search); }
+                    broadcast(id, convertToJson(new ErrorMessage(ServerMessageType.ERROR,
+                            "Stockfish could not move. Reconnect to retry, or resign: " + e.getMessage())));
+                } finally {
+                    synchronized (GameLocks.forGame(id)) { THINKING.remove(id, search); }
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            THINKING.remove(id, search);
+            broadcast(id, convertToJson(new ErrorMessage(ServerMessageType.ERROR, "Stockfish is busy. Reconnect to retry.")));
         }
     }
 
@@ -369,6 +471,7 @@ public class WSServer {
     }
 
     private ChessGame.TeamColor getPlayerColorFromUsername(GameData gameData, String username) {
+        if (gameData.stockfish() != null && StockfishPlayer.USERNAME.equalsIgnoreCase(username)) { return null; }
         if (username.equals(gameData.blackUsername())) {
             return ChessGame.TeamColor.BLACK;
         } else if (username.equals(gameData.whiteUsername())) {

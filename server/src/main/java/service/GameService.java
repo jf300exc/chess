@@ -1,103 +1,125 @@
 package service;
 
-import dataaccess.GameIDCounter;
 import chess.ChessGame;
-import dataaccess.GameDAO;
-import dataaccess.SQLGameDAO;
-import model.AuthData;
-import model.GameData;
-import model.GameEntry;
+import dataaccess.*;
+import engine.StockfishEngine;
+import model.*;
 import requests.*;
 
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.function.IntSupplier;
 
 public class GameService {
-    private static final GameDAO GAMEDAO = new SQLGameDAO();
-    private static final AuthService AUTH_SERVICE = new AuthService();
+    private static final Object CREATE_LOCK = new Object();
+    private final GameDAO games;
+    private final AuthDAO auth;
+    private final UserDAO users;
+    private final IntSupplier nextID;
+    private final EngineFactory engines;
 
-    public ListGamesResult listGames(ListGamesRequest listGamesRequest) {
-        ListGamesResult result;
-        if (AUTH_SERVICE.isAuthTokenUnavailable(listGamesRequest.authToken())) {
-            result = new ListGamesResult(null, "Error: unauthorized");
-        } else {
-            Collection<GameEntry> gameList = new ArrayList<>();
-            Collection<GameData> fullGameData = GAMEDAO.findGameData();
-            for (GameData game : fullGameData) {
-                gameList.add(new GameEntry(game));
+    @FunctionalInterface
+    public interface EngineFactory { StockfishEngine open() throws IOException; }
+
+    public GameService() {
+        this(new SQLGameDAO(), new SQLAuthDAO(), new SQLUserDAO(), GameIDCounter::getNewGameID, StockfishEngine::new);
+    }
+
+    public GameService(GameDAO games, AuthDAO auth, UserDAO users, IntSupplier nextID, EngineFactory engines) {
+        this.games = games; this.auth = auth; this.users = users; this.nextID = nextID; this.engines = engines;
+    }
+
+    public ListGamesResult listGames(ListGamesRequest request) {
+        if (auth.findAuthDataByAuthToken(request.authToken()) == null) { return new ListGamesResult(null, "Error: unauthorized"); }
+        var list = new ArrayList<GameEntry>();
+        games.findGameData().forEach(game -> list.add(new GameEntry(game)));
+        return new ListGamesResult(list, "");
+    }
+
+    public PlayerProfile profile(String token) {
+        AuthData account = auth.findAuthDataByAuthToken(token);
+        UserData user = account == null ? null : users.findUserDataByUsername(account.username());
+        return user == null ? null : new PlayerProfile(user.username(), user.elo());
+    }
+
+    public CreateGameResult createGame(CreateGameRequest request) {
+        AuthData account = auth.findAuthDataByAuthToken(request.authToken());
+        if (account == null) { return new CreateGameResult(null, "Error: unauthorized"); }
+        if (request.gameName() == null || request.gameName().isBlank() || request.gameName().length() > 255) {
+            return new CreateGameResult(null, "Error: bad request");
+        }
+        StockfishPlayer stockfish = null;
+        if (request.stockfish() != null) {
+            try { stockfish = preparePlayer(request.stockfish(), account.username()); }
+            catch (IllegalArgumentException e) { return new CreateGameResult(null, "Error: bad request"); }
+            catch (IOException e) { return new CreateGameResult(null, "Error: Stockfish unavailable. Install Stockfish or set STOCKFISH_PATH."); }
+        }
+        synchronized (CREATE_LOCK) {
+            int id = nextID.getAsInt();
+            String white = null, black = null;
+            if (stockfish != null) {
+                white = stockfish.color() == ChessGame.TeamColor.WHITE ? StockfishPlayer.USERNAME : account.username();
+                black = stockfish.color() == ChessGame.TeamColor.BLACK ? StockfishPlayer.USERNAME : account.username();
             }
-            result = new ListGamesResult(gameList, "");
+            games.addGameData(new GameData(id, white, black, request.gameName(), new ChessGame(), stockfish));
+            return new CreateGameResult(Integer.toString(id), "");
         }
-        return result;
     }
 
-    public CreateGameResult createGame(CreateGameRequest createGameRequest) {
-        CreateGameResult result;
-        if (AUTH_SERVICE.isAuthTokenUnavailable(createGameRequest.authToken())) {
-            result = new CreateGameResult(null, "Error: unauthorized");
-        } else {
-            String newGameName = createGameRequest.gameName();
-            ChessGame game = new ChessGame();
-            int gameIDCounter = GameIDCounter.getNewGameID();
-            GameData gameData = new GameData(gameIDCounter, null, null, newGameName, game);
-            GAMEDAO.addGameData(gameData);
-            String gameID = String.valueOf(gameIDCounter);
-            result = new CreateGameResult(gameID, "");
-        }
-        return result;
-    }
-
-    public JoinGameResult joinGame(JoinGameRequest joinGameRequest) {
-        // Authorization and getting authData for username
-        AuthData authData = AUTH_SERVICE.findAuthDataByAuthToken(joinGameRequest.authToken());
-        if (authData == null) {
-            return new JoinGameResult("Error: unauthorized");
-        }
-
-        // If the game is not found, then bad request
-        GameData gameData;
+    /** A seated human can fill the opposite empty seat before the first move. */
+    public JoinGameResult addStockfish(AddStockfishRequest request) {
+        AuthData account = auth.findAuthDataByAuthToken(request.authToken());
+        if (account == null) { return new JoinGameResult("Error: unauthorized"); }
         try {
-            gameData = GAMEDAO.findGameDataByID(joinGameRequest.gameID());
-        } catch (NumberFormatException e) {
-            return new JoinGameResult("Error: bad request");
+            if (request.stockfish() == null) { return new JoinGameResult("Error: bad request"); }
+            request.stockfish().validate();
+            int id = Integer.parseInt(request.gameID());
+            synchronized (GameLocks.forGame(id)) {
+                GameData game = games.findGameDataByID(request.gameID());
+                if (game == null) { return new JoinGameResult("Error: game does not exist"); }
+                boolean aiWhite = request.stockfish().color() == ChessGame.TeamColor.WHITE;
+                String human = aiWhite ? game.blackUsername() : game.whiteUsername();
+                String seat = aiWhite ? game.whiteUsername() : game.blackUsername();
+                if (!account.username().equals(human)) { return new JoinGameResult("Error: unauthorized"); }
+                if (seat != null) { return new JoinGameResult("Error: already taken"); }
+                if (game.stockfish() != null || !game.game().equals(new ChessGame())) { return new JoinGameResult("Error: bad request"); }
+                StockfishPlayer player = preparePlayer(request.stockfish(), human);
+                games.saveGame(new GameData(id, aiWhite ? StockfishPlayer.USERNAME : human,
+                        aiWhite ? human : StockfishPlayer.USERNAME, game.gameName(), game.game(), player));
+                return new JoinGameResult("");
+            }
+        } catch (IllegalArgumentException e) { return new JoinGameResult("Error: bad request"); }
+        catch (IOException e) { return new JoinGameResult("Error: Stockfish unavailable. Install Stockfish or set STOCKFISH_PATH."); }
+    }
+
+    private StockfishPlayer preparePlayer(StockfishOptions options, String username) throws IOException {
+        options.validate();
+        if (StockfishPlayer.USERNAME.equalsIgnoreCase(username)) {
+            throw new IllegalArgumentException("The Stockfish name is reserved for the engine");
         }
-
-        // Prepare the result
-        return updateGame(joinGameRequest.playerColor(), authData.username(), gameData);
+        UserData user = users.findUserDataByUsername(username);
+        if (user == null) { throw new IllegalArgumentException("Player account missing"); }
+        try (StockfishEngine engine = engines.open()) { return engine.player(options, user.elo()); }
     }
 
-    private static JoinGameResult updateGame(String playerColor, String username, GameData gameData) {
-        JoinGameResult result;
-        if (gameData == null) {
-            result = new JoinGameResult("Error: game does not exist");
-        } else if (playerColor.equals("WHITE") || playerColor.equals("BLACK")) {
-            result = attemptAddPlayer(playerColor, username, gameData);
-        } else {
-            result = new JoinGameResult("Error: bad request");
-        } return result;
+    public JoinGameResult joinGame(JoinGameRequest request) {
+        AuthData account = auth.findAuthDataByAuthToken(request.authToken());
+        if (account == null) { return new JoinGameResult("Error: unauthorized"); }
+        if (!"WHITE".equals(request.playerColor()) && !"BLACK".equals(request.playerColor())) { return new JoinGameResult("Error: bad request"); }
+        try {
+            int id = Integer.parseInt(request.gameID());
+            synchronized (GameLocks.forGame(id)) {
+                GameData game = games.findGameDataByID(request.gameID());
+                if (game == null) { return new JoinGameResult("Error: game does not exist"); }
+                String seat = request.playerColor().equals("WHITE") ? game.whiteUsername() : game.blackUsername();
+                if (seat != null) { return new JoinGameResult("Error: already taken"); }
+                // AI matches keep their original human so results cannot be credited to a replacement account.
+                if (game.stockfish() != null || game.game().isGameOver()) { return new JoinGameResult("Error: bad request"); }
+                games.saveGame(GameData.updateGameDataUsers(request.playerColor(), account.username(), game));
+                return new JoinGameResult("");
+            }
+        } catch (NumberFormatException e) { return new JoinGameResult("Error: bad request"); }
     }
 
-    private static JoinGameResult attemptAddPlayer(String playerColor, String username, GameData gameData) {
-        JoinGameResult result;
-        if (playerColorUnavailable(playerColor, gameData)) {
-            result = new JoinGameResult("Error: already taken");
-        } else {
-            GAMEDAO.removeGameDataByGameID(gameData);
-            gameData = GameData.updateGameDataUsers(playerColor, username, gameData);
-            GAMEDAO.addGameData(gameData);
-            result = new JoinGameResult("");
-        }
-        return result;
-    }
-
-    private static boolean playerColorUnavailable(String playerColor, GameData gameData) {
-        if (playerColor.equals("WHITE")) {
-            return gameData.whiteUsername() != null;
-        }
-        return gameData.blackUsername() != null;
-    }
-
-    public void clearGameDataBase() {
-        GAMEDAO.clear();
-    }
+    public void clearGameDataBase() { games.clear(); }
 }

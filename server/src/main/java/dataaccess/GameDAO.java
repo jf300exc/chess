@@ -13,5 +13,13 @@ public interface GameDAO {
 
     void removeGameDataByGameID(GameData gameData);
 
+    default void saveGame(GameData game) {
+        removeGameDataByGameID(game);
+        addGameData(game);
+    }
+
+    /** Persist a terminal board and settle ratings once. Null winner means a draw. */
+    default void finishGame(GameData game, chess.ChessGame.TeamColor winner) { saveGame(game); }
+
     void clear();
 }

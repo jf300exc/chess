@@ -15,6 +15,9 @@ public class UserService {
     private static final AuthService AUTH_SERVICE = new AuthService();
 
     public RegisterResult register(RegisterRequest registerRequest) {
+        if (model.StockfishPlayer.USERNAME.equalsIgnoreCase(registerRequest.username())) {
+            return new RegisterResult("", "", "Error: already taken");
+        }
         UserData newUserData = new UserData(registerRequest.username(),
                 registerRequest.password(), registerRequest.email());
         RegisterResult result;

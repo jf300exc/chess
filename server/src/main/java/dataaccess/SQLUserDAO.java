@@ -23,7 +23,7 @@ public class SQLUserDAO implements UserDAO {
                 String username = resultSet.getString("username");
                 String passwordHash = resultSet.getString("passwordHash");
                 String email = resultSet.getString("email");
-                users.add(new UserData(username, email, passwordHash));
+                users.add(new UserData(username, passwordHash, email, resultSet.getInt("elo")));
             }
 
         } catch (DataAccessException | SQLException e) {
@@ -35,8 +35,8 @@ public class SQLUserDAO implements UserDAO {
     @Override
     public void addUser(UserData userData) {
         String query = """
-                INSERT INTO user_data (username, passwordHash, email)
-                VALUES (?, ?, ?)
+                INSERT INTO user_data (username, passwordHash, email, elo)
+                VALUES (?, ?, ?, ?)
                 """;
         try (var conn = DatabaseManager.getConnection();
              var statement = conn.prepareStatement(query)) {
@@ -47,6 +47,7 @@ public class SQLUserDAO implements UserDAO {
             statement.setString(2, passwordHash);
 
             statement.setString(3, userData.email());
+            statement.setInt(4, userData.elo());
 
             statement.executeUpdate();
         } catch (DataAccessException | SQLException e) {
@@ -70,7 +71,7 @@ public class SQLUserDAO implements UserDAO {
                     String password = resultSet.getString("passwordHash");
                     String email = resultSet.getString("email");
 
-                    userData = new UserData(username, password, email);
+                    userData = new UserData(username, password, email, resultSet.getInt("elo"));
                 }
             }
         } catch (DataAccessException | SQLException e) {

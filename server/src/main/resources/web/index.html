@@ -30,8 +30,17 @@
       </div>
     </section>
     <section id="lobby-view" hidden>
-      <div class="section-heading"><div><p class="eyebrow">THE LOBBY</p><h1>Find your next game.</h1><p class="muted">Take a seat, or watch a match unfold.</p></div><button id="refresh" class="secondary">Refresh games</button></div>
-      <form id="create-form" class="card create-form"><label for="game-name">Start a new game</label><div><input id="game-name" placeholder="Give your game a name" required maxlength="255"><button type="submit" class="primary">Create game</button></div></form>
+      <div class="section-heading"><div><p class="eyebrow">THE LOBBY</p><h1>Find your next game.</h1><p class="muted">Take a seat, or watch a match unfold.</p><p id="player-rating" class="small muted" aria-live="polite"></p></div><button id="refresh" class="secondary">Refresh games</button></div>
+      <form id="create-form" class="card create-form">
+        <label for="game-name">Start a new game</label>
+        <div><input id="game-name" placeholder="Give your game a name" required maxlength="255"><select id="opponent" aria-label="Opponent"><option value="human">Human opponent</option><option value="stockfish">Stockfish AI</option></select><button type="submit" class="primary">Create game</button></div>
+        <div id="ai-options" class="ai-options" hidden>
+          <label>Your color<select id="ai-color"><option value="WHITE">White</option><option value="BLACK">Black</option></select></label>
+          <label>Difficulty<select id="ai-mode"><option value="ELO">Match my Elo</option><option value="SKILL">Manual level (0–20)</option></select></label>
+          <label id="ai-level-label" hidden>Skill level<input id="ai-level" type="number" min="0" max="20" step="1" value="5" disabled></label>
+          <p class="small muted">New players start at 1500 Elo. Elo difficulty adapts between games. Manual games are unrated.</p>
+        </div>
+      </form>
       <div id="games" class="game-list" aria-live="polite"></div>
     </section>
     <section id="match-view" hidden>
@@ -51,6 +60,12 @@
     </section>
   </main>
   <footer>Every move brings us together.</footer>
+  <dialog id="add-ai-dialog"><form id="add-ai-form"><h2>Add Stockfish</h2><p id="add-ai-alert" class="alert" role="alert" hidden></p><p class="muted">Take a seat and add an AI opponent before the first move.</p>
+    <label>Your color<select id="add-ai-color"><option value="WHITE">White</option><option value="BLACK">Black</option></select></label>
+    <label>Difficulty<select id="add-ai-mode"><option value="ELO">Match my Elo</option><option value="SKILL">Manual level (0–20)</option></select></label>
+    <label id="add-ai-level-label" hidden>Skill level<input id="add-ai-level" type="number" min="0" max="20" step="1" value="5" disabled></label>
+    <p class="small muted">Manual games are unrated.</p><div class="dialog-actions"><button id="add-ai-cancel" type="button" class="secondary">Cancel</button><button type="submit" class="primary">Play Stockfish</button></div>
+  </form></dialog>
   <dialog id="promotion"><h2>Choose your promotion</h2><p class="muted">Your pawn has reached the final rank.</p><div class="promotion-options"><button data-piece="QUEEN">♛<span>Queen</span></button><button data-piece="ROOK">♜<span>Rook</span></button><button data-piece="BISHOP">♝<span>Bishop</span></button><button data-piece="KNIGHT">♞<span>Knight</span></button></div><button id="cancel-promotion" class="quiet full">Cancel move</button></dialog>
   <dialog id="confirm-dialog"><h2 id="confirm-title"></h2><p id="confirm-text" class="muted"></p><div class="dialog-actions"><button id="confirm-cancel" class="secondary">Cancel</button><button id="confirm-ok" class="danger">Confirm</button></div></dialog>
 </body>

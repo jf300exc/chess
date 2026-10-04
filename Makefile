@@ -22,6 +22,7 @@ help: ## Show the available commands
 	@echo "  make gui          Build and start the desktop client"
 	@echo "  make test         Run the complete test suite (requires MySQL)"
 	@echo "  make test-engine  Run the dependency-free chess rule tests"
+	@echo "  make test-stockfish  Run AI protocol and gameplay tests without MySQL"
 	@echo "  make test-cli     Run CLI tests without MySQL or a desktop"
 	@echo "  make test-web     Run browser tests against WEB_URL (Playwright/Chrome required)"
 	@echo "  make verify       Compile everything and run the complete suite"
@@ -77,6 +78,9 @@ test-cli: check ## Run terminal parsing, board interaction, and text gameplay te
 
 test-web: ## Run browser regression checks against an already running disposable server
 	CHESS_WEB_URL="$(WEB_URL)" $(NODE) scripts/test-web-client.cjs
+
+test-stockfish: check ## Run AI protocol, difficulty, and gameplay tests without MySQL
+	$(MVN) --no-transfer-progress -pl server -am -Dtest=StockfishEngineTests,StockfishGameServiceTests,StockfishGameplayTests -Dsurefire.failIfNoSpecifiedTests=false test
 
 verify: build test ## Build and run all tests
 

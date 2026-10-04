@@ -18,6 +18,7 @@ import com.google.gson.reflect.TypeToken;
 import model.GameData;
 import model.GameEntry;
 import requests.CreateGameRequest;
+import requests.AddStockfishRequest;
 import requests.JoinGameRequest;
 import requests.ListGamesRequest;
 import requests.LoginRequest;
@@ -91,6 +92,9 @@ public class ChessGui extends JFrame implements WebSocketListener {
     private final JButton joinWhiteButton = button("Join as White", true);
     private final JButton joinBlackButton = button("Join as Black", true);
     private final JButton observeButton = button("Observe", false);
+    private String username;
+    private final JLabel ratingLabel = label("", MUTED, 14, Font.PLAIN);
+    private final JButton addStockfishButton = button("Add Stockfish", false);
     private final JTextField createGameField = textField();
 
     private final ChessBoardPanel boardPanel = new ChessBoardPanel();
@@ -239,6 +243,7 @@ public class ChessGui extends JFrame implements WebSocketListener {
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         heading.add(label("Game lobby", TEXT, 30, Font.BOLD));
         heading.add(label("Choose a seat or watch a live match.", MUTED, 14, Font.PLAIN));
+        heading.add(ratingLabel);
         toolbar.add(heading, BorderLayout.WEST);
 
         JPanel tools = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
@@ -282,7 +287,8 @@ public class ChessGui extends JFrame implements WebSocketListener {
         joinWhiteButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         joinBlackButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         observeButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-        for (JButton action : new JButton[]{joinWhiteButton, joinBlackButton, observeButton}) {
+        addStockfishButton.addActionListener(event -> addStockfish());
+        for (JButton action : new JButton[]{joinWhiteButton, joinBlackButton, addStockfishButton, observeButton}) {
             action.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
             details.add(action);
             details.add(Box.createVerticalStrut(10));
@@ -379,6 +385,7 @@ public class ChessGui extends JFrame implements WebSocketListener {
 
     private void completeAuth(String name, String token) {
         facade.setAuthToken(token);
+        username = name;
         setConnection("Connected as " + name, SUCCESS);
         cardLayout.show(cards, LOBBY_CARD);
         refreshGames();
@@ -406,19 +413,65 @@ public class ChessGui extends JFrame implements WebSocketListener {
             showError("Give the new game a name.");
             return;
         }
+        Object choice = JOptionPane.showInputDialog(this, "Choose your opponent", "New game",
+                JOptionPane.QUESTION_MESSAGE, null, new String[]{"Human player", "Stockfish"}, "Human player");
+        if (choice == null) { return; }
+        model.StockfishOptions options = choice.equals("Stockfish") ? stockfishOptions() : null;
+        if (choice.equals("Stockfish") && options == null) { return; }
         setConnection("Creating game…", ACCENT);
-        task(() -> facade.createGameClient(new CreateGameRequest(facade.getAuthToken(), name)), result -> {
+        task(() -> facade.createGameClient(new CreateGameRequest(facade.getAuthToken(), name, options)), result -> {
             if (result == null) {
                 showError(error("Could not create the game."));
                 return;
             }
             createGameField.setText("");
             setConnection("Game created", SUCCESS);
-            refreshGames();
+            if (options != null) {
+                var human = options.color() == ChessGame.TeamColor.WHITE ? ChessGame.TeamColor.BLACK : ChessGame.TeamColor.WHITE;
+                enterGame(new GameEntry(Integer.parseInt(result.gameID()), human == ChessGame.TeamColor.WHITE ? username : "Stockfish",
+                        human == ChessGame.TeamColor.BLACK ? username : "Stockfish", name), human);
+            } else { refreshGames(); }
+        });
+    }
+
+    private model.StockfishOptions stockfishOptions() {
+        JComboBox<String> color = new JComboBox<>(new String[]{"White", "Black"});
+        JComboBox<String> mode = new JComboBox<>(new String[]{"Match my Elo", "Manual level (0–20)"});
+        JSpinner skill = new JSpinner(new SpinnerNumberModel(5, 0, 20, 1));
+        skill.setEnabled(false);
+        mode.addActionListener(event -> skill.setEnabled(mode.getSelectedIndex() == 1));
+        JPanel fields = new JPanel(new GridLayout(0, 2, 12, 12));
+        fields.add(new JLabel("Your color")); fields.add(color);
+        fields.add(new JLabel("Difficulty")); fields.add(mode);
+        fields.add(new JLabel("Skill level")); fields.add(skill);
+        fields.add(new JLabel("New players: 1500 Elo")); fields.add(new JLabel("Manual games are unrated"));
+        if (JOptionPane.showConfirmDialog(this, fields, "Stockfish opponent", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) { return null; }
+        var ai = color.getSelectedIndex() == 0 ? ChessGame.TeamColor.BLACK : ChessGame.TeamColor.WHITE;
+        return new model.StockfishOptions(ai, mode.getSelectedIndex() == 0 ? model.StockfishOptions.Mode.ELO : model.StockfishOptions.Mode.SKILL,
+                null, mode.getSelectedIndex() == 0 ? null : (Integer) skill.getValue());
+    }
+
+    private void addStockfish() {
+        GameEntry game = selectedGame;
+        if (game == null) { return; }
+        var options = stockfishOptions();
+        if (options == null) { return; }
+        var human = options.color() == ChessGame.TeamColor.WHITE ? ChessGame.TeamColor.BLACK : ChessGame.TeamColor.WHITE;
+        String seat = human == ChessGame.TeamColor.WHITE ? game.whiteUsername() : game.blackUsername();
+        if (seat != null && !seat.equals(username)) { showError("Choose your own seat or an empty seat."); return; }
+        task(() -> {
+            if (seat == null && facade.joinGameClient(new JoinGameRequest(facade.getAuthToken(), human.name(), "" + game.gameID())) == null) { return null; }
+            return facade.addStockfishClient(new AddStockfishRequest(facade.getAuthToken(), "" + game.gameID(), options));
+        }, result -> {
+            if (result == null) { showError(error("Could not add Stockfish.")); refreshGames(); return; }
+            enterGame(game, human);
         });
     }
 
     private void refreshGames() {
+        task(facade::profileClient, profile -> {
+            if (profile != null) { ratingLabel.setText(profile.username() + " · " + profile.elo() + " Elo"); }
+        });
         setConnection("Refreshing lobby…", ACCENT);
         task(() -> facade.listGamesClient(new ListGamesRequest(facade.getAuthToken())), result -> {
             if (result == null || result.games() == null) {
@@ -447,10 +500,14 @@ public class ChessGui extends JFrame implements WebSocketListener {
         } else {
             detailName.setText(game.gameName());
             detailPlayers.setText("<html>White&nbsp;&nbsp;<b>" + seat(game.whiteUsername())
-                    + "</b><br><br>Black&nbsp;&nbsp;<b>" + seat(game.blackUsername()) + "</b></html>");
+                    + "</b><br><br>Black&nbsp;&nbsp;<b>" + seat(game.blackUsername()) + "</b>"
+                    + (game.stockfish() == null ? "" : "<br><br>" + game.stockfish().description()) + "</html>");
         }
-        joinWhiteButton.setEnabled(selected && game.whiteUsername() == null);
-        joinBlackButton.setEnabled(selected && game.blackUsername() == null);
+        joinWhiteButton.setText(selected && username != null && username.equals(game.whiteUsername()) ? "Resume White" : "Play White");
+        joinBlackButton.setText(selected && username != null && username.equals(game.blackUsername()) ? "Resume Black" : "Play Black");
+        joinWhiteButton.setEnabled(selected && (game.whiteUsername() == null || game.whiteUsername().equals(username)));
+        joinBlackButton.setEnabled(selected && (game.blackUsername() == null || game.blackUsername().equals(username)));
+        addStockfishButton.setEnabled(selected && game.stockfish() == null && (game.whiteUsername() == null || game.blackUsername() == null));
         observeButton.setEnabled(selected);
     }
 
@@ -458,6 +515,9 @@ public class ChessGui extends JFrame implements WebSocketListener {
         GameEntry game = selectedGame;
         if (game == null) {
             return;
+        }
+        if (username != null && username.equals(color == ChessGame.TeamColor.WHITE ? game.whiteUsername() : game.blackUsername())) {
+            enterGame(game, color); return;
         }
         setConnection("Claiming " + color.name().toLowerCase() + " seat…", ACCENT);
         JoinGameRequest request = new JoinGameRequest(facade.getAuthToken(), color.name(),

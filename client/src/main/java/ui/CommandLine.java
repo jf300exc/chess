@@ -1,6 +1,8 @@
 package ui;
 
 import model.GameEntry;
+import model.StockfishOptions;
+import chess.ChessGame;
 import websocket.commands.UserGameCommand;
 import websocket.commands.UserGameCommand.CommandType;
 import requests.*;
@@ -15,6 +17,7 @@ public class CommandLine {
     public final GamePlay gamePlay;
 
     private LoginState loginState;
+    private String username;
 
     public CommandLine(ServerFacade serverFacade) {
         this(serverFacade, CliConsole.open(true, true));
@@ -78,6 +81,7 @@ public class CommandLine {
                     Help                 Displays this help message.
                     Logout               Logs out and returns to preLogin UI.
                     Create Game          Prompts for new game information and attempts to create a new game.
+                    Stockfish            Add an AI opponent to an empty seat before the first move.
                     List Games           Lists all the games that exist on the server.
                     Play Game            Prompts for player information and joins a game.
                     Observe Game         Prompts for a game to view. Used after List Games.
@@ -96,6 +100,7 @@ public class CommandLine {
             case "h", "help" -> displayHelpAfterLogin();
             case "logout" -> processLogoutRequest();
             case "c", "create", "create game" -> processCreateGameRequest();
+            case "stockfish", "ai" -> processAddStockfishRequest();
             case "l", "list", "list games" -> processListGamesRequest();
             case "p", "play", "play game" -> processPlayGameRequest();
             case "o", "observe", "observe game" -> processObserveGameRequest();
@@ -141,6 +146,7 @@ public class CommandLine {
         } else {
             System.out.println("Successfully registered.");
             serverFacade.setAuthToken(result.authToken());
+            username = result.username();
             loginState = LoginState.LOGGED_IN;
         }
     }
@@ -155,6 +161,7 @@ public class CommandLine {
         } else {
             System.out.println("Successfully logged in.");
             serverFacade.setAuthToken(result.authToken());
+            username = result.username();
             loginState = LoginState.LOGGED_IN;
         }
     }
@@ -171,21 +178,71 @@ public class CommandLine {
         }
     }
 
-    private void processCreateGameRequest() {
+    private void processCreateGameRequest() throws Exception {
         String gameName = getUserInput("Game Name: ");
+        String opponent = getUserInput("Opponent [human/stockfish] (human): ");
+        if (!opponent.isBlank() && !opponent.equalsIgnoreCase("human") && !opponent.equalsIgnoreCase("stockfish")) {
+            System.out.println("Choose human or stockfish."); return;
+        }
+        StockfishOptions options = opponent.equalsIgnoreCase("stockfish") ? stockfishOptions() : null;
+        if (opponent.equalsIgnoreCase("stockfish") && options == null) { return; }
         String authToken = serverFacade.getAuthToken();
-        CreateGameRequest createGameRequest = new CreateGameRequest(authToken, gameName);
+        CreateGameRequest createGameRequest = new CreateGameRequest(authToken, gameName, options);
         CreateGameResult result = serverFacade.createGameClient(createGameRequest);
         if (result == null) {
-            System.out.println("Failed to create game. Try again.");
+            System.out.println("Failed to create game: " + serverFacade.getLastError());
         } else {
             System.out.println("Successfully created game.");
+            if (options != null) {
+                String human = options.color() == ChessGame.TeamColor.WHITE ? "BLACK" : "WHITE";
+                gamePlay.playGame(new UserGameCommand(CommandType.CONNECT, authToken, Integer.parseInt(result.gameID())), human);
+            }
         }
+    }
+
+    private StockfishOptions stockfishOptions() {
+        String human = getUserInput("Your color [white/black] (white): ");
+        if (human.isBlank()) { human = "white"; }
+        if (!human.equalsIgnoreCase("white") && !human.equalsIgnoreCase("black")) {
+            System.out.println("Choose white or black."); return null;
+        }
+        var ai = human.equalsIgnoreCase("white") ? ChessGame.TeamColor.BLACK : ChessGame.TeamColor.WHITE;
+        String mode = getUserInput("Difficulty [elo/skill] (elo matches your rating): ");
+        if (mode.isBlank() || mode.equalsIgnoreCase("elo")) {
+            return new StockfishOptions(ai, StockfishOptions.Mode.ELO, null, null);
+        }
+        if (mode.equalsIgnoreCase("skill")) {
+            try {
+                int level = Integer.parseInt(getUserInput("Stockfish level [0-20]: "));
+                var options = new StockfishOptions(ai, StockfishOptions.Mode.SKILL, null, level);
+                options.validate(); return options;
+            } catch (IllegalArgumentException e) { System.out.println("Enter a whole number from 0 to 20."); return null; }
+        }
+        System.out.println("Choose elo or skill."); return null;
+    }
+
+    private void processAddStockfishRequest() throws Exception {
+        GameEntry game = getGameFromUserInput();
+        if (game == null) { return; }
+        StockfishOptions options = stockfishOptions();
+        if (options == null) { return; }
+        String human = options.color() == ChessGame.TeamColor.WHITE ? "BLACK" : "WHITE";
+        String seat = human.equals("WHITE") ? game.whiteUsername() : game.blackUsername();
+        if (seat == null) {
+            if (serverFacade.joinGameClient(new JoinGameRequest(serverFacade.getAuthToken(), human, "" + game.gameID())) == null) {
+                System.out.println(serverFacade.getLastError()); return;
+            }
+        } else if (!seat.equals(username)) { System.out.println("Choose your own seat or an empty seat."); return; }
+        var result = serverFacade.addStockfishClient(new AddStockfishRequest(serverFacade.getAuthToken(), "" + game.gameID(), options));
+        if (result == null) { System.out.println(serverFacade.getLastError()); return; }
+        gamePlay.playGame(new UserGameCommand(CommandType.CONNECT, serverFacade.getAuthToken(), game.gameID()), human);
     }
 
     private void processListGamesRequest() {
         ListGamesRequest listGamesRequest = new ListGamesRequest(serverFacade.getAuthToken());
         ListGamesResult result = serverFacade.listGamesClient(listGamesRequest);
+        var profile = serverFacade.profileClient();
+        if (profile != null) { System.out.println(profile.username() + " · " + profile.elo() + " Elo"); }
         // Clear the saved game list
         gamesList.clear();
         if (result == null) {
@@ -206,6 +263,7 @@ public class CommandLine {
 
     private void printGameInfo(GameEntry gameEntry, int gameNumber) {
         System.out.println(gameNumber + ": " + gameEntry.gameName() + " (id " + gameEntry.gameID() + ")");
+        if (gameEntry.stockfish() != null) { System.out.println("  " + gameEntry.stockfish().description()); }
         if (gameEntry.whiteUsername() != null) {
             System.out.println("  WHITE username: " + gameEntry.whiteUsername());
         }
@@ -221,7 +279,11 @@ public class CommandLine {
         }
 
         String playerColor = null;
-        if (gameEntry.whiteUsername() != null && gameEntry.blackUsername() == null) {
+        if (username != null && (username.equals(gameEntry.whiteUsername()) || username.equals(gameEntry.blackUsername()))) {
+            playerColor = username.equals(gameEntry.whiteUsername()) ? "WHITE" : "BLACK";
+            gamePlay.playGame(new UserGameCommand(CommandType.CONNECT, serverFacade.getAuthToken(), gameEntry.gameID()), playerColor);
+            return;
+        } else if (gameEntry.whiteUsername() != null && gameEntry.blackUsername() == null) {
             System.out.println("White username is already in use.");
             String confirmation = getUserInput("Join as BLACK? y/n: ");
             if (confirmation.equalsIgnoreCase("y")) {
