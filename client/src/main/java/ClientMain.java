@@ -19,7 +19,8 @@ public class ClientMain {
         boolean textOnly = java.util.Arrays.asList(args).contains("--text");
         boolean noMouse = java.util.Arrays.asList(args).contains("--no-mouse");
         boolean noGraphics = java.util.Arrays.asList(args).contains("--no-graphics");
-        try (CliConsole console = CliConsole.open(textOnly, noMouse, noGraphics, PieceSymbols.fromArgs(args))) {
+        try (CliConsole console = CliConsole.open(textOnly, noMouse, noGraphics, PieceSymbols.fromArgs(args),
+                java.util.Arrays.asList(args).contains("--no-color"), java.util.Arrays.asList(args).contains("--no-animation"))) {
             CommandLine commandLine = new CommandLine(httpFacade, console);
             WebSocketClient webSocketClient = new WebSocketClient(host, port, commandLine.gamePlay);
             commandLine.gamePlay.setWebSocket(webSocketClient);

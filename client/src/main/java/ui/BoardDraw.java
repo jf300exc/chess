@@ -118,6 +118,25 @@ public final class BoardDraw {
                 ? new ChessPosition(row + 1, 8 - column) : new ChessPosition(8 - row, column + 1);
     }
 
+    /** Text gutters only: writing invisible glyphs beneath SIXEL erases image cells on some terminals. */
+    static String imageFrame(Layout layout, ChessGame.TeamColor perspective) {
+        StringBuilder coordinates = new StringBuilder("   ");
+        for (int c = 0; c < 8; c++) {
+            coordinates.append(center(Character.toString((char) ('a' + positionForCell(0, c, perspective).getColumn() - 1)),
+                    layout.cellWidth()));
+        }
+        StringBuilder frame = new StringBuilder(coordinates).append('\n');
+        for (int row = 0; row < 8; row++) {
+            for (int line = 0; line < layout.cellHeight(); line++) {
+                boolean label = line == (layout.cellHeight() - 1) / 2;
+                int rank = positionForCell(row, 0, perspective).getRow();
+                frame.append(label ? " " + rank + " " : "   ")
+                        .append(" ".repeat(8 * layout.cellWidth())).append(label ? " " + rank : "  ").append('\n');
+            }
+        }
+        return frame.append(coordinates).toString();
+    }
+
     private static String center(String label, int width) {
         int columns = new AttributedString(label).columnLength();
         int left = (width - columns) / 2;

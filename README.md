@@ -56,6 +56,12 @@ In a terminal with mouse reporting, click one of your pieces to highlight its le
 
 The board keeps recognizable chess-piece symbols. When the terminal positively advertises SIXEL graphics and reports valid pixel geometry, only the board pieces are enlarged. Font outlines are centered by their visible bounds inside each square, with light/outlined White pieces and dark Black pieces directly on the square background—no rectangular piece badges. A standard 80×24 terminal fits the board at a normal text font size. Selection and legal destinations use gold and cyan backgrounds, and turn/check state stays visible. Larger windows allow larger squares.
 
+Normal input does not clear the screen. Text updates use fixed-position differences, and the graphical board compares square pixels: typing and notifications leave it untouched, while a normal move repaints only its source and destination. Resizing, switching to help, and an explicit `redraw` can still require a full refresh.
+
+Gameplay uses green for `YOUR TURN`, red for check/errors, cyan for waiting/notifications, and yellow for warnings and game-over results. Checkmate identifies the winning team; stalemate identifies a draw; resignation shows the server's message without guessing a winner. The final board stays available to inspect or flip before `leave` returns to the lobby. Opponent-turn waiting uses a small status-line spinner, updated twice per second; turn-start cues stay steady, with no flashing, sounds, or piece animations.
+
+Use `--no-animation` for a completely still waiting indicator. `--no-color`, or a nonempty `NO_COLOR` environment variable, disables gameplay text styles and symbol-board colors; enlarged board images retain their piece/square colors. Uncolored Nerd Font text falls back to hollow/filled Unicode pieces so the teams remain distinguishable. Plain text mode never adds animation or colors.
+
 Terminals without graphics use a compact one-line-per-rank symbol board (`♔♕♖♗♘♙` / `♚♛♜♝♞♟`), without badges or empty-square dot clutter. Mouse input remains available independently of graphics. Ordinary ANSI text cannot enlarge an individual character separately from its terminal font; padding alone is not treated as enlargement. `--no-graphics` explicitly selects this fallback. Plain output retains dots to distinguish empty squares.
 
 For Nerd Font chess icons, launch with `--pieces=nerd`. The graphics renderer uses locally installed **JetBrainsMono Nerd Font** outlines if available, otherwise standard chess shapes. No font download is required at runtime. For the text fallback, select **JetBrainsMono Nerd Font Mono** (or another Nerd Font Mono) in your terminal's settings; the Mono variant keeps single-column icons consistent. The icons use the [official Nerd Fonts v3 Material Design chess glyphs](https://github.com/ryanoasis/nerd-fonts/blob/master/glyphnames.json). Default pieces remain Unicode. `--pieces=ascii` disables graphics and uses uppercase for White and lowercase for Black, one character per square.
@@ -65,6 +71,8 @@ make cli CLI_ARGS="--pieces=nerd"     # Chess icons with a Nerd Font Mono termin
 make cli CLI_ARGS="--pieces=unicode"  # Standard white/black chess symbols (default)
 make cli CLI_ARGS="--pieces=ascii"    # Single-character KQRBNP / kqrbnp fallback
 make cli CLI_ARGS="--no-graphics"     # Compact symbol board, retaining supported mouse input
+make cli CLI_ARGS="--no-animation"    # Steady waiting status, without a spinner
+make cli CLI_ARGS="--no-color --no-graphics"  # Uncolored gameplay text and symbol board
 ```
 
 JLine detects terminal capabilities. When mouse reporting is unavailable, gameplay uses keyboard commands. Non-interactive input, `TERM=dumb`, or unavailable terminal controls automatically use a plain board with no mouse or cursor escape sequences. Text mode retains standard Unicode team symbols (even with `--pieces=nerd`, whose icons otherwise rely on color to distinguish teams). Add `--pieces=ascii` for completely ASCII board output. You can also force the mode:

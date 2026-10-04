@@ -5,7 +5,6 @@ import chess.ChessPosition;
 import org.jline.terminal.Attributes;
 import org.jline.terminal.Terminal.MouseTracking;
 import org.jline.utils.AttributedString;
-import org.jline.utils.Display;
 import org.jline.utils.InfoCmp.Capability;
 import org.jline.utils.NonBlockingReader;
 
@@ -17,12 +16,15 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.awt.image.BufferedImage;
+import java.util.Objects;
 
 /** Gameplay screen and input, rendered by the input thread from synchronized snapshots. */
 public final class Terminal {
     private static final Object LOCK = new Object();
     private static final int BOARD_START_ROW = 2;
-    private static final Deque<String> LOG = new ArrayDeque<>();
+    private record LogEntry(String text, String color) { }
+    private static final Deque<LogEntry> LOG = new ArrayDeque<>();
     private static ChessGame game;
     private static String gameName;
     private static ChessGame.TeamColor perspective = ChessGame.TeamColor.WHITE;
@@ -31,7 +33,7 @@ public final class Terminal {
     private static CliConsole console;
     private static org.jline.terminal.Terminal terminal;
     private static Attributes savedAttributes;
-    private static Display display;
+    private static TerminalScreen display;
     private static boolean active;
     private static boolean mouseEnabled;
     private static BoardDraw.Layout layout;
@@ -47,7 +49,10 @@ public final class Terminal {
     private static long imageRevision = -1;
     private static BoardDraw.Layout imageLayout;
     private static boolean imageVisible;
-    private static String boardSixel;
+    private static BufferedImage boardImage;
+    private static long boardRevision;
+    private static ChessGame.TeamColor playerTeam;
+    private static String gameEnding;
     private static boolean restoreSixelDisplayMode;
 
     public record Input(String text, ChessPosition square, boolean cancel) { }
@@ -74,7 +79,10 @@ public final class Terminal {
             imageRevision = -1;
             imageLayout = null;
             imageVisible = false;
-            boardSixel = null;
+            boardImage = null;
+            boardRevision++;
+            playerTeam = null;
+            gameEnding = null;
             restoreSixelDisplayMode = false;
             active = true;
             revision++;
@@ -95,7 +103,7 @@ public final class Terminal {
                         terminal.flush();
                     }
                 } catch (IOException | RuntimeException e) {
-                    LOG.add("Terminal graphics unavailable; using chess symbols.");
+                    LOG.add(new LogEntry("Terminal graphics unavailable; using chess symbols.", "33"));
                 }
             }
             terminal.puts(Capability.enter_ca_mode);
@@ -108,7 +116,7 @@ public final class Terminal {
                 terminal.writer().print("\u001b[?1005l\u001b[?1006h");
                 terminal.flush();
             }
-            display = new Display(terminal, true);
+            display = new TerminalScreen();
             shutdownHook = new Thread(Terminal::stop, "chess-terminal-cleanup");
             Runtime.getRuntime().addShutdownHook(shutdownHook);
         } else {
@@ -151,7 +159,7 @@ public final class Terminal {
         mouseEnabled = false;
         boardVisible = false;
         imageVisible = false;
-        boardSixel = null;
+        boardImage = null;
         cellPixels = null;
         pendingInput.clear();
         restoreSixelDisplayMode = false;
@@ -167,7 +175,10 @@ public final class Terminal {
         synchronized (LOCK) {
             revision++;
             if (display != null) {
+                terminal.puts(Capability.clear_screen);
                 display.clear();
+                boardImage = null;
+                imageRevision = -1;
             } else if (game != null) {
                 printPlainBoard();
             }
@@ -175,16 +186,27 @@ public final class Terminal {
     }
 
     public static void addNotification(String message) {
-        addLogMessage(message);
+        addLogMessage(message, "36");
+    }
+
+    public static void addError(String message) {
+        addLogMessage(message, "31");
     }
 
     public static void addLogMessage(String message) {
+        String warning = message == null ? "" : message.toLowerCase(java.util.Locale.ROOT);
+        String color = warning.startsWith("invalid") || warning.startsWith("illegal") || warning.startsWith("cannot")
+                || warning.startsWith("unknown") ? "33" : "0";
+        addLogMessage(message, color);
+    }
+
+    private static void addLogMessage(String message, String color) {
         if (message == null) {
             return;
         }
         synchronized (LOCK) {
             for (String line : message.split("\n")) {
-                LOG.addLast(safeText(line));
+                LOG.addLast(new LogEntry(safeText(line), color));
             }
             while (LOG.size() > 100) {
                 LOG.removeFirst();
@@ -199,11 +221,15 @@ public final class Terminal {
     public static void setChessGame(ChessGame newGame, String name) {
         synchronized (LOCK) {
             game = newGame == null ? null : newGame.copy();
+            if (game == null || !game.isGameOver()) {
+                gameEnding = null;
+            }
             if (name != null) {
                 gameName = safeText(name);
             }
             selected = null;
             revision++;
+            boardRevision++;
             if (active && terminal == null && game != null) {
                 printPlainBoard();
             }
@@ -218,8 +244,12 @@ public final class Terminal {
 
     public static void drawHighlights(ChessPosition position) {
         synchronized (LOCK) {
+            if (Objects.equals(selected, position)) {
+                return;
+            }
             selected = position;
             revision++;
+            boardRevision++;
             if (active && terminal == null && game != null) {
                 printPlainBoard();
             }
@@ -237,8 +267,31 @@ public final class Terminal {
             perspective = perspective == ChessGame.TeamColor.WHITE ? ChessGame.TeamColor.BLACK : ChessGame.TeamColor.WHITE;
             selected = null;
             revision++;
+            boardRevision++;
             if (active && terminal == null && game != null) {
                 printPlainBoard();
+            }
+        }
+    }
+
+    public static void setPlayerTeam(ChessGame.TeamColor team) {
+        synchronized (LOCK) {
+            playerTeam = team;
+            revision++;
+        }
+    }
+
+    public static void endGame(String reason) {
+        synchronized (LOCK) {
+            if (game != null) {
+                game.setGameOver(true);
+                gameEnding = reason == null ? null : safeText(reason);
+                selected = null;
+                revision++;
+                boardRevision++;
+                if (active && terminal == null) {
+                    printPlainBoard();
+                }
             }
         }
     }
@@ -298,6 +351,7 @@ public final class Terminal {
         int previousWidth = renderedWidth;
         int previousHeight = renderedHeight;
         boolean inputChanged = true;
+        long renderedAnimation = -1;
         try {
             for (;;) {
                 if (!connected.getAsBoolean()) {
@@ -306,10 +360,18 @@ public final class Terminal {
                 int width = Math.max(1, terminal.getWidth());
                 int height = Math.max(1, terminal.getHeight());
                 synchronized (LOCK) {
-                    if (inputChanged || revision != renderedRevision || width != previousWidth || height != previousHeight) {
+                    GameStatus.Status status = GameStatus.describe(game, playerTeam, gameEnding);
+                    long animation = console.allowAnimation() && helpLines == null && status.waiting()
+                            ? System.nanoTime() / 500_000_000L : -1;
+                    if (inputChanged || revision != renderedRevision || width != previousWidth || height != previousHeight
+                            || animation != renderedAnimation) {
                         if (width != previousWidth || height != previousHeight) {
                             queuedSequence |= decoder.sequencePending();
                             display.clear();
+                            if (previousWidth > 0) {
+                                terminal.puts(Capability.clear_screen);
+                            }
+                            boardImage = null;
                             imageRevision = -1;
                             if (cellPixels != null && previousWidth > 0) {
                                 // Re-query pixels after resize, including terminal font-size changes.
@@ -318,7 +380,8 @@ public final class Terminal {
                                 pendingInput.addAll(probe.pendingInput());
                             }
                         }
-                        render(prompt, buffer.toString(), cursor, width, height);
+                        render(prompt, buffer.toString(), cursor, width, height, animation);
+                        renderedAnimation = animation;
                         renderedRevision = revision;
                         previousWidth = width;
                         previousHeight = height;
@@ -404,53 +467,64 @@ public final class Terminal {
         }
     }
 
-    private static void render(String prompt, String input, int cursor, int width, int height) {
+    private static void render(String prompt, String input, int cursor, int width, int height, long animation) {
         layout = cellPixels == null ? new BoardDraw.Layout(3, 1) : BoardDraw.Layout.forSize(width, height);
         List<String> lines = new ArrayList<>();
         if (helpLines != null) {
             lines.addAll(helpLines);
             boardVisible = false;
         } else {
-            lines.add("\u001b[1mCHESS  /  " + gameName + "\u001b[0m");
-            lines.add(game == null ? "Waiting for game data..." : statusLine(game) + "  |  View: " + perspective);
+            lines.add(GameStatus.paint("CHESS  /  " + gameName, "1", console.allowColor()));
+            GameStatus.Status status = GameStatus.describe(game, playerTeam, gameEnding);
+            String indicator = animation < 0 ? "" : "  " + "|/-\\".charAt((int) (animation % 4));
+            lines.add(GameStatus.paint(status.text() + indicator, status.color(), console.allowColor())
+                    + "  |  View: " + perspective);
             boardVisible = game != null && width >= layout.width() && height >= layout.height() + 6;
             if (boardVisible) {
-                lines.addAll(Arrays.asList(BoardDraw.draw(game.copy(), perspective, selected, layout, true,
-                        console.pieceSymbols()).split("\n")));
+                String board = cellPixels == null ? BoardDraw.draw(game.copy(), perspective, selected, layout,
+                        console.allowColor(), console.pieceSymbols()) : BoardDraw.imageFrame(layout, perspective);
+                lines.addAll(Arrays.asList(board.split("\n")));
             } else {
                 lines.add("Board needs 30 columns x 16 rows. Resize or use text commands.");
             }
-            lines.add(cellPixels == null ? console.pieceSymbols().legend()
+            lines.add(cellPixels == null ? console.pieceSymbols().forRendering(console.allowColor()).legend()
                     : "White: light pieces | Black: dark pieces | enlarged board");
-            lines.add(mouseEnabled ? "Click piece -> destination | right-click/Esc cancels | help"
+            lines.add(game != null && (game.isGameOver() || game.isInCheckmate(game.getTeamTurn())
+                    || game.isInStalemate(game.getTeamTurn())) ? "Final board | flip to inspect | help | leave to return to lobby"
+                    : mouseEnabled ? "Click piece -> destination | right-click/Esc cancels | help"
                     : "Text controls | move e2e4 | highlight e2 | flip | help");
             int logSpace = Math.max(0, height - lines.size() - 1);
-            List<String> messages = new ArrayList<>(LOG);
-            for (String message : messages.subList(Math.max(0, messages.size() - logSpace), messages.size())) {
-                lines.add(message);
+            List<LogEntry> messages = new ArrayList<>(LOG);
+            for (LogEntry message : messages.subList(Math.max(0, messages.size() - logSpace), messages.size())) {
+                lines.add(GameStatus.paint(message.text(), message.color(), console.allowColor()));
             }
         }
         boolean showImage = boardVisible && cellPixels != null && helpLines == null;
-        boolean repaintImage = showImage && (imageRevision != revision || !layout.equals(imageLayout));
+        boolean repaintImage = showImage && (imageRevision != boardRevision || !layout.equals(imageLayout));
+        List<BoardDamage.Patch> patches = List.of();
         if (repaintImage) {
             try {
-                boardSixel = SixelEncoder.encode(BoardImage.render(game.copy(), perspective, selected,
-                        layout, cellPixels, console.pieceSymbols()));
-                imageRevision = revision;
+                BufferedImage next = BoardImage.render(game.copy(), perspective, selected,
+                        layout, cellPixels, console.pieceSymbols());
+                patches = BoardDamage.between(layout.equals(imageLayout) ? boardImage : null, next);
+                boardImage = next;
+                imageRevision = boardRevision;
                 imageLayout = layout;
             } catch (RuntimeException | LinkageError e) {
                 cellPixels = null;
-                boardSixel = null;
+                boardImage = null;
                 imageRevision = -1;
-                LOG.add("Board graphics unavailable; using chess symbols.");
-                render(prompt, input, cursor, width, height);
+                LOG.add(new LogEntry("Board graphics unavailable; using chess symbols.", "33"));
+                render(prompt, input, cursor, width, height, animation);
                 return;
             }
         }
-        if (repaintImage || imageVisible && !showImage) {
+        if (imageVisible && !showImage) {
             // Erase old image layers as well as text, including help and resized layouts.
             terminal.puts(Capability.clear_screen);
             display.clear();
+            boardImage = null;
+            imageRevision = -1;
         }
         while (lines.size() < height - 1) {
             lines.add("");
@@ -461,40 +535,33 @@ public final class Terminal {
         String typed = prompt + input;
         int offset = Math.max(0, prompt.length() + cursor - width + 2);
         lines.add(typed.substring(Math.min(offset, typed.length())));
-        // Display may insert/remove lines while diffing a resized screen.
         List<AttributedString> attributed = new ArrayList<>(lines.stream()
                 .map(AttributedString::fromAnsi)
                 .map(line -> line.columnSubSequence(0, Math.max(1, width - 1)))
                 .toList());
-        display.resize(height, width);
-        display.update(attributed, (height - 1) * (width + 1)
-                + Math.max(0, Math.min(width - 2, prompt.length() + cursor - offset)));
-        if (showImage && repaintImage) {
+        display.update(terminal, attributed, width, height - 1,
+                Math.max(0, Math.min(width - 2, prompt.length() + cursor - offset)),
+                showImage ? new TerminalScreen.ImageArea(BOARD_START_ROW + 1, 3,
+                        8 * layout.cellHeight(), 8 * layout.cellWidth()) : null);
+        if (showImage && !patches.isEmpty()) {
             terminal.writer().print("\u001b7");
-            terminal.puts(Capability.cursor_address, BOARD_START_ROW + 1, 3);
-            terminal.writer().print(boardSixel);
+            for (BoardDamage.Patch patch : patches) {
+                terminal.puts(Capability.cursor_address, BOARD_START_ROW + 1 + patch.row() * layout.cellHeight(),
+                        3 + patch.column() * layout.cellWidth());
+                terminal.writer().print(SixelEncoder.encode(patch.image()));
+            }
             terminal.writer().print("\u001b8");
-            terminal.flush();
         }
+        terminal.flush();
         imageVisible = showImage;
     }
 
     static String statusLine(ChessGame snapshot) {
-        ChessGame.TeamColor turn = snapshot.getTeamTurn();
-        if (snapshot.isInCheckmate(turn)) {
-            return "CHECKMATE  /  " + turn + " loses";
-        }
-        if (snapshot.isInStalemate(turn)) {
-            return "STALEMATE  /  Draw";
-        }
-        if (snapshot.isGameOver()) {
-            return "GAME OVER";
-        }
-        return turn + " to move" + (snapshot.isInCheck(turn) ? "  /  CHECK" : "");
+        return GameStatus.describe(snapshot, null, null).text();
     }
 
     private static void printPlainBoard() {
-        System.out.println(gameName + " | " + statusLine(game.copy()));
+        System.out.println(gameName + " | " + GameStatus.describe(game, playerTeam, gameEnding).text());
         PieceSymbols symbols = console.pieceSymbols().forRendering(false);
         System.out.println(BoardDraw.draw(game.copy(), perspective, selected, new BoardDraw.Layout(3, 1), false, symbols));
         System.out.println(symbols.legend());

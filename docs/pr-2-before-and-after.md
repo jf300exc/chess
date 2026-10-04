@@ -16,6 +16,10 @@ This document records the goals and delivered implementation. The earlier revisi
 | Readability without graphics | A symbol occupies one terminal character, regardless of extra surrounding padding. | Use a compact, badge-free symbol board as the fallback. Be explicit that ordinary text terminals cannot independently enlarge one character using standard ANSI coloring and padding. |
 | Commands | Many actions require repeated prompts and exact command spelling. | Accept case-insensitive commands, extra whitespace, direct coordinate moves, inline promotion, `status`, `moves`, `highlight`, and `flip`. |
 | Roles and orientation | Display orientation and the player's assigned team can be confused. | Flipping affects only the view. Observers may inspect legal moves but cannot submit them. Only the assigned player can move on that player's turn. |
+| Screen updates | The earlier graphical revision clears and repaints the full board when selection or log state changes. | Fixed-position text differences leave unchanged rows in place. Graphical updates compare square pixels and repaint only changed squares; typing, notifications, and duplicate unchanged game snapshots do not repaint the board. |
+| Turn and waiting cues | Turn/check messages are plain, with no personal turn cue. | Green `YOUR TURN`, red check/errors, cyan waiting/notifications, and yellow warnings. A small waiting spinner updates twice per second without touching the board. Observers do not get personal turn cues; turn-start labels remain steady. |
+| Game completion | A generic game-over message provides little detail. | Show the winning team on checkmate, a draw on stalemate, and the server's resignation message when known. Keep the final board visible with inspection and return-to-lobby hints. Do not infer a resignation winner from whose turn it was. |
+| Motion and color preferences | No explicit motion or gameplay-color override. | Add `--no-animation` and `--no-color`; honor nonempty `NO_COLOR`. Plain text stays still and uncolored. Uncolored Nerd Font text uses distinguishable Unicode team shapes. |
 | Input ownership | Multiple readers and background rendering can compete over standard input. | One console owns input across the lobby and match. Mouse reports do not become command text, and selection does not discard a partially typed command. |
 | Exiting a game | Disconnects, interrupted input, and EOF can leave terminal state inconsistent. | Restore mouse reporting, keyboard modes, and the previous screen on leave, Ctrl-C, EOF, connection failure, and cleanup. |
 | Validation | Engine tests alone cannot prove terminal interaction or appearance. | Add focused CLI tests, pseudo-terminal scenarios, graphics protocol tests, and actual terminal screenshots at a normal font size. Verify that the displayed board and mouse hit map agree. |
@@ -40,21 +44,37 @@ These are actual terminal-window screenshots, not reconstructed mockups. The bef
 
 The corrected board also works in [Konsole with Nerd Font shapes](assets/cli-after-konsole.png). [Default Unicode chess shapes](assets/cli-default-konsole.png) are enlarged without needing the Nerd Font option. [The compact symbol fallback](assets/cli-fallback-konsole.png) removes badges and uses one row per rank, but cannot independently enlarge terminal text glyphs.
 
+## Incremental updates and game status
+
+The latest revision keeps the enlarged shapes and adds colored experience cues. This actual Konsole screenshot uses the same 11-point text size, with a steady personal turn label:
+
+![Colored personal turn cue and centered Nerd Font pieces](assets/cli-experience-konsole.png)
+
+[A confirmed e2e4 move](assets/cli-incremental-konsole.png) was captured after the initial board had already been displayed, exercising partial square repainting rather than an initial full render. The source square is cleared, the pawn appears on its destination, and the remaining board stays intact. The small waiting spinner is confined to the status line. A screenshot alone cannot demonstrate absence of flicker; the pseudo-terminal checks separately assert that ordinary input emits no full-screen clear and that this move emits two square patches.
+
+The game-over screen keeps the final position and identifies the outcome:
+
+![Checkmate outcome with winner and final-board inspection hints](assets/cli-game-over-konsole.png)
+
+No piece animation, sound, flashing square, or flashing turn banner is added. `--no-animation` keeps waiting text completely still. `--no-color` disables gameplay text styles and symbol-square colors, but not the color pixels in enlarged board images; combine it with `--no-graphics` for an uncolored gameplay screen. Full refresh remains appropriate for resize, switching away from the graphic board to help, or explicit `redraw`.
+
 ## Verification
 
 - `make build` passes.
-- The focused CLI suite has 23 passing tests, including capability parsing, input preservation, pixel centering for all piece types, absence of badges, image size limits, and an independent SIXEL pixel round trip.
-- Java 21 verification passes 107 engine tests, those 23 CLI tests, and eight desktop board/lifecycle tests under Xvfb: 138 tests total across the focused runs. The three desktop board tests also pass in headless mode.
-- The POSIX pseudo-terminal harness passes 24 scenarios covering text and graphics paths, legal mouse moves, observers, promotion, help, flips, resizes, typed-prefix preservation, malformed pixel replies, cleanup, prior SIXEL mode restoration, and stale pre-paint mouse input. See `scripts/test-cli-terminal.py` for the executable scenarios.
-- Actual xterm and Konsole screenshots were inspected at 11 points, including default shapes, Nerd Font shapes, and the symbol fallback.
+- The focused CLI suite has 30 passing tests, including capability parsing, input preservation, pixel centering for all piece types, absence of badges, image size limits, an independent SIXEL pixel round trip, fixed-position text differences, protected image regions, two-square move damage, and outcome/role cues.
+- Java 21 verification passes 107 engine tests, those 30 CLI tests, and eight desktop board/lifecycle tests under Xvfb: 145 tests total across the focused runs. The three desktop board tests also pass in headless mode.
+- The POSIX pseudo-terminal harness passes 34 scenarios covering text and graphics paths, legal mouse moves, observers, promotion, help, flips, resizes, typed-prefix preservation, malformed pixel replies, cleanup, prior SIXEL mode restoration, and stale pre-paint mouse input. The added scenarios assert no board repaint on typing, notifications, waiting animation, or duplicate snapshots; verify square patches on selection/cancel and confirmed moves; and check quiet motion-disabled waiting, `NO_COLOR`, and game-over messages. See `scripts/test-cli-terminal.py` for the executable scenarios.
+- Actual xterm and Konsole screenshots were inspected at 11 points, including default shapes, Nerd Font shapes, the symbol fallback, and the latest colored status/game-over screens. Partial updates after a move in Konsole and a flip in xterm were also inspected.
 
-Full MySQL integration tests were not rerun for this renderer correction; the previous PR #2 attempt could not connect to the database. The earlier display-access constraint has been resolved for the GUI regression checks by using an isolated Xvfb display. No test database was cleared during this correction.
+Full MySQL integration tests were not rerun for these renderer and experience changes; the previous PR #2 attempt could not connect to the database. The earlier display-access constraint has been resolved for the GUI regression checks by using an isolated Xvfb display. No test database was cleared during this work.
 
 The terminal screenshots can be reproduced after `make build` with the optional QA tools Xvfb, xwininfo, ImageMagick, and the selected emulator:
 
 ```sh
 python3 scripts/capture-cli-terminal.py --emulator xterm --pieces nerd --output /tmp/chess-xterm.png
 python3 scripts/capture-cli-terminal.py --emulator konsole --output /tmp/chess-konsole.png
+python3 scripts/capture-cli-terminal.py --emulator konsole --scene checkmate --output /tmp/chess-game-over.png
+python3 scripts/capture-cli-terminal.py --emulator konsole --scene updated --output /tmp/chess-after-move.png
 ```
 
 ## Expected usage
@@ -64,6 +84,8 @@ make cli                            # Detect mouse and terminal graphics support
 make cli CLI_ARGS="--no-graphics"    # Symbol board, retaining supported mouse input
 make cli CLI_ARGS="--no-mouse"       # Use keyboard commands
 make cli CLI_ARGS="--pieces=nerd"    # Optional Nerd Font piece shapes
+make cli CLI_ARGS="--no-animation"  # Steady waiting text, no spinner
+make cli CLI_ARGS="--no-color --no-graphics"  # Uncolored gameplay screen
 make cli CLI_ARGS="--text --pieces=ascii"  # Plain input and ASCII board
 ```
 

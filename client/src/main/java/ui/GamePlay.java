@@ -72,7 +72,7 @@ public class GamePlay implements WebSocketListener {
                 default -> Terminal.addLogMessage("Received Message: " + message);
             }
         } catch (RuntimeException e) {
-            Terminal.addNotification("Received an invalid server message.");
+            Terminal.addError("Received an invalid server message.");
         }
     }
 
@@ -90,7 +90,7 @@ public class GamePlay implements WebSocketListener {
         ErrorMessage errorMessage = gson.fromJson(message, ErrorMessage.class);
         interaction.clear();
         Terminal.drawHighlights(null);
-        Terminal.addNotification("Error: " + errorMessage.getErrorMessage());
+        Terminal.addError("Error: " + errorMessage.getErrorMessage());
     }
 
     void processNotificationMessage(String message) {
@@ -100,9 +100,7 @@ public class GamePlay implements WebSocketListener {
             ChessGame game = Terminal.getChessGame();
             if (game != null) {
                 interaction.clear();
-                game.setGameOver(true);
-                Terminal.setChessGame(game, null);
-                Terminal.addLogMessage("Game over");
+                Terminal.endGame(notification.getMessage());
             }
         }
     }
@@ -125,6 +123,7 @@ public class GamePlay implements WebSocketListener {
         interaction.clear();
         try {
             Terminal.start(console, perspective);
+            Terminal.setPlayerTeam(playerTeam);
             ws.connectClient();
             ws.sendCommand(connectRequest);
             waitForTerminal();
@@ -169,7 +168,7 @@ public class GamePlay implements WebSocketListener {
                 if (!ws.isSessionOpen()) {
                     throw e;
                 }
-                Terminal.addNotification("Command failed: " + e.getMessage());
+                Terminal.addError("Command failed: " + e.getMessage());
             }
         }
     }
@@ -252,7 +251,7 @@ public class GamePlay implements WebSocketListener {
 
                 Mouse: click your piece, then its highlighted destination. Right-click/Esc cancels.
                 Observers can click pieces to inspect moves. Promotion prompts for Q/R/N/B.
-                Labels: w=White b=Black; K king Q queen R rook B bishop N knight P pawn.
+                Pieces: light/hollow=White, dark/filled=Black; mouse and text commands share the board.
                 Commands ignore case. Press Enter at a follow-up prompt to cancel.""";
         Terminal.showHelp(helpMessage);
     }

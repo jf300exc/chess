@@ -21,6 +21,8 @@ public final class CliConsole implements AutoCloseable {
     private final boolean allowMouse;
     private final boolean allowGraphics;
     private final PieceSymbols pieceSymbols;
+    private boolean allowColor = System.getenv().getOrDefault("NO_COLOR", "").isEmpty();
+    private boolean allowAnimation = true;
     private boolean ended;
 
     private CliConsole(org.jline.terminal.Terminal terminal, boolean allowMouse, boolean allowGraphics, PieceSymbols pieceSymbols) {
@@ -63,6 +65,22 @@ public final class CliConsole implements AutoCloseable {
             }
         }
         return new CliConsole(null, false, false, pieceSymbols);
+    }
+
+    public static CliConsole open(boolean textOnly, boolean noMouse, boolean noGraphics, PieceSymbols pieceSymbols,
+                                  boolean noColor, boolean noAnimation) {
+        CliConsole console = open(textOnly, noMouse, noGraphics, pieceSymbols);
+        console.allowColor &= !noColor;
+        console.allowAnimation = !noAnimation;
+        return console;
+    }
+
+    boolean allowColor() {
+        return terminal != null && allowColor;
+    }
+
+    boolean allowAnimation() {
+        return terminal != null && allowAnimation;
     }
 
     org.jline.terminal.Terminal terminal() {

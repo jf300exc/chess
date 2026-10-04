@@ -16,6 +16,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--emulator", choices=("xterm", "konsole"), default="xterm")
 parser.add_argument("--pieces", choices=("unicode", "nerd"), default="unicode")
 parser.add_argument("--no-graphics", action="store_true")
+parser.add_argument("--scene", choices=("selection", "waiting", "checkmate", "resigned", "updated", "flipped"),
+                    default="selection")
 parser.add_argument("--output", type=Path, required=True)
 args = parser.parse_args()
 for dependency in ("Xvfb", "xwininfo", "import", args.emulator):
@@ -39,9 +41,12 @@ try:
         number = display_pipe.readline().strip()
     if not number.isdigit():
         raise RuntimeError("Xvfb did not allocate a display")
-    env = {**os.environ, "DISPLAY": ":" + number, "QT_QPA_PLATFORM": "xcb"}
+    env = {key: value for key, value in os.environ.items() if key != "NO_COLOR"}
+    env.update({"DISPLAY": ":" + number, "QT_QPA_PLATFORM": "xcb"})
     title = "Chess-CLI-isolated-QA"
     command = [java, "-cp", classpath, "ui.TerminalSmokeMain", "--preview", "--pieces=" + args.pieces]
+    if args.scene != "selection":
+        command.append("--" + args.scene)
     if args.no_graphics:
         command.append("--no-graphics")
     launch = (["xterm", "-title", title, "-fa", "JetBrainsMono Nerd Font Mono", "-fs", "11",
