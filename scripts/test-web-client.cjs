@@ -27,7 +27,7 @@ async function register(page, name) {
   await page.goto(url);
   page.on('pageerror', (error) => errors.push(error.message));
   await page.click('#register-tab');
-  await page.fill('#username', name); await page.fill('#password', password); await page.fill('#email', `${name}@example.com`);
+  await page.fill('#username', name); await page.fill('#password', password); await page.fill('#email', 'not-an-email');
   await page.click('#auth-submit'); await page.waitForSelector('#lobby-view:visible');
 }
 async function square(page, name) { await page.locator(`[data-square="${name}"]`).tap(); }
