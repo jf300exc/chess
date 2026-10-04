@@ -1,190 +1,57 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>CS 240 Chess Server</title>
-
-    <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
-    <link rel="stylesheet" href="index.css"/>
-    <script defer src="index.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#122c30">
+  <title>Chess · Play together</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/index.css">
+  <script type="module" src="/index.js"></script>
 </head>
-
 <body>
-<h1><span class="chess-icon">♔</span> CS 240 Chess Server</h1>
-<p>
-    The CS 240 Chess Server Web API is described below. Some of the APIs require a request body to be sent (like
-    <code>/user/login</code> and <code>/user/register</code>), while others require an Authorization authToken
-    (received at login). To view the required JSON format, click on a command below and look at the example request
-    body. To try out an API, modify the request as needed, and press Send.
-</p>
-
-<h2>HTTP Endpoints</h2>
-<table>
-    <tr>
-        <td class="endpoint" onclick="register()">
-            <div class="method">[POST]</div>
-            <div class="path">/user</div>
-        </td>
-        <td>
-            <span class="description">Register a user</span> If successful, an authorization authToken is returned. You
-            may use the authToken with future requests that require authorization. No authorization authToken is
-            required
-            to call this endpoint.
-        </td>
-    </tr>
-    <tr>
-        <td class="endpoint" onclick="login()">
-            <div class="method">[POST]</div>
-            <div class="path">/session</div>
-        </td>
-        <td>
-            <span class="description">Log in a user</span> If successful, an authorization authToken is returned. You
-            may
-            use the authToken with future requests that require authorization. No authorization authToken is required to
-            call this endpoint.
-        </td>
-    </tr>
-    <tr>
-        <td class="endpoint" onclick="logout()">
-            <div class="method">[DELETE]</div>
-            <div class="path">/session</div>
-        </td>
-        <td>
-            <span class="description">Logs out an authenticated user</span> An authToken is required to call this
-            endpoint.
-        </td>
-    </tr>
-    <tr>
-        <td class="endpoint" onclick="gamesList()">
-            <div class="method">[GET]</div>
-            <div class="path">/game</div>
-        </td>
-        <td>
-            <span class="description">Lists all the games in the database</span> This API does not take a request body.
-            The response JSON lists all the games. An authToken is required to call this endpoint.
-        </td>
-    </tr>
-    <tr>
-        <td class="endpoint" onclick="createGame()">
-            <div class="method">[POST]</div>
-            <div class="path">/game</div>
-        </td>
-        <td>
-            <span class="description">Create a new Chess Game</span> The request body must contain a name for the game.
-            The response JSON contains the ID of created game, or if failed, an error message describing the reason. An
-            authToken is required to call this endpoint.
-        </td>
-    </tr>
-    <tr>
-        <td class="endpoint" onclick="joinGame()">
-            <div class="method">[PUT]</div>
-            <div class="path">/game</div>
-        </td>
-        <td>
-            <span class="description">Join a Chess Game</span> The request body must contain the game ID and player
-            color. An authToken is required to call this endpoint.
-        </td>
-    </tr>
-    <tr>
-        <td class="endpoint" onclick="clearAll()">
-            <div class="method">[DELETE]</div>
-            <div class="path">/db</div>
-        </td>
-        <td>
-            <span class="description">Clear ALL data from the database</span> This includes users and all game data. No
-            authorization authToken is required.
-        </td>
-    </tr>
-</table>
-<h2 id="execute">Execute HTTP Request</h2>
-<div class="box">
-    <h3>Request</h3>
-    <div class="input">
-        <label for="method">Method:</label> <input type="text" id="method"/>
-    </div>
-
-    <div class="input">
-        <label for="handleBox">Endpoint:</label> <input type="text" id="handleBox" name="handleBox"/>
-    </div>
-
-    <div class="input">
-        <label for="authToken">Auth Token:</label> <input type="text" id="authToken" name="authToken"/>
-    </div>
-
-    <div class="input">
-        <label for="requestBox">Request Body:</label> <textarea id="requestBox" name="requestBox"></textarea>
-    </div>
-
-    <button onclick="submit()">Send</button>
-</div>
-<div id="responseBox" class="box">
-    <h3>HTTP Response</h3>
-    <pre id="response" readonly></pre>
-</div>
-<h2>Websocket</h2>
-<p>This section is only applicable during phase 6. Use this to test the websocket functionality of your server</p>
-<div id="websocketConnectBox" class="box">
-    <h3>Connect to websocket</h3>
-    <button onclick="connectWs()">Connect</button>
-</div>
-<div id="executeWebsocket" style="display: none">
-    <h3>Commands</h3>
-    <table>
-        <tr>
-            <td class="endpoint" onclick="connect()">
-                <div class="command">CONNECT</div>
-            </td>
-            <td>
-                <span class="description">Connect to game</span> Used for a user to request to connect to a game as a
-                player or observer. Requires gameID and authToken.
-            </td>
-        </tr>
-        <tr>
-            <td class="endpoint" onclick="makeMove()">
-                <div class="command">MAKE_MOVE</div>
-            </td>
-            <td>
-                <span class="description">Make a move</span> Used to request to make a move in a game. Requires gameID,
-                authToken, and a move. Note: You may need to edit the properties of move (startPosition, endPosition,
-                promotionPiece, row, column) to match the variable names in your code so your code can deserialize the
-                ChessMove correctly.
-            </td>
-        </tr>
-        <tr>
-            <td class="endpoint" onclick="resign()">
-                <div class="command">RESIGN</div>
-            </td>
-            <td>
-                <span class="description">Resign game</span> Forfeits the match and ends the game (no more moves can
-                be made). Requires gameID and authToken.
-            </td>
-        </tr>
-        <tr>
-            <td class="endpoint" onclick="leave()">
-                <div class="command">LEAVE</div>
-            </td>
-            <td>
-                <span class="description">Leave game</span> Tells the server you are leaving the game so it will stop
-                sending you notifications. Requires gameID and authToken.
-            </td>
-        </tr>
-    </table>
-    <div id="sendWs">
-        <h2>Send Websocket Command</h2>
-        <div class="box">
-            <div class="input">
-                <label for="commandBox">Command:</label>
-                <textarea id="commandBox" name="commandBox"></textarea>
-            </div>
-
-            <button onclick="sendWs()">Send</button>
-            <button onclick="closeWs()">Close</button>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Chess home"><span aria-hidden="true">♞</span> Chess<span class="brand-note">PLAY TOGETHER</span></a>
+    <div class="account"><span id="username-label"></span><button id="logout" class="quiet" hidden>Sign out</button></div>
+  </header>
+  <main>
+    <p id="alert" class="alert" role="alert" hidden></p>
+    <section id="auth-view" class="welcome">
+      <div class="intro"><p class="eyebrow">YOUR NEXT MOVE</p><h1>A good game.<br>Anywhere.</h1><p>Join a friend from your phone, laptop, or desktop. One board. Every player.</p><div class="intro-board" aria-hidden="true">♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜</div><p class="small">Live multiplayer · Full chess rules · No app to install</p></div>
+      <div class="card auth-card">
+        <div class="tabs" role="group" aria-label="Account options"><button id="login-tab" class="active" aria-pressed="true">Sign in</button><button id="register-tab" aria-pressed="false">Create account</button></div>
+        <h2 id="auth-title">Welcome back</h2><p id="auth-hint" class="muted">Sign in to find your next match.</p>
+        <form id="auth-form">
+          <label for="username">Username</label><input id="username" name="username" autocomplete="username" required maxlength="255" autocapitalize="none" spellcheck="false">
+          <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="255">
+          <div id="email-field" hidden><label for="email">Email</label><input id="email" name="email" type="text" autocomplete="email" maxlength="255"></div>
+          <button id="auth-submit" class="primary full" type="submit">Sign in</button>
+        </form>
+      </div>
+    </section>
+    <section id="lobby-view" hidden>
+      <div class="section-heading"><div><p class="eyebrow">THE LOBBY</p><h1>Find your next game.</h1><p class="muted">Take a seat, or watch a match unfold.</p></div><button id="refresh" class="secondary">Refresh games</button></div>
+      <form id="create-form" class="card create-form"><label for="game-name">Start a new game</label><div><input id="game-name" placeholder="Give your game a name" required maxlength="255"><button type="submit" class="primary">Create game</button></div></form>
+      <div id="games" class="game-list" aria-live="polite"></div>
+    </section>
+    <section id="match-view" hidden>
+      <div class="match-heading"><div><p class="eyebrow" id="match-id"></p><h1 id="match-name">Chess</h1></div><button id="leave" class="secondary">Back to lobby</button></div>
+      <div class="match-layout">
+        <div class="board-column">
+          <div class="player-strip"><span class="avatar" aria-hidden="true">♟</span><div><strong id="opponent-name"></strong><span id="opponent-color" class="small muted"></span></div><span id="connection" class="connection" role="status">Connecting…</span></div>
+          <div id="board" class="board" role="group" aria-label="Chess board"></div>
+          <div class="player-strip"><span class="avatar light-avatar" aria-hidden="true">♟</span><div><strong id="player-name"></strong><span id="player-color" class="small muted"></span></div><button id="flip" class="quiet">Flip board ↻</button></div>
         </div>
-    </div>
-    <div id="wsMessageBox" class="box">
-        <h3 id="wsMessageBoxLabel">Websocket Server Messages</h3>
-    </div>
-</div>
+        <aside class="match-sidebar">
+          <div class="card turn-card"><p class="eyebrow">ON THE BOARD</p><h2 id="turn" role="status">Loading game…</h2><p id="move-hint" class="muted">Tap a piece to see its legal moves.</p><button id="cancel-selection" class="quiet" hidden>Clear selection</button><button id="reconnect" class="secondary" hidden>Reconnect</button></div>
+          <div class="card activity-card"><h2>Match activity</h2><ol id="activity" aria-live="polite" aria-relevant="additions"></ol></div>
+          <button id="resign" class="danger">Resign game</button>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <footer>Every move brings us together.</footer>
+  <dialog id="promotion"><h2>Choose your promotion</h2><p class="muted">Your pawn has reached the final rank.</p><div class="promotion-options"><button data-piece="QUEEN">♛<span>Queen</span></button><button data-piece="ROOK">♜<span>Rook</span></button><button data-piece="BISHOP">♝<span>Bishop</span></button><button data-piece="KNIGHT">♞<span>Knight</span></button></div><button id="cancel-promotion" class="quiet full">Cancel move</button></dialog>
+  <dialog id="confirm-dialog"><h2 id="confirm-title"></h2><p id="confirm-text" class="muted"></p><div class="dialog-actions"><button id="confirm-cancel" class="secondary">Cancel</button><button id="confirm-ok" class="danger">Confirm</button></div></dialog>
 </body>
 </html>

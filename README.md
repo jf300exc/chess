@@ -1,9 +1,10 @@
 # ♞ Multiplayer Chess
 
-A Java 21 client/server chess application with interchangeable desktop and terminal clients. Multiple players and observers can connect to the same server over HTTP and WebSocket, while MySQL provides persistent users, sessions, and games.
+A Java 21 client/server chess application with interchangeable browser, desktop, and terminal clients. Multiple players and observers can connect to the same server over HTTP and WebSocket, while MySQL provides persistent users, sessions, and games.
 
 ## What is included
 
+- A mobile-friendly browser client with accounts, a game lobby, touch and keyboard board controls, legal-move highlights, promotion choices, observers, and automatic reconnection. Open the server address to play; no app installation or frontend build is needed.
 - A polished, resizable desktop client with login and registration, game lobby, seat selection, observation mode, legal-move highlighting, board flipping, promotion selection, live activity, resignation, and navigation between matches.
 - A terminal client with adaptive boards, mouse selection and movement where supported, text commands, and mixed CLI/GUI matches.
 - Complete chess rules, including castling, en passant, promotion, check, checkmate, and stalemate.
@@ -35,7 +36,19 @@ make gui HOST=192.168.1.20 PORT=9090
 make cli HOST=192.168.1.20 PORT=9090
 ```
 
-The CLI and GUI can be used at the same time and can join the same match.
+The browser, CLI, and GUI can be used at the same time and can join the same match.
+
+### Play from a phone or browser
+
+Start `make server`. Once it is ready, the server prints browser URLs for each active local-network interface, labeled with its interface name, using the configured port. Open one of the URLs under **From a phone or another device on your local network** on your phone. For the server computer itself, use the printed localhost URL (normally `http://localhost:8080`). On a phone or another computer on the same network, open `http://<server-LAN-IP>:8080` (for example, `http://192.168.1.20:8080`). The server listens on all interfaces; if a firewall is enabled, allow its configured TCP port. The phone uses the server that served the page automatically, including its port.
+
+Sign in or create an account, create a game, and choose **Play White** or **Play Black**. A second player can open the same address and take the other seat. **Watch** joins as an observer. Tap or click a piece, then a highlighted destination; promotions offer queen, rook, bishop, and knight. Keyboard users can Tab to squares and activate them with Enter or Space. Escape or **Clear selection** cancels selection. **Flip board** changes the view while preserving your playing color.
+
+The browser stores the session and current match in per-tab session storage so reloading resumes your seat. Passwords are never stored. Losing the connection pauses moves and reconnects with a fresh server snapshot. **Back to lobby** releases a connected player's seat after confirmation; disconnecting or closing a tab keeps the seat available to resume. Resignation also asks for confirmation. The final position remains visible after checkmate, stalemate, or resignation.
+
+The existing API playground is available at `/api/index.html`. Browser assets ship inside the server jar and require no JavaScript package installation at runtime. HTTPS deployments use `wss:` automatically; configure the reverse proxy to pass WebSocket upgrades for `/ws`.
+
+Screenshots and implementation details are in the [browser client comparison](docs/web-client.md).
 
 ### Terminal gameplay commands
 
@@ -111,6 +124,7 @@ The server creates the configured database and tables if needed; schema-level pr
 make build        # compile and package runnable jars
 make test-engine  # chess rules only; no database needed
 make test-cli     # terminal commands, input decoding, coordinates, and gameplay; no database/display
+make test-web     # browser checks against a running disposable test server; Playwright/Chrome required
 make test         # complete unit and integration suite; MySQL required
 make verify       # package everything, then run the complete suite
 ```
@@ -121,13 +135,26 @@ After `make build`, run `python3 scripts/test-cli-terminal.py` on POSIX to exerc
 
 You can still invoke Maven directly (`mvn test`, `mvn package`, or individual module goals). The Makefile is the supported operator interface because it checks Java, Maven, desktop, and database prerequisites before launching.
 
+### Browser regression checks
+
+Use a separate database and run the server against it before running browser tests. The browser script creates unique test accounts and games and never clears the database. Java integration tests do clear their configured database.
+
+The optional test harness uses Node.js, Playwright, and Chrome. Install the test dependency outside the checkout:
+
+```sh
+npm install --prefix /tmp/chess-browser-tests playwright
+NODE_PATH=/tmp/chess-browser-tests/node_modules make test-web WEB_URL=http://localhost:8080
+```
+
+Set `CHROME_BIN` if Chrome is not at `/usr/bin/google-chrome-stable`; set `CHESS_WEB_SCREENSHOTS=/tmp/chess-web-shots` to save full-page screenshots. Tests cover accounts, lobby, touch moves, observers, orientation, network/reload recovery, game-over behavior, promotion, castling, en passant, and phone/desktop widths.
+
 ## Architecture
 
 The Maven reactor contains three modules:
 
 - `shared`: chess rules, models, requests, and WebSocket message contracts
 - `client`: terminal and Swing desktop clients sharing one HTTP/WebSocket transport
-- `server`: Spark HTTP/WebSocket server and MySQL data access
+- `server`: Spark HTTP/WebSocket server, MySQL data access, and the static browser client
 
 [![Architecture sequence diagram](10k-architecture.png)](10k-architecture.png)
 

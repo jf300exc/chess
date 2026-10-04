@@ -61,8 +61,12 @@ public class StandardAPITests {
         Assertions.assertEquals(HttpURLConnection.HTTP_OK, serverFacade.getStatusCode(),
                 "Server response code was not 200 OK");
         Assertions.assertNotNull(htmlFromServer, "Server returned an empty file");
-        Assertions.assertTrue(htmlFromServer.contains("CS 240 Chess Server Web API"),
-                "file returned did not contain an exact match of text from provided index.html");
+        Assertions.assertTrue(htmlFromServer.contains("id=\"board\""),
+                "Server root should serve the playable browser client");
+        String apiPlayground = serverFacade.file("/api/index.html");
+        Assertions.assertEquals(HttpURLConnection.HTTP_OK, serverFacade.getStatusCode());
+        Assertions.assertTrue(apiPlayground.contains("CS 240 Chess Server Web API"),
+                "The existing API playground should remain available at its new URL");
     }
 
     @Test
