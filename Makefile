@@ -5,12 +5,14 @@ MVN ?= mvn
 JAVA ?= java
 HOST ?= localhost
 PORT ?= 8080
+NODE ?= node
+WEB_URL ?= http://localhost:$(PORT)
 CLI_ARGS ?=
 SERVER_JAR := server/target/server-jar-with-dependencies.jar
 CLIENT_JAR := client/target/client-jar-with-dependencies.jar
 DB_CONFIG := server/src/main/resources/db.properties
 
-.PHONY: help check check-java check-maven check-gui check-db build test test-engine test-cli verify server cli gui clean
+.PHONY: help check check-java check-maven check-gui check-db build test test-engine test-cli test-web verify server cli gui clean
 
 help: ## Show the available commands
 	@echo "Chess development commands"
@@ -21,6 +23,7 @@ help: ## Show the available commands
 	@echo "  make test         Run the complete test suite (requires MySQL)"
 	@echo "  make test-engine  Run the dependency-free chess rule tests"
 	@echo "  make test-cli     Run CLI tests without MySQL or a desktop"
+	@echo "  make test-web     Run browser tests against WEB_URL (Playwright/Chrome required)"
 	@echo "  make verify       Compile everything and run the complete suite"
 	@echo "  make build        Build runnable client and server jars"
 	@echo
@@ -71,6 +74,9 @@ test-engine: check ## Run chess rule tests without server/database dependencies
 
 test-cli: check ## Run terminal parsing, board interaction, and text gameplay tests
 	$(MVN) --no-transfer-progress -pl client -am -Dtest=CliInputParserTests,CommandLineSelectionTests,TerminalControlsTests,BoardGraphicsTests,TerminalExperienceTests,GamePlayCliTests -Dsurefire.failIfNoSpecifiedTests=false -DargLine=-Djava.awt.headless=true test
+
+test-web: ## Run browser regression checks against an already running disposable server
+	CHESS_WEB_URL="$(WEB_URL)" $(NODE) scripts/test-web-client.cjs
 
 verify: build test ## Build and run all tests
 
