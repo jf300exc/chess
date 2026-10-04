@@ -26,7 +26,7 @@ JAVA = os.environ.get("CHESS_TEST_JAVA", "java")
 
 
 def run_session(name, actions, args=(), term="xterm-256color", expected="e2e4", graphics=False,
-                stable=False, expected_images=None, status=None, idle=None, no_color_env=False):
+                stable=False, expected_images=None, status=None, idle=None, no_color_env=False, cell_height=18):
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
     original_attributes = termios.tcgetattr(slave)
@@ -58,7 +58,7 @@ def run_session(name, actions, args=(), term="xterm-256color", expected="e2e4", 
                          (b"mo" if graphics == "typed" else
                           b"\x1b[<0;21;16M\x1b[<0;21;12Mmo" if graphics == "stale" else b"")
                          + (b"\x1b[?80;1$y" if graphics == "mode80" else b"\x1b[?80;2$y")
-                         + b"\x1b[?64;1;4c\x1b[6;18;9t")
+                         + f"\x1b[?64;1;4c\x1b[6;{cell_height};9t".encode())
                 os.write(master, reply)
 
     def drain(seconds):
@@ -104,6 +104,8 @@ def run_session(name, actions, args=(), term="xterm-256color", expected="e2e4", 
             assert output.count(b"\x1b[2J") == initial_clears, "Ordinary updates cleared the screen"
         if expected_images is not None:
             assert result.count("\x1bP0;1;0q") == expected_images, "Unexpected board repaint count"
+        for image_height in re.findall(r'\x1bP0;1;0q"1;1;\d+;(\d+)', result):
+            assert int(image_height) % 6 == 0, "Incomplete SIXEL band can introduce black border padding"
         if status:
             assert status in result, f"Missing status: {status}"
         if "--no-color" in args or no_color_env:
@@ -224,3 +226,12 @@ run_session("duplicate server snapshots do not repaint the board", [1.2, b"leave
     ["--repeat-snapshot"], graphics=True, expected="none", stable=True, expected_images=1)
 run_session("typing leaves the symbol board static too", [b"sta", b"tus\n", b"leave\n"],
     ["--no-graphics"], expected="none", stable=True)
+run_session("40-pixel squares use complete bands without a full-screen redraw", [
+    b"move e2e4\n", b"leave\n"], ["--confirm-update"], graphics=True,
+    cell_height=20, stable=True, expected_images=4)
+run_session("odd-height font squares also use complete bands", [
+    click(26, 16), b"\x1b", b"leave\n"], graphics=True, expected="none",
+    cell_height=17, stable=True, expected_images=8)
+run_session("bottom-rank patch stays within the board", [
+    b"highlight a1\n", b"\x1b", b"leave\n"], graphics=True, expected="none",
+    cell_height=20, stable=True, expected_images=4)

@@ -16,10 +16,14 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--emulator", choices=("xterm", "konsole"), default="xterm")
 parser.add_argument("--pieces", choices=("unicode", "nerd"), default="unicode")
 parser.add_argument("--no-graphics", action="store_true")
-parser.add_argument("--scene", choices=("selection", "waiting", "checkmate", "resigned", "updated", "flipped"),
+parser.add_argument("--scene", choices=("selection", "waiting", "checkmate", "resigned", "updated", "flipped",
+                                       "bottom", "highlighted"),
                     default="selection")
 parser.add_argument("--output", type=Path, required=True)
+parser.add_argument("--check-square-edges", action="store_true", help="Verify board edges with optional Pillow")
 args = parser.parse_args()
+if args.check_square_edges and args.no_graphics:
+    parser.error("Square-edge verification requires the graphical board")
 for dependency in ("Xvfb", "xwininfo", "import", args.emulator):
     if shutil.which(dependency) is None:
         parser.error(f"Optional screenshot dependency missing: {dependency}")
@@ -63,6 +67,32 @@ try:
         raise RuntimeError("Expected one isolated QA terminal; check emulator startup")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(["import", "-window", owned[0], str(args.output.resolve())], env=env, check=True, timeout=5)
+    if args.check_square_edges:
+        from PIL import Image
+        with Image.open(args.output) as capture:
+            screenshot = capture.convert("RGB")
+        colors = {(204, 204, 153), (102, 153, 102), (204, 153, 51), (102, 204, 204)}
+        pixels = screenshot.load()
+        points = [(x, y) for y in range(screenshot.height) for x in range(screenshot.width)
+                  if pixels[x, y] in colors]
+        if not points:
+            raise AssertionError("No graphical chess board found")
+        left, right = min(x for x, y in points), max(x for x, y in points)
+        top, bottom = min(y for x, y in points), max(y for x, y in points)
+        tile_width, tile_height = (right - left + 1) // 8, (bottom - top + 1) // 8
+        for row in range(8):
+            for column in range(8):
+                for dy in (0, 1, tile_height - 2, tile_height - 1):
+                    for dx in (1, tile_width - 2):
+                        point = (left + column * tile_width + dx, top + row * tile_height + dy)
+                        if screenshot.getpixel(point) not in colors:
+                            raise AssertionError(f"Unexpected square-edge pixel at {point}: {screenshot.getpixel(point)}")
+        background = screenshot.getpixel((right + 5, bottom + 1))
+        for y in (bottom + 1, bottom + 2):
+            for x in range(left, right + 1):
+                if screenshot.getpixel((x, y)) != background:
+                    raise AssertionError(f"Board spilled below its bottom edge at {(x, y)}")
+        print("PASS square edges and bottom boundary")
     print(args.output.resolve())
 finally:
     if window is not None and window.poll() is None:

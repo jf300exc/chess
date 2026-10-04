@@ -1,15 +1,12 @@
 package ui;
 
 import chess.*;
-import org.jline.terminal.Attributes;
-import org.jline.terminal.Size;
-import org.jline.terminal.TerminalBuilder;
+import org.jline.terminal.impl.DumbTerminal;
 import org.jline.utils.AttributedString;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
@@ -49,10 +46,10 @@ class TerminalExperienceTests {
 
     @Test
     void textUpdatesNeverOverwriteTheImageRectangleOrScroll() throws Exception {
-        try (var input = new PipedInputStream(); var sender = new PipedOutputStream(input);
-             var output = new ByteArrayOutputStream();
-             var terminal = TerminalBuilder.builder().system(false).type("xterm").dumb(true)
-                     .streams(input, output).attributes(new Attributes()).size(new Size(80, 24)).build()) {
+        // Direct output avoids native PTY pump races when inspecting the exact emitted bytes.
+        try (var output = new ByteArrayOutputStream();
+             var terminal = new DumbTerminal("screen-test", "xterm", new ByteArrayInputStream(new byte[0]),
+                     output, StandardCharsets.UTF_8)) {
             TerminalScreen screen = new TerminalScreen();
             var image = new TerminalScreen.ImageArea(0, 3, 1, 40);
             screen.update(terminal, List.of(new AttributedString(" 8 " + " ".repeat(40) + " 8")), 80, 23, 0, image);
@@ -74,18 +71,64 @@ class TerminalExperienceTests {
         var layout = new BoardDraw.Layout(5, 2);
         var pixels = new TerminalGraphics.CellPixels(9, 18);
         var before = BoardImage.render(game, WHITE, null, layout, pixels, PieceSymbols.UNICODE);
-        assertEquals(1, BoardDamage.between(null, before).size());
+        assertEquals(1, BoardDamage.between(null, before, pixels.height()).size());
         assertTrue(BoardDamage.between(before,
-                BoardImage.render(game.copy(), WHITE, null, layout, pixels, PieceSymbols.UNICODE)).isEmpty());
+                BoardImage.render(game.copy(), WHITE, null, layout, pixels, PieceSymbols.UNICODE), pixels.height()).isEmpty());
         var selected = BoardImage.render(game, WHITE, new ChessPosition(2, 5), layout, pixels, PieceSymbols.UNICODE);
-        assertEquals(Set.of("6:4", "5:4", "4:4"), BoardDamage.between(before, selected).stream()
-                .map(p -> p.row() + ":" + p.column()).collect(Collectors.toSet()));
+        assertEquals(Set.of("216:180", "180:180", "144:180"), BoardDamage.between(before, selected, pixels.height()).stream()
+                .map(p -> p.pixelRow() + ":" + p.pixelColumn()).collect(Collectors.toSet()));
         game.makeMove(new ChessMove(new ChessPosition(2, 5), new ChessPosition(4, 5), null));
         var moved = BoardImage.render(game, WHITE, null, layout, pixels, PieceSymbols.UNICODE);
-        var patches = BoardDamage.between(before, moved);
-        assertEquals(Set.of("6:4", "4:4"), patches.stream()
-                .map(p -> p.row() + ":" + p.column()).collect(Collectors.toSet()));
+        var patches = BoardDamage.between(before, moved, pixels.height());
+        assertEquals(Set.of("216:180", "144:180"), patches.stream()
+                .map(p -> p.pixelRow() + ":" + p.pixelColumn()).collect(Collectors.toSet()));
         assertTrue(patches.stream().allMatch(p -> p.image().getWidth() == 45 && p.image().getHeight() == 36));
+    }
+
+    @Test
+    void bandAlignedPatchesCoverChangedPixelsWithoutSpillingOutsideTheBoard() {
+        for (int cellHeight : new int[]{1, 13, 17, 18, 19, 20, 21, 22, 24, 25, 32, 40}) {
+            for (int squareRows : new int[]{1, 2, 3}) {
+                int height = 8 * squareRows * cellHeight;
+                var old = new java.awt.image.BufferedImage(40, height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                var next = new java.awt.image.BufferedImage(40, height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < 40; x++) {
+                        int color = (y % 6 * 51 << 8) | (x % 6 * 51);
+                        old.setRGB(x, y, color);
+                        next.setRGB(x, y, color);
+                    }
+                }
+                next.setRGB(1, 0, 0xffffff);
+                next.setRGB(6, height / 2, 0xffffff);
+                next.setRGB(39, height - 1, 0xffffff);
+                for (boolean initial : new boolean[]{false, true}) {
+                    var patches = BoardDamage.between(initial ? null : old, next, cellHeight);
+                    boolean[][] covered = new boolean[height][40];
+                    for (var patch : patches) {
+                        assertEquals(0, patch.pixelRow() % cellHeight, "Cursor must start on a terminal row");
+                        assertEquals(0, patch.image().getHeight() % 6, "No unpainted tail bits allowed");
+                        assertTrue(patch.pixelRow() >= 0 && patch.pixelRow() + patch.image().getHeight() <= height);
+                        for (int y = 0; y < patch.image().getHeight(); y++) {
+                            for (int x = 0; x < patch.image().getWidth(); x++) {
+                                int boardY = patch.pixelRow() + y;
+                                int boardX = patch.pixelColumn() + x;
+                                assertEquals(next.getRGB(boardX, boardY), patch.image().getRGB(x, y),
+                                        "Padding must contain the exact adjacent-board pixels");
+                                covered[boardY][boardX] = true;
+                            }
+                        }
+                    }
+                    for (int y = 0; y < height; y++) {
+                        for (int x = 0; x < 40; x++) {
+                            if (initial || old.getRGB(x, y) != next.getRGB(x, y)) {
+                                assertTrue(covered[y][x], "Changed pixel was not covered");
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Test

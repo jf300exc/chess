@@ -506,7 +506,7 @@ public final class Terminal {
             try {
                 BufferedImage next = BoardImage.render(game.copy(), perspective, selected,
                         layout, cellPixels, console.pieceSymbols());
-                patches = BoardDamage.between(layout.equals(imageLayout) ? boardImage : null, next);
+                patches = BoardDamage.between(layout.equals(imageLayout) ? boardImage : null, next, cellPixels.height());
                 boardImage = next;
                 imageRevision = boardRevision;
                 imageLayout = layout;
@@ -546,8 +546,8 @@ public final class Terminal {
         if (showImage && !patches.isEmpty()) {
             terminal.writer().print("\u001b7");
             for (BoardDamage.Patch patch : patches) {
-                terminal.puts(Capability.cursor_address, BOARD_START_ROW + 1 + patch.row() * layout.cellHeight(),
-                        3 + patch.column() * layout.cellWidth());
+                terminal.puts(Capability.cursor_address, BOARD_START_ROW + 1 + patch.pixelRow() / cellPixels.height(),
+                        3 + patch.pixelColumn() / cellPixels.width());
                 terminal.writer().print(SixelEncoder.encode(patch.image()));
             }
             terminal.writer().print("\u001b8");

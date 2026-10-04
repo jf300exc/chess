@@ -62,6 +62,10 @@ public final class TerminalSmokeMain {
                             Terminal.setChessGame(position.copy(), null);
                         } else if (options.contains("--flipped")) {
                             Terminal.flipBoard();
+                        } else if (options.contains("--bottom")) {
+                            Terminal.drawHighlights(new ChessPosition(1, 1));
+                        } else if (options.contains("--highlighted")) {
+                            Terminal.drawHighlights(new ChessPosition(2, 5));
                         }
                     }
                     return open && (!options.contains("--preview") || System.nanoTime() < previewDeadline);
@@ -82,7 +86,8 @@ public final class TerminalSmokeMain {
                         }
                         if (options.contains("--preview") && !options.contains("--waiting")
                                 && !options.contains("--checkmate") && !options.contains("--resigned")
-                                && !options.contains("--updated") && !options.contains("--flipped")) {
+                                && !options.contains("--updated") && !options.contains("--flipped")
+                                && !options.contains("--bottom") && !options.contains("--highlighted")) {
                             Terminal.drawHighlights(new ChessPosition(2, 5));
                         }
                     }

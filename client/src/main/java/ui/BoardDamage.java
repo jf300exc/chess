@@ -4,13 +4,29 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Compare the painted pixels, so even duplicate server snapshots produce no board output. */
+/** Compare square pixels and emit cursor-aligned patches containing complete SIXEL bands. */
 final class BoardDamage {
-    record Patch(int row, int column, BufferedImage image) { }
+    record Patch(int pixelRow, int pixelColumn, BufferedImage image) { }
 
-    static List<Patch> between(BufferedImage old, BufferedImage next) {
+    static List<Patch> between(BufferedImage old, BufferedImage next, int terminalCellHeight) {
+        if (terminalCellHeight < 1 || next.getHeight() % terminalCellHeight != 0) {
+            throw new IllegalArgumentException("Image must occupy complete terminal rows");
+        }
+        int bandRows = 6 / gcd(6, terminalCellHeight);
+        int rows = next.getHeight() / terminalCellHeight;
+        if (rows < bandRows) {
+            throw new IllegalArgumentException("Image is too short for a cursor-aligned SIXEL band");
+        }
         if (old == null || old.getWidth() != next.getWidth() || old.getHeight() != next.getHeight()) {
-            return List.of(new Patch(0, 0, next));
+            int firstHeight = rows / bandRows * bandRows * terminalCellHeight;
+            if (firstHeight == next.getHeight()) {
+                return List.of(new Patch(0, 0, next));
+            }
+            // Overlap the final band inside the board, never spill into the file-label row.
+            int tailHeight = bandRows * terminalCellHeight;
+            int tailStart = next.getHeight() - tailHeight;
+            return List.of(new Patch(0, 0, next.getSubimage(0, 0, next.getWidth(), firstHeight)),
+                    new Patch(tailStart, 0, next.getSubimage(0, tailStart, next.getWidth(), tailHeight)));
         }
         int width = next.getWidth() / 8;
         int height = next.getHeight() / 8;
@@ -27,10 +43,26 @@ final class BoardDamage {
                     }
                 }
                 if (changed) {
-                    patches.add(new Patch(row, column, next.getSubimage(column * width, row * height, width, height)));
+                    int squareRows = height / terminalCellHeight;
+                    int patchRows = (squareRows + bandRows - 1) / bandRows * bandRows;
+                    int startRow = Math.min(row * squareRows, rows - patchRows);
+                    int y = startRow * terminalCellHeight;
+                    int x = column * width;
+                    // Some terminals ignore transparent tail bits and expand to the full final band.
+                    // Supply real neighboring pixels instead, shifting the bottom patch upward.
+                    patches.add(new Patch(y, x, next.getSubimage(x, y, width, patchRows * terminalCellHeight)));
                 }
             }
         }
         return patches;
+    }
+
+    private static int gcd(int a, int b) {
+        while (b != 0) {
+            int remainder = a % b;
+            a = b;
+            b = remainder;
+        }
+        return a;
     }
 }

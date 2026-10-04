@@ -16,7 +16,7 @@ This document records the goals and delivered implementation. The earlier revisi
 | Readability without graphics | A symbol occupies one terminal character, regardless of extra surrounding padding. | Use a compact, badge-free symbol board as the fallback. Be explicit that ordinary text terminals cannot independently enlarge one character using standard ANSI coloring and padding. |
 | Commands | Many actions require repeated prompts and exact command spelling. | Accept case-insensitive commands, extra whitespace, direct coordinate moves, inline promotion, `status`, `moves`, `highlight`, and `flip`. |
 | Roles and orientation | Display orientation and the player's assigned team can be confused. | Flipping affects only the view. Observers may inspect legal moves but cannot submit them. Only the assigned player can move on that player's turn. |
-| Screen updates | The earlier graphical revision clears and repaints the full board when selection or log state changes. | Fixed-position text differences leave unchanged rows in place. Graphical updates compare square pixels and repaint only changed squares; typing, notifications, and duplicate unchanged game snapshots do not repaint the board. |
+| Screen updates | The earlier graphical revision clears and repaints the full board when selection or log state changes. Its first incremental implementation exposes black padding below some patches. | Fixed-position text differences leave unchanged rows in place. Graphical updates compare square pixels and emit local patches with complete six-pixel bands, preserving adjacent pixels and staying inside the board. Typing, notifications, and duplicate unchanged game snapshots do not repaint the board. |
 | Turn and waiting cues | Turn/check messages are plain, with no personal turn cue. | Green `YOUR TURN`, red check/errors, cyan waiting/notifications, and yellow warnings. A small waiting spinner updates twice per second without touching the board. Observers do not get personal turn cues; turn-start labels remain steady. |
 | Game completion | A generic game-over message provides little detail. | Show the winning team on checkmate, a draw on stalemate, and the server's resignation message when known. Keep the final board visible with inspection and return-to-lobby hints. Do not infer a resignation winner from whose turn it was. |
 | Motion and color preferences | No explicit motion or gameplay-color override. | Add `--no-animation` and `--no-color`; honor nonempty `NO_COLOR`. Plain text stays still and uncolored. Uncolored Nerd Font text uses distinguishable Unicode team shapes. |
@@ -50,7 +50,9 @@ The latest revision keeps the enlarged shapes and adds colored experience cues. 
 
 ![Colored personal turn cue and centered Nerd Font pieces](assets/cli-experience-konsole.png)
 
-[A confirmed e2e4 move](assets/cli-incremental-konsole.png) was captured after the initial board had already been displayed, exercising partial square repainting rather than an initial full render. The source square is cleared, the pawn appears on its destination, and the remaining board stays intact. The small waiting spinner is confined to the status line. A screenshot alone cannot demonstrate absence of flicker; the pseudo-terminal checks separately assert that ordinary input emits no full-screen clear and that this move emits two square patches.
+[A confirmed e2e4 move](assets/cli-incremental-konsole.png) was captured after the initial board had already been displayed, exercising partial square repainting rather than an initial full render. The source square is cleared, the pawn appears on its destination, and the remaining board stays intact. The small waiting spinner is confined to the status line. A screenshot alone cannot demonstrate absence of flicker; the pseudo-terminal checks separately assert that ordinary input emits no full-screen clear and that this move emits two local patches.
+
+Konsole's [SIXEL implementation](https://github.com/KDE/konsole/blob/master/src/Vt102Emulation.cpp) rounds decoded image height to the end of the final six-pixel band, leaving unpainted padding black. A 40-pixel square patch therefore previously produced a two-pixel black strip below it. The corrected patches occupy complete bands and terminal rows, supplying the exact adjacent-board pixels where extra coverage is needed. Bottom patches shift upward to stay within the board; initial rendering can use two overlapping images rather than cover the lower file labels. Automated screenshot checks verify square corners and the bottom boundary after a move, selection, and [bottom-rank selection](assets/cli-bottom-edge-konsole.png).
 
 The game-over screen keeps the final position and identifies the outcome:
 
@@ -61,9 +63,9 @@ No piece animation, sound, flashing square, or flashing turn banner is added. `-
 ## Verification
 
 - `make build` passes.
-- The focused CLI suite has 30 passing tests, including capability parsing, input preservation, pixel centering for all piece types, absence of badges, image size limits, an independent SIXEL pixel round trip, fixed-position text differences, protected image regions, two-square move damage, and outcome/role cues.
-- Java 21 verification passes 107 engine tests, those 30 CLI tests, and eight desktop board/lifecycle tests under Xvfb: 145 tests total across the focused runs. The three desktop board tests also pass in headless mode.
-- The POSIX pseudo-terminal harness passes 34 scenarios covering text and graphics paths, legal mouse moves, observers, promotion, help, flips, resizes, typed-prefix preservation, malformed pixel replies, cleanup, prior SIXEL mode restoration, and stale pre-paint mouse input. The added scenarios assert no board repaint on typing, notifications, waiting animation, or duplicate snapshots; verify square patches on selection/cancel and confirmed moves; and check quiet motion-disabled waiting, `NO_COLOR`, and game-over messages. See `scripts/test-cli-terminal.py` for the executable scenarios.
+- The focused CLI suite has 31 passing tests, including capability parsing, input preservation, pixel centering for all piece types, absence of badges, image size limits, an independent SIXEL pixel round trip, fixed-position text differences, protected image regions, move damage, and outcome/role cues. Boundary coverage checks 12 terminal pixel heights and three layouts for exact neighboring pixels, complete bands, and no out-of-board patches.
+- Java 21 verification passes 107 engine tests, those 31 CLI tests, and eight desktop board/lifecycle tests under Xvfb: 146 tests total across the focused runs. The three desktop board tests also pass in headless mode.
+- The POSIX pseudo-terminal harness passes 37 scenarios covering text and graphics paths, legal mouse moves, observers, promotion, help, flips, resizes, typed-prefix preservation, malformed pixel replies, cleanup, prior SIXEL mode restoration, and stale pre-paint mouse input. The added scenarios assert no board repaint on typing, notifications, waiting animation, or duplicate snapshots; verify local patches on selection/cancel and confirmed moves; and check quiet motion-disabled waiting, `NO_COLOR`, game-over messages, 40-pixel and odd-height squares, and bottom-rank updates. Every encoded image is checked for complete six-pixel bands. See `scripts/test-cli-terminal.py` for the executable scenarios.
 - Actual xterm and Konsole screenshots were inspected at 11 points, including default shapes, Nerd Font shapes, the symbol fallback, and the latest colored status/game-over screens. Partial updates after a move in Konsole and a flip in xterm were also inspected.
 
 Full MySQL integration tests were not rerun for these renderer and experience changes; the previous PR #2 attempt could not connect to the database. The earlier display-access constraint has been resolved for the GUI regression checks by using an isolated Xvfb display. No test database was cleared during this work.
@@ -75,7 +77,10 @@ python3 scripts/capture-cli-terminal.py --emulator xterm --pieces nerd --output 
 python3 scripts/capture-cli-terminal.py --emulator konsole --output /tmp/chess-konsole.png
 python3 scripts/capture-cli-terminal.py --emulator konsole --scene checkmate --output /tmp/chess-game-over.png
 python3 scripts/capture-cli-terminal.py --emulator konsole --scene updated --output /tmp/chess-after-move.png
+python3 scripts/capture-cli-terminal.py --emulator konsole --scene bottom --check-square-edges --output /tmp/chess-bottom-edge.png
 ```
+
+`--check-square-edges` additionally requires Pillow for screenshot pixel inspection; Pillow is not a client runtime dependency.
 
 ## Expected usage
 
