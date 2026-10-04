@@ -29,7 +29,7 @@ class StockfishEngineTests {
     @Test void skillEndpointsDisableEloLimiting() throws Exception {
         Path executable = TestStockfish.executable(directory, "e2e4");
         for (int skill : new int[]{0, 20}) {
-            try (var engine = new StockfishEngine(executable.toString())) {
+            try (var engine = new StockfishEngine(executable.toString(), () -> -1L)) { // never takes the random-move branch
                 engine.bestMove(new ChessGame(), engine.player(new StockfishOptions(WHITE, StockfishOptions.Mode.SKILL, null, skill), 1500));
             }
         }
@@ -38,6 +38,26 @@ class StockfishEngineTests {
         assertTrue(log.contains("Skill Level value 0\n"));
         assertTrue(log.contains("Skill Level value 20\n"));
         assertFalse(log.contains("setoption name UCI_Elo"));
+        assertTrue(log.contains("go movetime 250\n"), "level 20 keeps full-strength timed search");
+    }
+
+    @Test void lowSkillLevelsCapDepthAndMayPlayRandomLegalMoves() throws Exception {
+        Path executable = TestStockfish.executable(directory, "e2e4");
+        var levelZero = new StockfishPlayer(WHITE, StockfishOptions.Mode.SKILL, 1320, 0);
+        try (var engine = new StockfishEngine(executable.toString(), new java.util.Random(1))) {
+            ChessGame game = new ChessGame();
+            for (int i = 0; i < 40; i++) {
+                ChessMove move = engine.bestMove(game, levelZero);
+                assertTrue(game.validMoves(move.getStartPosition()).contains(move));
+            }
+        }
+        String log = Files.readString(directory.resolve("fake-stockfish.log"));
+        long searches = log.lines().filter(line -> line.startsWith("go ")).count();
+        assertTrue(searches > 10 && searches < 35, "about half of level-0 moves should be random, got " + searches + " searches");
+        assertTrue(log.lines().filter(line -> line.startsWith("go ")).allMatch(line -> line.equals("go depth 1 movetime 250")));
+        assertEquals(0.5, StockfishEngine.randomMoveChance(0));
+        assertEquals(0.0, StockfishEngine.randomMoveChance(5));
+        assertEquals(0.0, StockfishEngine.randomMoveChance(20));
     }
 
     @Test void exitsAndInvalidMovesFailCleanly() throws Exception {

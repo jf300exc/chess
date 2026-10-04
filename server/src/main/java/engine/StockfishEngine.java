@@ -2,13 +2,16 @@ package engine;
 
 import chess.ChessGame;
 import chess.ChessMove;
+import chess.ChessPiece;
 import model.StockfishOptions;
 import model.StockfishPlayer;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.random.RandomGenerator;
 import java.util.regex.*;
 
 /** One bounded UCI process per search; no shell or executable supplied by a client. */
@@ -18,6 +21,7 @@ public class StockfishEngine implements AutoCloseable {
     private final BufferedWriter input;
     private final BlockingQueue<String> output = new ArrayBlockingQueue<>(1024);
     private final Thread reader;
+    private final RandomGenerator random;
     private int minElo, maxElo;
 
     public StockfishEngine() throws IOException {
@@ -25,6 +29,11 @@ public class StockfishEngine implements AutoCloseable {
     }
 
     public StockfishEngine(String executable) throws IOException {
+        this(executable, new Random());
+    }
+
+    StockfishEngine(String executable, RandomGenerator random) throws IOException {
+        this.random = random;
         process = new ProcessBuilder(executable).redirectErrorStream(true).start();
         input = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
         reader = Thread.ofVirtual().start(() -> {
@@ -67,7 +76,16 @@ public class StockfishEngine implements AutoCloseable {
         return new StockfishPlayer(options.color(), options.mode(), elo, options.skillLevel());
     }
 
+    /**
+     * Stockfish's own Skill Level 0 is still roughly 1300 Elo, so lower levels also cap search depth
+     * (level + 1 plies) and, at levels 0-4, sometimes play a uniformly random legal move.
+     */
     public ChessMove bestMove(ChessGame game, StockfishPlayer player) throws IOException {
+        boolean weakened = player.mode() == StockfishOptions.Mode.SKILL && player.skillLevel() < 20;
+        if (weakened && random.nextDouble() < randomMoveChance(player.skillLevel())) {
+            List<ChessMove> moves = legalMoves(game);
+            if (!moves.isEmpty()) { return moves.get(random.nextInt(moves.size())); }
+        }
         send("ucinewgame");
         if (player.mode() == StockfishOptions.Mode.ELO) {
             send("setoption name UCI_LimitStrength value true");
@@ -78,7 +96,7 @@ public class StockfishEngine implements AutoCloseable {
         }
         ready();
         send("position fen " + ChessUci.fen(game));
-        send("go movetime 250");
+        send(weakened ? "go depth " + (player.skillLevel() + 1) + " movetime 250" : "go movetime 250");
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (true) {
             String line = next(deadline);
@@ -87,6 +105,23 @@ public class StockfishEngine implements AutoCloseable {
                 catch (IllegalArgumentException e) { throw new IOException(e.getMessage(), e); }
             }
         }
+    }
+
+    static double randomMoveChance(int skillLevel) {
+        return Math.max(0, 5 - skillLevel) * 0.1;
+    }
+
+    private static List<ChessMove> legalMoves(ChessGame game) {
+        List<ChessMove> moves = new ArrayList<>();
+        for (var position : game.getBoard().getAllPositions()) {
+            ChessPiece piece = game.getBoard().getPiece(position);
+            if (piece != null && piece.getTeamColor() == game.getTeamTurn()) {
+                Collection<ChessMove> pieceMoves = game.validMoves(position);
+                if (pieceMoves != null) { moves.addAll(pieceMoves); }
+            }
+        }
+        moves.sort(Comparator.comparing((ChessMove m) -> ChessUci.square(m.getStartPosition()) + ChessUci.square(m.getEndPosition()) + m.getPromotionPiece()));
+        return moves;
     }
 
     private void ready() throws IOException {
