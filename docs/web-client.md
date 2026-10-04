@@ -35,6 +35,8 @@ The phone layout puts the turn status above the board. Player names and match ac
 
 ## Implementation
 
+After successful startup, the server prints localhost and local-network browser URLs with interface names and the actual listening port. It lists active interfaces, formats IPv6 URLs with brackets, and omits loopback, wildcard, multicast, and IPv6 link-local addresses from the other-device list.
+
 The browser is static HTML, CSS, and JavaScript packaged with the existing server jar. There is no frontend build step or runtime package download. Requests use the existing `/user`, `/session`, `/game`, and `/ws` contracts and the current page's hostname/port. HTTPS selects secure WebSockets automatically.
 
 `LOAD_GAME` adds `legalMoves`, `inCheck`, `checkmate`, and `stalemate` fields. They are computed from a copied Java game so legal-move generation does not alter the live board. Existing message fields and command formats remain intact, and native clients ignore the added fields. Server validation remains authoritative for every move.
@@ -46,7 +48,7 @@ The existing server sends join, leave, and resignation notifications without a n
 ## Validation
 
 - `make build` packages the application and browser assets.
-- All 255 Java tests pass with zero failures, errors, or skips. The complete suite runs against a temporary MySQL instance and an isolated virtual display, including chess rules, HTTP/WebSocket integration, database, CLI, transport, and desktop GUI tests.
+- The full 255-test Java suite passed with zero failures, errors, or skips before the startup-address follow-up. Three new address-formatting tests also pass; the startup banner and printed Wi-Fi URL were verified on a running server with a custom port. The complete suite runs against a temporary MySQL instance and an isolated virtual display, including chess rules, HTTP/WebSocket integration, database, CLI, transport, and desktop GUI tests.
 - Five new shared tests verify wire coordinates and legal moves, nonmutation of the live board, checkmate, stalemate, resignation, and every promotion choice.
 - `make test-web` drives Chrome against the real server at 320px, 390px, and 1440px widths, with touch input on phone views. It checks registration and sign-in, lobby creation, seat assignment, observer restrictions, orientations, flip/cancel, broadcasts, reload/network recovery, checkmate, confirmed resignation, promotion for both colors, castling, en passant, sign-out, text rendering of hostile game names, and horizontal overflow.
 

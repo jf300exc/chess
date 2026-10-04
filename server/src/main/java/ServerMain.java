@@ -1,11 +1,13 @@
 import server.Server;
+import server.ConnectionInfo;
 
 /** Multiplayer server entry point. */
 public class ServerMain {
     public static void main(String[] args) {
         int port = readPort(args);
         System.out.println("♕ 240 Chess Server starting on port " + port);
-        new Server().run(port);
+        int listeningPort = new Server().run(port);
+        ConnectionInfo.print(listeningPort);
     }
 
     private static int readPort(String[] args) {

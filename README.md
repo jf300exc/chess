@@ -40,7 +40,7 @@ The browser, CLI, and GUI can be used at the same time and can join the same mat
 
 ### Play from a phone or browser
 
-Start `make server`, then open `http://localhost:8080` on the server computer. On a phone or another computer on the same network, open `http://<server-LAN-IP>:8080` (for example, `http://192.168.1.20:8080`). The server listens on all interfaces; if a firewall is enabled, allow its configured TCP port. The phone uses the server that served the page automatically, including its port.
+Start `make server`. Once it is ready, the server prints browser URLs for each active local-network interface, labeled with its interface name, using the configured port. Open one of the URLs under **From a phone or another device on your local network** on your phone. For the server computer itself, use the printed localhost URL (normally `http://localhost:8080`). On a phone or another computer on the same network, open `http://<server-LAN-IP>:8080` (for example, `http://192.168.1.20:8080`). The server listens on all interfaces; if a firewall is enabled, allow its configured TCP port. The phone uses the server that served the page automatically, including its port.
 
 Sign in or create an account, create a game, and choose **Play White** or **Play Black**. A second player can open the same address and take the other seat. **Watch** joins as an observer. Tap or click a piece, then a highlighted destination; promotions offer queen, rook, bishop, and knight. Keyboard users can Tab to squares and activate them with Enter or Space. Escape or **Clear selection** cancels selection. **Flip board** changes the view while preserving your playing color.
 
