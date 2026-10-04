@@ -1,4 +1,6 @@
 import ui.CommandLine;
+import ui.CliConsole;
+import ui.PieceSymbols;
 import ui.ServerFacade;
 import ui.Terminal;
 import ui.WebSocketClient;
@@ -8,18 +10,24 @@ public class ClientMain {
     private static final int PORT = 8080;
 
     public static void main(String[] args) {
+        // Board images use fonts and raster drawing, never a desktop window.
+        System.setProperty("java.awt.headless", "true");
         String host = readOption(args, "--host", System.getenv().getOrDefault("CHESS_HOST", "localhost"));
         int port = readPort(args, System.getenv().getOrDefault("CHESS_PORT", Integer.toString(PORT)));
         ServerFacade httpFacade = new ServerFacade(host, port);
 
-        try {
-            CommandLine commandLine = new CommandLine(httpFacade);
+        boolean textOnly = java.util.Arrays.asList(args).contains("--text");
+        boolean noMouse = java.util.Arrays.asList(args).contains("--no-mouse");
+        boolean noGraphics = java.util.Arrays.asList(args).contains("--no-graphics");
+        try (CliConsole console = CliConsole.open(textOnly, noMouse, noGraphics, PieceSymbols.fromArgs(args),
+                java.util.Arrays.asList(args).contains("--no-color"), java.util.Arrays.asList(args).contains("--no-animation"))) {
+            CommandLine commandLine = new CommandLine(httpFacade, console);
             WebSocketClient webSocketClient = new WebSocketClient(host, port, commandLine.gamePlay);
             commandLine.gamePlay.setWebSocket(webSocketClient);
             System.out.printf("♕ Welcome to 240 Chess Client (%s:%d). Type Help to get started. ♕%n", host, port);
             commandLine.run();
         } catch (Exception e) {
-            System.err.println("WebSocket Client Side Error: " + e.getMessage());
+            System.err.println("Chess client error: " + e.getMessage());
             Terminal.stop();
         }
     }

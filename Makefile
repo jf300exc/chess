@@ -5,11 +5,12 @@ MVN ?= mvn
 JAVA ?= java
 HOST ?= localhost
 PORT ?= 8080
+CLI_ARGS ?=
 SERVER_JAR := server/target/server-jar-with-dependencies.jar
 CLIENT_JAR := client/target/client-jar-with-dependencies.jar
 DB_CONFIG := server/src/main/resources/db.properties
 
-.PHONY: help check check-java check-maven check-gui check-db build test test-engine verify server cli gui clean
+.PHONY: help check check-java check-maven check-gui check-db build test test-engine test-cli verify server cli gui clean
 
 help: ## Show the available commands
 	@echo "Chess development commands"
@@ -19,6 +20,7 @@ help: ## Show the available commands
 	@echo "  make gui          Build and start the desktop client"
 	@echo "  make test         Run the complete test suite (requires MySQL)"
 	@echo "  make test-engine  Run the dependency-free chess rule tests"
+	@echo "  make test-cli     Run CLI tests without MySQL or a desktop"
 	@echo "  make verify       Compile everything and run the complete suite"
 	@echo "  make build        Build runnable client and server jars"
 	@echo
@@ -67,6 +69,9 @@ test: check check-db ## Run all tests (database tests require configured MySQL)
 test-engine: check ## Run chess rule tests without server/database dependencies
 	$(MVN) --no-transfer-progress -pl shared test
 
+test-cli: check ## Run terminal parsing, board interaction, and text gameplay tests
+	$(MVN) --no-transfer-progress -pl client -am -Dtest=CliInputParserTests,CommandLineSelectionTests,TerminalControlsTests,BoardGraphicsTests,TerminalExperienceTests,GamePlayCliTests -Dsurefire.failIfNoSpecifiedTests=false -DargLine=-Djava.awt.headless=true test
+
 verify: build test ## Build and run all tests
 
 server: check check-db ## Start the server (PORT defaults to 8080)
@@ -75,7 +80,7 @@ server: check check-db ## Start the server (PORT defaults to 8080)
 
 cli: check ## Start the terminal client (HOST/PORT select the server)
 	$(MVN) --no-transfer-progress -q -pl client -am -DskipTests package
-	$(JAVA) -cp "$(CLIENT_JAR)" ClientMain --host "$(HOST)" --port "$(PORT)"
+	$(JAVA) -cp "$(CLIENT_JAR)" ClientMain --host "$(HOST)" --port "$(PORT)" $(CLI_ARGS)
 
 gui: check check-gui ## Start the desktop client (HOST/PORT select the server)
 	$(MVN) --no-transfer-progress -q -pl client -am -DskipTests package
