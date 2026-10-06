@@ -1,6 +1,6 @@
 # ♞ Multiplayer Chess
 
-A Java 21 client/server chess application with interchangeable desktop and terminal clients. Multiple players and observers can connect to the same server over HTTP and WebSocket, while MySQL provides persistent users, sessions, and games.
+A Java 25 client/server chess application with interchangeable desktop and terminal clients. Multiple players and observers can connect to the same server over HTTP and WebSocket, while MySQL provides persistent users, sessions, and games.
 
 ## What is included
 
@@ -13,7 +13,7 @@ A Java 21 client/server chess application with interchangeable desktop and termi
 
 Requirements:
 
-- JDK 21 or newer
+- JDK 25 or newer
 - Apache Maven 3.8 or newer
 - GNU Make
 - MySQL for the server and full integration tests

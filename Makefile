@@ -32,10 +32,10 @@ check: check-java check-maven ## Check build dependencies
 
 check-java:
 	@command -v "$(JAVA)" >/dev/null 2>&1 || { \
-		echo "Error: Java is missing. Install JDK 21 or newer and ensure 'java' is on PATH." >&2; exit 2; }
+		echo "Error: Java is missing. Install JDK 25 or newer and ensure 'java' is on PATH." >&2; exit 2; }
 	@major="$$($(JAVA) -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p')"; \
-		if [[ -z "$$major" || "$$major" -lt 21 ]]; then \
-			echo "Error: Java 21 or newer is required; found version $${major:-unknown}." >&2; exit 2; \
+		if [[ -z "$$major" || "$$major" -lt 25 ]]; then \
+			echo "Error: Java 25 or newer is required; found version $${major:-unknown}." >&2; exit 2; \
 		fi
 
 check-maven:
